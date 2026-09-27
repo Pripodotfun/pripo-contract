@@ -1,10 +1,10 @@
 /out/
 /cache/
 /broadcast/
+/reports/
 /lib/
 /.toolchain/
 .env
 .env.*
 !.env.example
 .DS_Store
-

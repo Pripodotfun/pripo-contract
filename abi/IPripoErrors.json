@@ -1,0 +1,161 @@
+[
+  {
+    "type": "error",
+    "name": "AccountingInvariant",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientMargin",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidBps",
+    "inputs": [
+      {
+        "name": "bps",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidFundingParameters",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidLeverage",
+    "inputs": [
+      {
+        "name": "leverage",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidReserves",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidSize",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotLiquidatable",
+    "inputs": [
+      {
+        "name": "health",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OICapExceeded",
+    "inputs": [
+      {
+        "name": "cap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "attempted",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PolicyViolation",
+    "inputs": [
+      {
+        "name": "code",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveExhausted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Slippage",
+    "inputs": [
+      {
+        "name": "wanted",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "got",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "StaleOracle",
+    "inputs": [
+      {
+        "name": "age",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TimeWentBackwards",
+    "inputs": [
+      {
+        "name": "previousBlock",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "currentBlock",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroQuote",
+    "inputs": []
+  }
+]
