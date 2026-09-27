@@ -31,3 +31,9 @@ The Aderyn command explicitly sets `FOUNDRY_EVM_VERSION=cancun` to match the pro
 - **Unused custom errors, low:** the six trading errors are part of the exported spec ABI and will be used by vault/market implementations.
 
 Slither initially flagged an implicit zero initialization and a divide-then-multiply pattern in sweep accounting. The search lower bound now initializes explicitly. The sweep now removes the fractional remainder before dividing to quote WAD, preserving the same accounting result without the flagged expression. No detector suppressions were added for these findings.
+
+## Vault stage
+
+Ten vault tests cover custody, isolated debt, balanced funding/PnL/insurance transfers, claims and dust, referral binding, operator expiry/revocation/spending/Merkle scope, deposit caps, initialization, upgrade delay/veto/storage, callback reentrancy, and transfer-tax rejection.
+
+Slither's added timestamp finding is the deliberate 48-hour governance delay. Aderyn additionally flags inherited payable UUPS upgrade entry points as potentially locking Ether; the override rejects nonzero `msg.value`. Its `public` visibility is required by the inherited UUPS signature. No ordinary vault operation accepts native tokens. Modifier ordering was corrected. Existing math and event/style findings remain as described above.

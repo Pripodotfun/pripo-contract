@@ -1,0 +1,287 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
+
+import {IMarginVault} from "./interfaces/IMarginVault.sol";
+import {FixedPointMath as F} from "./libraries/FixedPointMath.sol";
+import {PripoTypes as T} from "./types/PripoTypes.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+/// @notice Isolated collateral custody. Registered market code is trusted to authorize each user action.
+/// @dev Every internal credit has an explicit debit. No aggregate counter is written on the trade path.
+contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    IERC20 public token;
+    address public governor;
+    address public guardian;
+    address public treasury;
+    uint256 public depositCap;
+    mapping(address => bool) public registrars;
+    mapping(address => address) public registrarOf;
+    mapping(address => address) public creatorOf;
+    mapping(address => uint256) public freeBalance;
+    mapping(address => mapping(address => int256)) public locked;
+    mapping(address => T.Ledger) private _ledgers;
+    mapping(address => mapping(address => T.OperatorPolicy)) public operators;
+    mapping(bytes32 => address) public referralOwner;
+    mapping(address => bytes32) public referralCode;
+    mapping(address => address) public referrerOf;
+    mapping(address => uint256) public referralOwed;
+    address public pendingImplementation;
+    bytes32 public upgradeDataHash;
+    uint256 public upgradeReadyAt;
+
+    event RegistrarSet(address indexed registrar, bool allowed);
+    event UpgradeScheduled(address indexed implementation, bytes32 dataHash, uint256 readyAt);
+    event UpgradeCancelled(address indexed implementation);
+
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initialize through an ERC1967 proxy, atomically with proxy creation.
+    function initialize(address token_, address governor_, address guardian_, address treasury_) external initializer {
+        if (token_.code.length == 0 || governor_ == address(0) || guardian_ == address(0) || treasury_ == address(0)) {
+            revert InvalidAddress();
+        }
+        if (IERC20Metadata(token_).decimals() != 6) revert UnsupportedToken();
+        token = IERC20(token_);
+        governor = governor_;
+        guardian = guardian_;
+        treasury = treasury_;
+        depositCap = 100_000e6;
+        registrars[governor_] = true;
+    }
+
+    modifier onlyGovernor() {
+        if (msg.sender != governor) revert Unauthorized();
+        _;
+    }
+    modifier onlyMarket() {
+        if (registrarOf[msg.sender] == address(0)) revert Unauthorized();
+        _;
+    }
+
+    function setRegistrar(address registrar, bool allowed) external onlyGovernor {
+        if (registrar == address(0)) revert InvalidAddress();
+        registrars[registrar] = allowed;
+        emit RegistrarSet(registrar, allowed);
+    }
+
+    /// @dev Registration is permanent: removing an active market would strand its collateral.
+    function registerMarket(address market, address creator) external {
+        if (!registrars[msg.sender]) revert Unauthorized();
+        if (market.code.length == 0 || creator == address(0)) revert InvalidAddress();
+        if (registrarOf[market] != address(0)) revert InvalidConfiguration();
+        registrarOf[market] = msg.sender;
+        creatorOf[market] = creator;
+        emit MarketRegistered(market, creator, msg.sender);
+    }
+
+    function ledger(address market) external view returns (T.Ledger memory) {
+        return _ledgers[market];
+    }
+
+    function deposit(uint256 usdc) external nonReentrant {
+        if (usdc == 0) revert ZeroAmount();
+        uint256 beforeCash = token.balanceOf(address(this));
+        if (beforeCash + usdc > depositCap) revert DepositCapExceeded();
+        token.safeTransferFrom(msg.sender, address(this), usdc);
+        if (token.balanceOf(address(this)) != beforeCash + usdc) revert UnsupportedToken();
+        freeBalance[msg.sender] += F.usdcToWad(usdc);
+        emit Deposited(msg.sender, usdc);
+    }
+
+    function withdraw(uint256 usdc) external nonReentrant {
+        if (usdc == 0) revert ZeroAmount();
+        _debitFree(msg.sender, F.usdcToWad(usdc));
+        token.safeTransfer(msg.sender, usdc);
+        emit Withdrawn(msg.sender, usdc);
+    }
+
+    function fundInsurance(address market, uint256 amount) external {
+        if (registrarOf[market] == address(0)) revert Unauthorized();
+        if (amount == 0) revert ZeroAmount();
+        _debitFree(msg.sender, amount);
+        _ledgers[market].insurance += amount;
+        emit InsuranceFunded(market, msg.sender, amount);
+    }
+
+    function lock(address user, uint256 amount) external onlyMarket {
+        _debitFree(user, amount);
+        locked[user][msg.sender] += F.toInt(amount);
+    }
+
+    function release(address user, uint256 amount) external onlyMarket {
+        int256 collateral = locked[user][msg.sender];
+        if (collateral < F.toInt(amount)) revert InsufficientMargin(collateral > 0 ? F.toUint(collateral) : 0, amount);
+        locked[user][msg.sender] = collateral - F.toInt(amount);
+        freeBalance[user] += amount;
+    }
+
+    function settlePnl(address user, int256 pnl) external onlyMarket {
+        locked[user][msg.sender] += pnl;
+        _ledgers[msg.sender].clearing -= pnl;
+    }
+
+    function settleFunding(address user, int256 owed) external onlyMarket {
+        locked[user][msg.sender] -= owed;
+        _ledgers[msg.sender].fundingPool += owed;
+    }
+
+    function chargeFee(address user, T.FeeBreakdown calldata fee, bool fromLocked) external onlyMarket {
+        if (fee.total != fee.protocol + fee.creator + fee.insurance + fee.referral) revert AccountingInvariant();
+        address referrer = referrerOf[user];
+        if (referrer == address(0) && fee.referral != 0) revert InvalidReferral();
+        if (fromLocked) locked[user][msg.sender] -= F.toInt(fee.total);
+        else _debitFree(user, fee.total);
+        T.Ledger storage l = _ledgers[msg.sender];
+        l.protocolOwed += fee.protocol;
+        l.creatorOwed += fee.creator;
+        l.insurance += fee.insurance;
+        if (fee.referral != 0) referralOwed[referrer] += fee.referral;
+    }
+
+    function sweepFunding(uint256 amount) external onlyMarket {
+        _ledgers[msg.sender].fundingPool -= F.toInt(amount);
+        _ledgers[msg.sender].insurance += amount;
+    }
+
+    /// @notice Cover isolated debt from this market's insurance. Backstop and ADL are a later integration.
+    function coverDebt(address user) external onlyMarket returns (uint256 amount) {
+        int256 collateral = locked[user][msg.sender];
+        if (collateral >= 0) return 0;
+        amount = F.abs(collateral);
+        T.Ledger storage l = _ledgers[msg.sender];
+        if (l.insurance < amount) revert InsufficientInsurance(l.insurance, amount);
+        l.insurance -= amount;
+        locked[user][msg.sender] = 0;
+    }
+
+    function claimCreatorFees() external nonReentrant onlyMarket returns (uint256 amount) {
+        amount = _payableWad(_ledgers[msg.sender].creatorOwed);
+        _ledgers[msg.sender].creatorOwed -= amount;
+        if (amount != 0) token.safeTransfer(creatorOf[msg.sender], amount / F.USDC_SCALE);
+    }
+
+    function transferCreator(address to) external onlyMarket {
+        if (to == address(0)) revert InvalidAddress();
+        creatorOf[msg.sender] = to;
+    }
+
+    function claimProtocolFees(address market) external nonReentrant returns (uint256 amount) {
+        amount = _payableWad(_ledgers[market].protocolOwed);
+        _ledgers[market].protocolOwed -= amount;
+        if (amount != 0) token.safeTransfer(treasury, amount / F.USDC_SCALE);
+    }
+
+    function setOperator(address op, T.OperatorPolicy calldata policy) external {
+        if (op == address(0) || op == msg.sender) revert InvalidAddress();
+        if (policy.expiry <= block.number || policy.maxNotionalPerTx == 0 || policy.maxTotalNotional == 0) {
+            revert PolicyViolation(1);
+        }
+        operators[msg.sender][op] = policy;
+        operators[msg.sender][op].usedNotional = 0;
+        emit OperatorSet(msg.sender, op, policy.expiry, policy.maxTotalNotional);
+    }
+
+    function revokeOperator(address op) external {
+        delete operators[msg.sender][op];
+        emit OperatorRevoked(msg.sender, op);
+    }
+
+    /// @dev Leaf = keccak256(bytes.concat(keccak256(abi.encode(market)))); sorted-pair Merkle tree.
+    function checkAndConsume(address user, address op, uint256 notional, bool isClose, bytes32[] calldata marketProof)
+        external
+        onlyMarket
+    {
+        if (user == address(0) || op == address(0)) revert InvalidAddress();
+        if (user == op) return;
+        T.OperatorPolicy storage policy = operators[user][op];
+        if (policy.expiry <= block.number) revert PolicyViolation(1);
+        if (isClose && !policy.canClose) revert PolicyViolation(2);
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender))));
+        if (policy.marketsRoot != bytes32(0) && !MerkleProof.verifyCalldata(marketProof, policy.marketsRoot, leaf)) {
+            revert PolicyViolation(3);
+        }
+        if (notional > policy.maxNotionalPerTx) revert PolicyViolation(4);
+        uint256 used = uint256(policy.usedNotional) + notional;
+        if (used > policy.maxTotalNotional) revert PolicyViolation(5);
+        policy.usedNotional = SafeCast.toUint128(used);
+    }
+
+    function registerReferralCode(bytes32 code) external {
+        if (code == bytes32(0) || referralOwner[code] != address(0) || referralCode[msg.sender] != bytes32(0)) {
+            revert InvalidReferral();
+        }
+        referralOwner[code] = msg.sender;
+        referralCode[msg.sender] = code;
+        emit ReferralRegistered(msg.sender, code);
+    }
+
+    function setReferrer(bytes32 code) external {
+        address referrer = referralOwner[code];
+        if (referrer == address(0) || referrer == msg.sender || referrerOf[msg.sender] != address(0)) {
+            revert InvalidReferral();
+        }
+        referrerOf[msg.sender] = referrer;
+        emit ReferrerSet(msg.sender, referrer);
+    }
+
+    function claimReferral() external nonReentrant {
+        uint256 amount = _payableWad(referralOwed[msg.sender]);
+        referralOwed[msg.sender] -= amount;
+        if (amount != 0) token.safeTransfer(msg.sender, amount / F.USDC_SCALE);
+        emit ReferralClaimed(msg.sender, amount);
+    }
+
+    /// @notice A 48-hour delay is enforced even if the governor is not itself a timelock.
+    function scheduleUpgrade(address implementation, bytes32 dataHash) external onlyGovernor {
+        if (implementation.code.length == 0) revert InvalidAddress();
+        pendingImplementation = implementation;
+        upgradeDataHash = dataHash;
+        upgradeReadyAt = block.timestamp + 48 hours;
+        emit UpgradeScheduled(implementation, dataHash, upgradeReadyAt);
+    }
+
+    function cancelUpgrade() external {
+        if (msg.sender != governor && msg.sender != guardian) revert Unauthorized();
+        emit UpgradeCancelled(pendingImplementation);
+        delete pendingImplementation;
+        delete upgradeDataHash;
+        delete upgradeReadyAt;
+    }
+
+    function upgradeToAndCall(address implementation, bytes memory data) public payable override {
+        if (msg.value != 0) revert UnexpectedValue();
+        if (keccak256(data) != upgradeDataHash) revert UpgradeNotReady();
+        super.upgradeToAndCall(implementation, data);
+    }
+
+    function _authorizeUpgrade(address implementation) internal override onlyGovernor {
+        // Timestamp is used only for the wall-clock governance delay; market timing uses blocks.
+        if (implementation != pendingImplementation || upgradeReadyAt == 0 || block.timestamp < upgradeReadyAt) {
+            revert UpgradeNotReady();
+        }
+        delete pendingImplementation;
+        delete upgradeDataHash;
+        delete upgradeReadyAt;
+    }
+
+    function _debitFree(address user, uint256 amount) private {
+        uint256 available = freeBalance[user];
+        if (available < amount) revert InsufficientMargin(available, amount);
+        freeBalance[user] = available - amount;
+    }
+
+    function _payableWad(uint256 amount) private pure returns (uint256) {
+        return amount - amount % F.USDC_SCALE;
+    }
+}

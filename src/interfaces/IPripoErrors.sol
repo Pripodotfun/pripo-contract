@@ -19,4 +19,18 @@ interface IPripoErrors {
     error InvalidFundingParameters();
     error AccountingInvariant();
     error TimeWentBackwards(uint64 previousBlock, uint64 currentBlock);
+    error Unauthorized();
+    error InvalidAddress();
+    error InvalidConfiguration();
+    error DepositCapExceeded();
+    error UnsupportedToken();
+    error InvalidReferral();
+    error InsufficientInsurance(uint256 have, uint256 need);
+    error MarketNotActive();
+    error UnexpectedValue();
+    error InvalidOracle();
+    error OracleConfidence(uint16 confidenceBps);
+    error PositionExists();
+    error NoPosition();
+    error UpgradeNotReady();
 }

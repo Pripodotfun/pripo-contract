@@ -1074,6 +1074,27 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "DepositCapExceeded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientInsurance",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InsufficientMargin",
     "inputs": [
       {
@@ -1090,6 +1111,11 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -1098,6 +1124,11 @@ export const marketAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfiguration",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1117,6 +1148,16 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidOracle",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferral",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidReserves",
     "inputs": []
   },
@@ -1127,7 +1168,17 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPosition",
     "inputs": []
   },
   {
@@ -1159,6 +1210,17 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "OracleConfidence",
+    "inputs": [
+      {
+        "name": "confidenceBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "PolicyViolation",
     "inputs": [
       {
@@ -1167,6 +1229,11 @@ export const marketAbi = [
         "internalType": "uint8"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "PositionExists",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1215,6 +1282,26 @@ export const marketAbi = [
         "internalType": "uint64"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UpgradeNotReady",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1418,6 +1505,27 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "DepositCapExceeded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientInsurance",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InsufficientMargin",
     "inputs": [
       {
@@ -1434,6 +1542,11 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -1442,6 +1555,11 @@ export const marketFactoryAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfiguration",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1461,6 +1579,16 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidOracle",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferral",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidReserves",
     "inputs": []
   },
@@ -1471,7 +1599,17 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPosition",
     "inputs": []
   },
   {
@@ -1503,6 +1641,17 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "OracleConfidence",
+    "inputs": [
+      {
+        "name": "confidenceBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "PolicyViolation",
     "inputs": [
       {
@@ -1511,6 +1660,11 @@ export const marketFactoryAbi = [
         "internalType": "uint8"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "PositionExists",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1562,6 +1716,26 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UpgradeNotReady",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ZeroAmount",
     "inputs": []
   },
@@ -1575,36 +1749,49 @@ export const marketFactoryAbi = [
 export const marginVaultAbi = [
   {
     "type": "function",
-    "name": "accountHealth",
+    "name": "chargeFee",
     "inputs": [
       {
         "name": "user",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "int256",
-        "internalType": "int256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "accrueReferral",
-    "inputs": [
-      {
-        "name": "referrer",
-        "type": "address",
-        "internalType": "address"
       },
       {
-        "name": "amt",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "fee",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.FeeBreakdown",
+        "components": [
+          {
+            "name": "total",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "protocol",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "creator",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "insurance",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "referral",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "fromLocked",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -1625,17 +1812,54 @@ export const marginVaultAbi = [
         "internalType": "address"
       },
       {
-        "name": "market",
-        "type": "address",
-        "internalType": "address"
+        "name": "notional",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "name": "notional",
+        "name": "isClose",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "marketProof",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimCreatorFees",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
-    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimProtocolFees",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -1644,6 +1868,44 @@ export const marginVaultAbi = [
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "coverDebt",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "creatorOf",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1660,16 +1922,91 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
-    "name": "enableCrossMargin",
+    "name": "freeBalance",
     "inputs": [
       {
-        "name": "on",
-        "type": "bool",
-        "internalType": "bool"
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fundInsurance",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "ledger",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.Ledger",
+        "components": [
+          {
+            "name": "protocolOwed",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "creatorOwed",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "insurance",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "clearing",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "fundingPool",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "skewPool",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1681,13 +2018,37 @@ export const marginVaultAbi = [
         "internalType": "address"
       },
       {
-        "name": "amt",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "locked",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1723,6 +2084,25 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "registrarOf",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "release",
     "inputs": [
       {
@@ -1731,7 +2111,7 @@ export const marginVaultAbi = [
         "internalType": "address"
       },
       {
-        "name": "amt",
+        "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1817,7 +2197,7 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
-    "name": "settle",
+    "name": "settleFunding",
     "inputs": [
       {
         "name": "user",
@@ -1825,9 +2205,53 @@ export const marginVaultAbi = [
         "internalType": "address"
       },
       {
-        "name": "delta",
+        "name": "owed",
         "type": "int256",
         "internalType": "int256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settlePnl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "pnl",
+        "type": "int256",
+        "internalType": "int256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "sweepFunding",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferCreator",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -1845,6 +2269,94 @@ export const marginVaultAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Deposited",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "InsuranceFunded",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MarketRegistered",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "registrar",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OperatorRevoked",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "operator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -1878,9 +2390,106 @@ export const marginVaultAbi = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "ReferralClaimed",
+    "inputs": [
+      {
+        "name": "referrer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReferralRegistered",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "code",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReferrerSet",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "referrer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Withdrawn",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "AccountingInvariant",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DepositCapExceeded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientInsurance",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -1900,6 +2509,11 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -1908,6 +2522,11 @@ export const marginVaultAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfiguration",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1927,6 +2546,16 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidOracle",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferral",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidReserves",
     "inputs": []
   },
@@ -1937,7 +2566,17 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPosition",
     "inputs": []
   },
   {
@@ -1969,6 +2608,17 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "OracleConfidence",
+    "inputs": [
+      {
+        "name": "confidenceBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "PolicyViolation",
     "inputs": [
       {
@@ -1977,6 +2627,11 @@ export const marginVaultAbi = [
         "internalType": "uint8"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "PositionExists",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2025,6 +2680,26 @@ export const marginVaultAbi = [
         "internalType": "uint64"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UpgradeNotReady",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2206,6 +2881,27 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "DepositCapExceeded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientInsurance",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InsufficientMargin",
     "inputs": [
       {
@@ -2222,6 +2918,11 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -2230,6 +2931,11 @@ export const resolverAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfiguration",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2249,6 +2955,16 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidOracle",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferral",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidReserves",
     "inputs": []
   },
@@ -2259,7 +2975,17 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPosition",
     "inputs": []
   },
   {
@@ -2291,6 +3017,17 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "OracleConfidence",
+    "inputs": [
+      {
+        "name": "confidenceBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "PolicyViolation",
     "inputs": [
       {
@@ -2299,6 +3036,11 @@ export const resolverAbi = [
         "internalType": "uint8"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "PositionExists",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2347,6 +3089,26 @@ export const resolverAbi = [
         "internalType": "uint64"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UpgradeNotReady",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2429,6 +3191,27 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "DepositCapExceeded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientInsurance",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InsufficientMargin",
     "inputs": [
       {
@@ -2445,6 +3228,11 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -2453,6 +3241,11 @@ export const pripoErrorsAbi = [
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfiguration",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2472,6 +3265,16 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidOracle",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferral",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidReserves",
     "inputs": []
   },
@@ -2482,7 +3285,17 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPosition",
     "inputs": []
   },
   {
@@ -2514,6 +3327,17 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "OracleConfidence",
+    "inputs": [
+      {
+        "name": "confidenceBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "PolicyViolation",
     "inputs": [
       {
@@ -2522,6 +3346,11 @@ export const pripoErrorsAbi = [
         "internalType": "uint8"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "PositionExists",
+    "inputs": []
   },
   {
     "type": "error",
@@ -2570,6 +3399,26 @@ export const pripoErrorsAbi = [
         "internalType": "uint64"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UpgradeNotReady",
+    "inputs": []
   },
   {
     "type": "error",

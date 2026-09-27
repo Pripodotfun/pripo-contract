@@ -1072,6 +1072,27 @@
   },
   {
     "type": "error",
+    "name": "DepositCapExceeded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientInsurance",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InsufficientMargin",
     "inputs": [
       {
@@ -1088,6 +1109,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -1096,6 +1122,11 @@
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConfiguration",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1115,6 +1146,16 @@
   },
   {
     "type": "error",
+    "name": "InvalidOracle",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReferral",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidReserves",
     "inputs": []
   },
@@ -1125,7 +1166,17 @@
   },
   {
     "type": "error",
+    "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPosition",
     "inputs": []
   },
   {
@@ -1157,6 +1208,17 @@
   },
   {
     "type": "error",
+    "name": "OracleConfidence",
+    "inputs": [
+      {
+        "name": "confidenceBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "PolicyViolation",
     "inputs": [
       {
@@ -1165,6 +1227,11 @@
         "internalType": "uint8"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "PositionExists",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1213,6 +1280,26 @@
         "internalType": "uint64"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "Unauthorized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnsupportedToken",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UpgradeNotReady",
+    "inputs": []
   },
   {
     "type": "error",
