@@ -62,7 +62,7 @@ One contract per market, one vault for margin, and no storage slot that every tr
 
 **Contention rules**
 
-- A trade writes only: its `Market` clone's storage and `MarginVault.balance[user]`.
+- A trade writes its `Market` clone's storage and the vault's user collateral, per-market ledger, and applicable operator/referral slots. The vault owns the authoritative ledger; no per-trade global aggregate is written.
 - Protocol fees, insurance backstop and any leaderboard totals are read from per-market accumulators and swept in batches, never incremented on the trade path.
 - No global nonces, no global position ids; position key is `(market, user)`.
 
@@ -150,7 +150,7 @@ mapping(address => Position) positions;
 ```solidity
 // MarginVault storage: every unit of USDC belongs to exactly one of these accounts
 mapping(address user => uint256) free;
-mapping(address user => mapping(address market => uint256)) locked;
+mapping(address user => mapping(address market => int256)) locked; // signed collateral; negative means isolated debt
 mapping(address market => int256)  clearing;      // signed; mirrors Ledger.clearing, held here for the cash invariant
 mapping(address market => uint256) insurance;
 mapping(address market => int256)  fundingPool;      // signed, see Funding
@@ -166,7 +166,7 @@ mapping(bytes32 code => address owner) referralCodeOwner;
 mapping(address user => address referrer) referrerOf;
 
 struct OperatorPolicy {
-    uint64  expiry;
+    uint64  expiry;           // exclusive block number; block.number >= expiry rejects
     uint128 maxNotionalPerTx;
     uint128 maxTotalNotional;
     uint128 usedNotional;
@@ -381,7 +381,7 @@ Winners are paid before losers close, so the vault names that gap explicitly ins
 | `backstop` | global | surplus sweeps in, bad debt out |
 | `protocolOwed[market]`, `creatorOwed[market]`, `referralOwed[referrer]` | per market or referrer | fee accrual, claims |
 
-**Cash invariant**, asserted in every `settle`: `vaultCashWad == Σ free + Σ locked + Σ clearing + Σ insurance + backstop + Σ owed + Σ skewPool + Σ fundingPool`, with `vaultCashWad = USDC.balanceOf(vault) × 10^12`. Every term uses quote WAD, and the sum uses signed arithmetic. `fundingPool` may be negative when receivers settle first or accrued surplus is swept before payers settle. This is a double-entry identity; it catches accounting bugs, not economic ones. The economic invariants follow.
+**Cash invariant**, preserved by every balanced settlement: `vaultCashWad == Σ free + Σ locked + Σ clearing + Σ insurance + backstop + Σ owed + Σ skewPool + Σ fundingPool`, with `vaultCashWad = USDC.balanceOf(vault) × 10^12`. Every term uses quote WAD, and the sum uses signed arithmetic. `locked` may be negative when settled funding exceeds position collateral; `fundingPool` may be negative when receivers settle first or accrued surplus is swept before payers settle. Each settlement applies explicit counter-entries; invariant handlers and read-only watchers recompute the full equality without a global sum on the trade path. Direct token donations create separately observable, unallocated excess cash outside these protocol transitions. This is a double-entry identity; it catches accounting bugs, not economic ones. The economic invariants follow.
 
 **Curve accounting.** Each market stores two more integers: `curveBase` (`Q0`, the quote reserve at seed, reset to the new quote reserve only on a zero-OI reseed) and `entryCostNet` (`E`, the sum over open positions of entry cost for longs minus entry proceeds for shorts, in quote). Each position stores `entryCost`, the exact quote it paid or received at open, reduced pro-rata on partial close, instead of an entry price, so `E` is a sum of exact integers.
 
@@ -575,16 +575,18 @@ function deposit(uint256 usdc) external;
 function withdraw(uint256 usdc) external;                 // only free balance; only the user
 function lock(address user, uint256 amt) external;        // only registered markets
 function release(address user, uint256 amt) external;     // only registered markets
-function settle(address user, int256 delta) external;     // only markets; PnL, funding, fees
+function settlePnl(address user, int256 pnl) external;     // locked += pnl; clearing -= pnl
+function settleFunding(address user, int256 owed) external; // locked -= owed; fundingPool += owed
+function chargeFee(address user, FeeBreakdown calldata fee, bool fromLocked) external; // balanced debit and splits
 function setOperator(address op, OperatorPolicy calldata policy) external;
 function revokeOperator(address op) external;
-function checkAndConsume(address user, address op, address market, uint256 notional) external; // only markets
+function checkAndConsume(address user, address op, uint256 notional, bool isClose, bytes32[] calldata marketProof) external; // calling market supplies scope
 
 // referrals (Phase 1)
 function registerReferralCode(bytes32 code) external;     // one code per address, first come
 function setReferrer(bytes32 code) external;              // binds once, permanent, not self
 function referrerOf(address user) external view returns (address);
-function accrueReferral(address referrer, uint256 amt) external; // only markets
+// chargeFee credits referralOwed only as part of a balanced fee debit
 function claimReferral() external;
 
 // phase 2 surface, reserved in the ABI now
@@ -592,9 +594,11 @@ function enableCrossMargin(bool on) external;
 function accountHealth(address user) external view returns (int256);
 ```
 
-`lock`, `release` and `settle` are the only cross-contract writes on the trade path, and they touch one slot: `balance[user]`.
+Vault writes are scoped to the affected user, operator, market ledger and referrer. There is no unrestricted generic settlement credit; PnL, funding and fees each name their counter-account.
 
 **Operator flow.** A user registers an agent's key once with `setOperator`. The agent then calls `market.openFor(user, size, maxPrice, oracleUpdate)`; the market calls `vault.checkAndConsume`, which verifies the caller is the registered operator, the policy has not expired, the market is in `marketsRoot` (or root is zero), `notional ≤ maxNotionalPerTx`, and `usedNotional + notional ≤ maxTotalNotional`. Any failure reverts before state changes.
+
+The proof-carrying `openFor` and `closeFor` overloads append `bytes32[] marketProof`; the four-argument overloads use an empty proof. Leaves are `keccak256(bytes.concat(keccak256(abi.encode(market))))` in a sorted-pair Merkle tree. Both opens and closes consume actual curve quote notional, and closes additionally require `canClose`. `expiry` is an exclusive block number; replacing a policy resets `usedNotional` to zero.
 
 **What the policy cannot grant**: withdrawals, operator changes, market creation on the user's behalf, or closing positions when `canClose` is false. A user can revoke at any time; open positions stay open and can be closed by the user.
 
@@ -876,3 +880,17 @@ Phase 1 runs seventeen days from September 26 to the October 13 launch, contract
 | Apr–Jun 2027 | Reputation-based margin; creator-role marketplace; governance token decision | Backstop at 30 days of worst-case bad debt |
 
 Each milestone lands only when its dependency is met; dates move, dependencies do not.
+
+## Trading-runtime implementation notes — September 28
+
+The custody/trading milestone implements `IMarketCore`, with `IMarket` retaining the planned liquidation and resolver surface. The concrete contract ABIs are the SDK's `marketAbi` and `marginVaultAbi`; `plannedMarketAbi` must not be treated as the current runtime ABI. The Phase 2 vault functions above remain design reservations, not deployed selectors.
+
+- `Position.margin` reports the positive part of signed locked collateral; `positionDebt(user)` reports the negative part. Pending funding remains separate until settled. The two values cannot both be positive.
+- `quoteOpenFor(user,size)` includes pending funding when calculating the additional collateral required. Opens add to the same side; users close to zero before changing sides. Partial closes retain collateral, and excess can be removed through the initial-margin and reference-health checks.
+- Zero-quote opens revert. An existing dust position can close even when its quote amount rounds to zero; the exit still updates base reserves, entry cost and funding contributions exactly.
+- Closes ignore their oracle-update bytes and reject nonzero native value. They use cached observations and never call an adapter. Opens, `poke` and `remark` can observe fresh primary/secondary prices; guardian pauses survive these refreshes.
+- Funding is accrued with the previous cached observation before a new price is installed. A stale interval stops accruing at the first degraded block; a refresh does not apply the new price retroactively.
+- USDC fee claims transfer whole six-decimal units and retain fractional WAD dust in the originating owed account.
+- Full-close debt coverage currently reaches only market insurance. Liquidation, the backstop/ADL waterfall, factory/adapters, resolver settlement and Monad fork validation remain subsequent milestones; the complete payout guarantee is a deployment gate.
+
+See `docs/implementation-notes.md` for deployment sequencing, linked-library requirements and the remaining integration work.
