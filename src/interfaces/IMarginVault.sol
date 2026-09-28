@@ -24,6 +24,8 @@ interface IMarginVault is IPripoErrors {
     function ledger(address market) external view returns (T.Ledger memory);
     function registrarOf(address market) external view returns (address);
     function creatorOf(address market) external view returns (address);
+    function governor() external view returns (address);
+    function guardian() external view returns (address);
     function fundInsurance(address market, uint256 amount) external;
     function lock(address user, uint256 amount) external;
     function release(address user, uint256 amount) external;

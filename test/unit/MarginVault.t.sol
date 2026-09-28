@@ -168,7 +168,7 @@ contract MarginVaultTest is Test {
         vault.scheduleUpgrade(address(next), keccak256(""));
         vm.expectRevert(E.UpgradeNotReady.selector);
         vault.upgradeToAndCall(address(next), "");
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(vault.upgradeReadyAt());
         vm.prank(alice);
         vm.expectRevert(E.Unauthorized.selector);
         vault.upgradeToAndCall(address(next), "");
@@ -177,7 +177,7 @@ contract MarginVaultTest is Test {
         vm.expectRevert(E.UpgradeNotReady.selector);
         vault.upgradeToAndCall(address(next), "");
         vault.scheduleUpgrade(address(next), keccak256(""));
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(vault.upgradeReadyAt());
         vm.expectRevert(E.UpgradeNotReady.selector);
         vault.upgradeToAndCall(address(next), hex"1234");
         vault.upgradeToAndCall(address(next), "");

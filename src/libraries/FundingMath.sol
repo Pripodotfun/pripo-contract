@@ -43,7 +43,7 @@ library FundingMath {
         uint256 referencePrice,
         uint64 currentBlock,
         uint16 receiveCapX
-    ) internal pure returns (T.FundingState memory) {
+    ) public pure returns (T.FundingState memory) {
         if (currentBlock < f.lastBlock) revert E.TimeWentBackwards(f.lastBlock, currentBlock);
         uint256 elapsed = currentBlock - f.lastBlock;
         f.lastBlock = currentBlock;

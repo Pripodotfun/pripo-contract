@@ -32,7 +32,7 @@ contract FundingHandler is Test {
     }
 }
 
-/// @notice Funding ledger invariants only. Full ERC-20 vault/market invariants are the next milestone.
+/// @notice Isolated funding arithmetic invariants, complementary to the ERC-20 MarketInvariant suite.
 contract FundingInvariantTest is StdInvariant, Test {
     FundingHarness internal book;
     FundingHandler internal handler;

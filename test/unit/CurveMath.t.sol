@@ -6,6 +6,14 @@ import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract CurveMathTest is Test {
+    function test_DustExitAndValuationRemainDefined() public pure {
+        T.AmmState memory a = CurveMath.seed(0.1e18, 100e18);
+        T.Fill memory exitFill = CurveMath.quoteExit(a, 1);
+        assertEq(exitFill.quoteAmount, 0);
+        assertEq(exitFill.baseReserve, a.baseReserve + 1);
+        assertEq(CurveMath.realizablePnl(a, 1, 1), -1);
+    }
+
     function applyFill(T.AmmState memory a, T.Fill memory f) internal pure returns (T.AmmState memory) {
         a.baseReserve = f.baseReserve;
         a.quoteReserve = f.quoteReserve;

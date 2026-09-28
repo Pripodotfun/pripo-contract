@@ -29,6 +29,16 @@ library CurveMath {
     /// @param size Positive buys base, negative sells base. Zero and zero-quote trades revert.
     /// @dev Every endpoint uses ceil(k / B). Buys pay up and sells receive down without changing k.
     function quote(T.AmmState memory a, int256 size) internal pure returns (T.Fill memory fill) {
+        return _quote(a, size, false);
+    }
+
+    /// @notice Closing dust may have zero quote value; it must still be possible to clear the position.
+    function quoteExit(T.AmmState memory a, int256 sizeToClose) internal pure returns (T.Fill memory) {
+        if (sizeToClose == type(int256).min) revert E.MathOverflow();
+        return _quote(a, -sizeToClose, true);
+    }
+
+    function _quote(T.AmmState memory a, int256 size, bool allowZero) private pure returns (T.Fill memory fill) {
         validate(a);
         if (size == 0) revert E.InvalidSize();
         uint256 amount = F.abs(size);
@@ -42,15 +52,14 @@ library CurveMath {
         }
         fill.quoteReserve = Math.ceilDiv(a.k, fill.baseReserve);
         fill.quoteAmount = isBuy ? fill.quoteReserve - a.quoteReserve : a.quoteReserve - fill.quoteReserve;
-        if (fill.quoteAmount == 0) revert E.ZeroQuote();
+        if (fill.quoteAmount == 0 && !allowZero) revert E.ZeroQuote();
         fill.avgPrice = Math.mulDiv(fill.quoteAmount, F.WAD, amount, isBuy ? Math.Rounding.Ceil : Math.Rounding.Floor);
         fill.newMark = Math.mulDiv(fill.quoteReserve, F.WAD, fill.baseReserve);
     }
 
     /// @notice Exact close-alone curve PnL, using quote amounts rather than a rounded average price.
     function realizablePnl(T.AmmState memory a, int256 size, uint256 entryCost) internal pure returns (int256) {
-        if (size == type(int256).min) revert E.MathOverflow();
-        T.Fill memory fill = quote(a, -size);
+        T.Fill memory fill = quoteExit(a, size);
         return
             size > 0 ? F.toInt(fill.quoteAmount) - F.toInt(entryCost) : F.toInt(entryCost) - F.toInt(fill.quoteAmount);
     }

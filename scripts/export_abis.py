@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Export deterministic interface JSON and TypeScript ABI constants from forge build artifacts."""
+"""Export deterministic runtime/interface JSON and TypeScript ABIs from forge build artifacts."""
 import argparse
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = {
-    "IMarket": "marketAbi",
+    "Market": "marketAbi",
+    "IMarketCore": "marketCoreAbi",
+    "IMarket": "plannedMarketAbi",
     "IMarketFactory": "marketFactoryAbi",
-    "IMarginVault": "marginVaultAbi",
+    "MarginVault": "marginVaultAbi",
+    "IMarginVault": "marginVaultInterfaceAbi",
     "IResolver": "resolverAbi",
     "IPriceSource": "priceSourceAbi",
     "IPripoErrors": "pripoErrorsAbi",
@@ -37,7 +40,7 @@ def main():
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
-    print(f"{'Checked' if args.check else 'Exported'} {len(CONTRACTS)} interfaces and SDK ABI constants.")
+    print(f"{'Checked' if args.check else 'Exported'} {len(CONTRACTS)} contract/interface ABIs and SDK constants.")
 
 
 if __name__ == "__main__":
