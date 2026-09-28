@@ -436,12 +436,12 @@
     ],
     "outputs": [
       {
-        "name": "healthWad",
+        "name": "",
         "type": "int256",
         "internalType": "int256"
       },
       {
-        "name": "liquidatable",
+        "name": "",
         "type": "bool",
         "internalType": "bool"
       }

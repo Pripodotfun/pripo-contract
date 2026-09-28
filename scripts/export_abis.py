@@ -12,6 +12,8 @@ CONTRACTS = {
     "IMarketFactory": "marketFactoryAbi",
     "MarginVault": "marginVaultAbi",
     "IMarginVault": "marginVaultInterfaceAbi",
+    "InsuranceBackstop": "insuranceBackstopAbi",
+    "IInsuranceBackstop": "insuranceBackstopInterfaceAbi",
     "IResolver": "resolverAbi",
     "IPriceSource": "priceSourceAbi",
     "IPripoErrors": "pripoErrorsAbi",

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IInsuranceBackstop} from "./interfaces/IInsuranceBackstop.sol";
 import {IMarginVault} from "./interfaces/IMarginVault.sol";
 import {FixedPointMath as F} from "./libraries/FixedPointMath.sol";
 import {PripoTypes as T} from "./types/PripoTypes.sol";
@@ -11,6 +12,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @notice Isolated collateral custody. Registered market code is trusted to authorize each user action.
@@ -37,6 +39,9 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     address public pendingImplementation;
     bytes32 public upgradeDataHash;
     uint256 public upgradeReadyAt;
+    // Appended fields preserve the existing UUPS vault storage layout.
+    uint256 public backstopBalance;
+    IInsuranceBackstop public backstopController;
 
     event RegistrarSet(address indexed registrar, bool allowed);
     event UpgradeScheduled(address indexed implementation, bytes32 dataHash, uint256 readyAt);
@@ -163,6 +168,84 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         if (l.insurance < amount) revert InsufficientInsurance(l.insurance, amount);
         l.insurance -= amount;
         locked[user][msg.sender] = 0;
+    }
+
+    /// @notice Bind the backstop controller once; replacing it requires the delayed vault upgrade path.
+    function setBackstopController(IInsuranceBackstop controller) external onlyGovernor {
+        if (address(backstopController) != address(0)) revert InvalidConfiguration();
+        if (address(controller).code.length == 0 || controller.vault() != address(this)) revert InvalidAddress();
+        backstopController = controller;
+        emit BackstopControllerSet(address(controller));
+    }
+
+    function fundBackstop(uint256 amount) external {
+        if (amount == 0) revert ZeroAmount();
+        _debitFree(msg.sender, amount);
+        backstopBalance += amount;
+        emit BackstopFunded(msg.sender, amount);
+    }
+
+    function moveInsuranceToBackstop(address market, uint256 amount) external {
+        if (msg.sender != address(backstopController)) revert Unauthorized();
+        _ledgers[market].insurance -= amount;
+        backstopBalance += amount;
+        emit InsuranceTransferredToBackstop(market, amount);
+    }
+
+    /// @notice Apply insurance, then the capped backstop; the market must resolve any returned remainder atomically.
+    // The bound controller makes only static market/vault reads and updates its budget; no token transfer or callback.
+    // The vault guard also rejects recursive coverage. Governor upgrades must preserve this controller trust boundary.
+    // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
+    function coverBadDebt(address user)
+        external
+        nonReentrant
+        onlyMarket
+        returns (uint256 insurance, uint256 backstop, uint256 remaining)
+    {
+        int256 collateral = locked[user][msg.sender];
+        if (collateral >= 0) return (0, 0, 0);
+        uint256 debt = F.abs(collateral);
+        T.Ledger storage l = _ledgers[msg.sender];
+        insurance = Math.min(debt, l.insurance);
+        l.insurance -= insurance;
+        remaining = debt - insurance;
+        if (remaining != 0 && address(backstopController) != address(0)) {
+            backstop = backstopController.consume(msg.sender, remaining);
+            if (backstop > remaining || backstop > backstopBalance) revert AccountingInvariant();
+            backstopBalance -= backstop;
+            remaining -= backstop;
+        }
+        locked[user][msg.sender] = -F.toInt(remaining);
+        emit DebtCovered(msg.sender, user, insurance, backstop);
+    }
+
+    /// @notice Penalties consume positive collateral only. Insurance cannot subsidize liquidation rewards.
+    function chargeLiquidationPenalty(address user, address liquidator, uint256 nominal)
+        external
+        onlyMarket
+        returns (uint256 amount)
+    {
+        if (liquidator == address(0)) revert InvalidAddress();
+        int256 collateral = locked[user][msg.sender];
+        if (collateral <= 0) return 0;
+        amount = Math.min(nominal, F.toUint(collateral));
+        uint256 reward = Math.mulDiv(amount, 4000, F.BPS);
+        locked[user][msg.sender] = collateral - F.toInt(amount);
+        freeBalance[liquidator] += reward;
+        _ledgers[msg.sender].insurance += amount - reward;
+        emit LiquidationPenaltyPaid(msg.sender, user, liquidator, amount, reward);
+    }
+
+    /// @notice Transfer only locked collateral in this market; a donor's free balance cannot be clawed back.
+    function transferAdlProfit(address donor, address debtor, uint256 amount) external onlyMarket {
+        if (donor == debtor || amount == 0) revert InvalidConfiguration();
+        int256 debit = F.toInt(amount);
+        int256 donorMargin = locked[donor][msg.sender];
+        int256 debtorMargin = locked[debtor][msg.sender];
+        if (donorMargin < debit || debtorMargin >= 0 || amount > F.abs(debtorMargin)) revert AccountingInvariant();
+        locked[donor][msg.sender] = donorMargin - debit;
+        locked[debtor][msg.sender] = debtorMargin + debit;
+        emit AdlProfitTransferred(msg.sender, donor, debtor, amount);
     }
 
     function claimCreatorFees() external nonReentrant onlyMarket returns (uint256 amount) {

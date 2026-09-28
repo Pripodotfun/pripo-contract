@@ -15,7 +15,7 @@
 
 ## Public artifacts
 
-`scripts/export_abis.py` reads compiler artifacts and writes nine deterministic JSON ABIs plus TypeScript `as const` exports. Run `make abi` after changing interfaces. The `--check` mode compares exports with the current build without modifying files.
+`scripts/export_abis.py` reads compiler artifacts and writes eleven deterministic JSON ABIs plus TypeScript `as const` exports. Run `make abi` after changing interfaces. The `--check` mode compares exports with the current build without modifying files.
 
 `Market` implements `IMarketCore`. The extended `IMarket` interface describes future liquidation and resolver methods; there are no placeholder implementations. SDK `marketAbi` and `marginVaultAbi` come from the concrete contracts. Deployment addresses and transaction-sending SDK methods remain future work.
 
@@ -42,7 +42,16 @@
 - Opens read the primary source and can fall back to a configured secondary. `poke` attempts reads without a paid update; fresh observations can restore Active status. `remark(bytes)` supports paid updates. A guardian pause survives all price refreshes; only the governor can resume opens.
 - **Closes do not call an adapter.** Their update bytes are ignored for ABI compatibility and nonzero native value is rejected. They can transition the market to Degraded from cached age. A successful primary/secondary observation on a subsequent `poke` or `remark` restores activity.
 - TWAP stores cumulative mark-by-block integrals in a 601-slot ring. Same-block trades replace the final mark for the next interval and do not receive time weight immediately. Before one block has elapsed, the initial mark is the reference. A binary search finds the observation bracketing the 300- or 600-block window; sparse intervals are interpolated.
-- `FundingMath.accrue` and `MarkTwap` are linked library calls. Their addresses are fixed in the implementation bytecode and must be verified alongside the market implementation at deployment. Solidity 0.8.30 uses the IR compiler to keep the runtime within the EIP-170 limit. Run `make build` to enforce the size gate as the implementation grows.
+- `MarketTrading`, `MarketLens`, `MarketAccounting`, `FundingMath.accrue` and `MarkTwap` use linked library calls. Their addresses are fixed in the implementation bytecode and must be verified alongside the market implementation at deployment. Solidity 0.8.30 uses the IR compiler to keep the runtime within the EIP-170 limit. Run `make build` to enforce the size gate as the implementation grows.
+
+## Backstop and module foundations
+
+- `InsuranceBackstop` holds policy and claim budgets; all USDC and the global WAD balance remain in the vault. Anyone can irrevocably contribute from their free balance. The governor binds the controller once; replacing it requires a delayed vault upgrade.
+- Each market snapshots 20% (external index) or 10% (oracle-less) of the available global balance on its first claim in a 288,000-block window. Subsequent claims subtract from that fixed budget. Deposits cannot reset it; another market's claims can reduce available cash. A new window starts at the next claim after expiry. These are fixed windows, not rolling windows or wall-clock days.
+- Permissionless `topUp` moves insurance above `ceil(2 × current oiCap / multiplier)` into the backstop. Launch OI caps still apply and no backstop allocation is counted toward opening capacity.
+- Vault `coverBadDebt` balances insurance and capped backstop credits against negative locked collateral and returns any remainder. Only trusted market implementations may call it; they must handle that remainder atomically. Trading still uses its previous insurance-only full-close path until liquidation integration.
+- Penalty accounting debits at most positive locked collateral, credits 40% to the caller's free balance (rounded down), and the rest to insurance. An insolvent account cannot generate insurance-funded keeper rewards. The ADL transfer primitive can debit only same-market locked collateral and cannot overpay the debtor's deficit; selection and profit eligibility are not implemented by that primitive.
+- Market state now lives at the fixed `pripo.market.storage.v1` namespace shared by immutable linked modules. This changes the layout of undeployed market implementations and is not a migration for existing clones. The vault additions are append-only. All external market mutations retain the market's reentrancy guard; modules cannot replace their linked targets at runtime.
 
 ## Next milestone
 

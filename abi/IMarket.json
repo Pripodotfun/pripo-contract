@@ -261,6 +261,19 @@
   },
   {
     "type": "function",
+    "name": "externalIndex",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "fundingRatePerBlock",
     "inputs": [],
     "outputs": [

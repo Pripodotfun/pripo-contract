@@ -15,6 +15,14 @@ interface IMarginVault is IPripoErrors {
     event ReferralRegistered(address indexed user, bytes32 indexed code);
     event ReferrerSet(address indexed user, address indexed referrer);
     event ReferralClaimed(address indexed referrer, uint256 amount);
+    event BackstopFunded(address indexed user, uint256 amount);
+    event BackstopControllerSet(address indexed controller);
+    event InsuranceTransferredToBackstop(address indexed market, uint256 amount);
+    event DebtCovered(address indexed market, address indexed user, uint256 insurance, uint256 backstop);
+    event LiquidationPenaltyPaid(
+        address indexed market, address indexed user, address indexed liquidator, uint256 total, uint256 reward
+    );
+    event AdlProfitTransferred(address indexed market, address indexed donor, address indexed debtor, uint256 amount);
 
     function deposit(uint256 usdc) external;
     function withdraw(uint256 usdc) external;
@@ -34,6 +42,12 @@ interface IMarginVault is IPripoErrors {
     function chargeFee(address user, T.FeeBreakdown calldata fee, bool fromLocked) external;
     function sweepFunding(uint256 amount) external;
     function coverDebt(address user) external returns (uint256);
+    function backstopBalance() external view returns (uint256);
+    function fundBackstop(uint256 amount) external;
+    function moveInsuranceToBackstop(address market, uint256 amount) external;
+    function coverBadDebt(address user) external returns (uint256 insurance, uint256 backstop, uint256 remaining);
+    function chargeLiquidationPenalty(address user, address liquidator, uint256 nominal) external returns (uint256);
+    function transferAdlProfit(address donor, address debtor, uint256 amount) external;
     function claimCreatorFees() external returns (uint256);
     function transferCreator(address to) external;
     function claimProtocolFees(address market) external returns (uint256);
