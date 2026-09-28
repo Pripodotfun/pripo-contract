@@ -50,7 +50,7 @@ library MarketTrading {
         emit IMarketCore.PositionOpened(address(this), user, msg.sender, size, q.fill.avgPrice, q.margin, q.fee);
     }
 
-    // All callers hold nonReentrant; the pinned vault's settlement methods perform no token transfers or callbacks.
+    // All callers hold nonReentrant. Coverage calls the fixed vault/controller; the controller makes only static reads.
     // slither-disable-next-line reentrancy-no-eth,reentrancy-events
     function close(S.Data storage s, address user, uint256 fraction, uint256 limitPrice, bytes32[] memory proof)
         public
@@ -60,20 +60,14 @@ library MarketTrading {
         S.CloseQuote memory q = Lens.quoteClose(s, user, fraction);
         Engine.checkLimit(-q.closedSize, q.fill.avgPrice, limitPrice);
         s.vault.checkAndConsume(user, msg.sender, q.fill.quoteAmount, true, proof);
-        T.Position storage p = s._positions[user];
-        int256 remaining = p.size - q.closedSize;
-        Engine.resize(s, p.size, remaining);
-        p.size = remaining;
-        p.entryCost -= q.closedEntry;
-        s._amm.entryCostNet -= q.closedSize > 0 ? F.toInt(q.closedEntry) : -F.toInt(q.closedEntry);
-        Engine.applyFill(s, q.fill);
-        s.vault.settlePnl(user, q.pnl);
+        Engine.applyClose(s, user, q);
         Engine.chargeFee(s, user, q.fee, true);
         // Exact position-size arithmetic must detect the final close to clear its snapshot and residual entry cost.
         // slither-disable-next-line incorrect-equality
-        if (remaining == 0) {
-            uint256 debt = s.vault.coverDebt(user);
-            if (debt != 0) emit IMarketCore.BadDebt(address(this), user, debt, 0);
+        if (s._positions[user].size == 0) {
+            // Coverage emits per-source debt events; the total is needed only by the liquidation event.
+            // slither-disable-next-line unused-return
+            Engine.coverDebt(s, user);
             s.vault.release(user, F.toUint(s.vault.locked(user, address(this))));
             delete s._positions[user];
         }

@@ -33,6 +33,15 @@ interface IMarketCore is IPripoErrors {
     event FundingSurplusSwept(address indexed market, uint256 amount);
     event StatusChanged(address indexed market, uint8 from, uint8 to, uint64 blockNumber);
     event BadDebt(address indexed market, address indexed user, uint256 amount, uint8 coveredBy);
+    event Liquidated(
+        address indexed market,
+        address indexed user,
+        address indexed liquidator,
+        int256 sizeClosed,
+        uint256 avgFill,
+        uint256 penalty,
+        int256 badDebt
+    );
     event FeesAccrued(address indexed market, uint256 protocol, uint256 creator, uint256 insurance);
     event CreatorFeesClaimed(address indexed market, address indexed creator, uint256 amount);
     event CreatorTransferred(address indexed previousCreator, address indexed newCreator);
@@ -58,6 +67,7 @@ interface IMarketCore is IPripoErrors {
         bytes32[] calldata proof
     ) external payable;
     function addMargin(uint256 amount) external;
+    function liquidate(address user, bytes calldata oracleUpdate) external payable;
     function removeMargin(uint256 amount) external;
     function poke() external;
     function sweepFundingSurplus() external;

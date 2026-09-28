@@ -159,7 +159,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         _ledgers[msg.sender].insurance += amount;
     }
 
-    /// @notice Cover isolated debt from this market's insurance. Backstop and ADL are a later integration.
+    /// @notice Legacy insurance-only primitive. Current market code uses coverBadDebt for capped backstop coverage.
     function coverDebt(address user) external onlyMarket returns (uint256 amount) {
         int256 collateral = locked[user][msg.sender];
         if (collateral >= 0) return 0;

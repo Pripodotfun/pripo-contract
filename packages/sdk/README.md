@@ -6,6 +6,6 @@ This package currently contains generated ABI constants. `marketAbi` and `margin
 import { marketAbi, marginVaultAbi } from "@pripo/sdk/abis";
 ```
 
-`marketCoreAbi` and `marginVaultInterfaceAbi` are the smaller integration interfaces. `plannedMarketAbi` is the future Phase 1 interface, including methods such as liquidation and resolver wind-down that are not implemented yet. Factory, resolver, price-source and shared-error ABIs are also exported.
+`marketCoreAbi` and `marginVaultInterfaceAbi` are the smaller integration interfaces. `plannedMarketAbi` is the future Phase 1 interface, including methods such as `liquidationPrice`, `maxOpenable`, and resolver wind-down that are not implemented yet. `liquidate` is implemented in `marketAbi` and `marketCoreAbi`; ADL is not implemented. `insuranceBackstopAbi` and `insuranceBackstopInterfaceAbi` expose the controller. Factory, resolver, price-source and shared-error ABIs are also exported.
 
 Exports are TypeScript source for consumption by a TypeScript-aware bundler. Regenerate them with `make abi` from the repository root, or run `npm run generate` here after a Foundry build. Transaction simulation, oracle updates, signing, and typed trading methods are the next SDK work. Operator callers should use `quoteOpenFor(user,size)` and pass a market proof when their policy requires one; expiry is denominated in blocks.

@@ -104,7 +104,7 @@ abstract contract MarketFixture is Test {
         );
     }
 
-    function _config(bool externalIndex) internal view returns (T.MarketConfig memory c) {
+    function _config(bool externalIndex) internal view virtual returns (T.MarketConfig memory c) {
         c.priceSource = externalIndex ? address(source) : address(0);
         c.creator = creator;
         c.takerFeeBps = 8;
@@ -146,6 +146,7 @@ abstract contract MarketFixture is Test {
         T.Ledger memory l = vault.ledger(address(market));
         int256 sum = int256(
             vault.freeBalance(alice) + vault.freeBalance(bob) + vault.freeBalance(carol) + vault.freeBalance(creator)
+                + vault.backstopBalance()
         );
         sum += vault.locked(alice, address(market)) + vault.locked(bob, address(market))
         + vault.locked(carol, address(market));

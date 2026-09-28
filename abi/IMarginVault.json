@@ -1241,6 +1241,17 @@
   },
   {
     "type": "error",
+    "name": "UncoveredBadDebt",
+    "inputs": [
+      {
+        "name": "remaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "UnexpectedValue",
     "inputs": []
   },

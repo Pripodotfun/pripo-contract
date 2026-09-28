@@ -2,13 +2,13 @@
 
 Solidity foundation for permissionless perpetual markets with virtual pricing and USDC margin.
 
-The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
+The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, liquidation, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
 
-This is the trading/custody development milestone. Liquidation integration, ADL, factory/adapters, and resolver settlement are still required before deployment. A full close can currently cover debt only from its own market's insurance; a larger shortfall reverts.
+This is the liquidation/backstop development milestone. Liquidations and voluntary full closes cover debt from market insurance, then the capped global backstop. Uncovered debt currently reverts atomically. ADL, a final shortfall policy, factory/adapters, exact remaining risk views, and resolver settlement are still required before deployment.
 
 ## Development
 
-Requirements: Foundry, Python 3, and Git. Solidity **0.8.30** is pinned in `foundry.toml`; the local build uses the IR pipeline and targets **Cancun**. `MarketTrading`, `MarketLens`, `MarketAccounting`, `FundingMath` and `MarkTwap` are linked libraries. Network-specific deployment settings will be verified with the Monad fork tests before deployment.
+Requirements: Foundry, Python 3, and Git. Solidity **0.8.30** is pinned in `foundry.toml`; the local build uses the IR pipeline and targets **Cancun**. `MarketTrading`, `MarketLiquidation`, `MarketLens`, `MarketAccounting`, `FundingMath` and `MarkTwap` are linked libraries. Network-specific deployment settings will be verified with the Monad fork tests before deployment.
 
 ```sh
 make deps       # install pinned dependency releases
@@ -27,7 +27,7 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 | --- | --- |
 | `src/MarginVault.sol` | Token custody, balanced ledgers, operators, referrals, upgrade controls |
 | `src/InsuranceBackstop.sol` | Global insurance policy and fixed per-market claim windows |
-| `src/market/` | Shared market storage, trading, accounting, and quote modules |
+| `src/market/` | Shared market storage, trading, liquidation, accounting, and quote modules |
 | `src/Market.sol` | Immutable clone implementation for isolated trading |
 | `src/types/` | Shared WAD-denominated market, position, funding, and policy structs |
 | `src/interfaces/` | Spec interfaces, events, and custom errors |

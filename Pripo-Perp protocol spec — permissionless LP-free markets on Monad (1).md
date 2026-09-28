@@ -883,7 +883,7 @@ Each milestone lands only when its dependency is met; dates move, dependencies d
 
 ## Trading-runtime implementation notes — September 28
 
-The custody/trading milestone implements `IMarketCore`, with `IMarket` retaining the planned liquidation and resolver surface. The concrete contract ABIs are the SDK's `marketAbi` and `marginVaultAbi`; `plannedMarketAbi` must not be treated as the current runtime ABI. The Phase 2 vault functions above remain design reservations, not deployed selectors.
+The liquidation/backstop milestone implements `IMarketCore`, including `liquidate`, with `IMarket` retaining the planned exact risk views and resolver surface. The concrete contract ABIs are the SDK's `marketAbi` and `marginVaultAbi`; `plannedMarketAbi` must not be treated as the current runtime ABI. The Phase 2 vault functions above remain design reservations, not deployed selectors.
 
 - `Position.margin` reports the positive part of signed locked collateral; `positionDebt(user)` reports the negative part. Pending funding remains separate until settled. The two values cannot both be positive.
 - `quoteOpenFor(user,size)` includes pending funding when calculating the additional collateral required. Opens add to the same side; users close to zero before changing sides. Partial closes retain collateral, and excess can be removed through the initial-margin and reference-health checks.
@@ -891,6 +891,9 @@ The custody/trading milestone implements `IMarketCore`, with `IMarket` retaining
 - Closes ignore their oracle-update bytes and reject nonzero native value. They use cached observations and never call an adapter. Opens, `poke` and `remark` can observe fresh primary/secondary prices; guardian pauses survive these refreshes.
 - Funding is accrued with the previous cached observation before a new price is installed. A stale interval stops accruing at the first degraded block; a refresh does not apply the new price retroactively.
 - USDC fee claims transfer whole six-decimal units and retain fractional WAD dust in the originating owed account.
-- Full-close debt coverage currently reaches only market insurance. Liquidation, the backstop/ADL waterfall, factory/adapters, resolver settlement and Monad fork validation remain subsequent milestones; the complete payout guarantee is a deployment gate.
+- Liquidations execute at curve reserves with capped 150-bps penalties and insurance/backstop coverage. Normal partials complete if their remainder is unhealthy after the penalty. Degraded liquidations retain the 50% per-call limit, except the last base wei; their remainder may require another liquidation.
+- Both liquidations and voluntary full closes cover market insurance first, then the global backstop within a fixed 288,000-block per-market window. Each window snapshots 20%/10% of the then-available backstop; later contributions do not refill that allowance.
+- ADL and terminal shortfall handling remain incomplete. `UncoveredBadDebt` currently reverts the entire transition if insurance/backstop coverage is insufficient. The reference-price versus curve-price ADL descriptions and the exhausted-waterfall payout guarantee need economic decisions before implementation. This limitation does not amend the target payout guarantee above.
+- Factory/adapters, remaining exact risk views, resolver settlement and Monad fork validation remain subsequent milestones; the complete payout guarantee is a deployment gate.
 
 See `docs/implementation-notes.md` for deployment sequencing, linked-library requirements and the remaining integration work.

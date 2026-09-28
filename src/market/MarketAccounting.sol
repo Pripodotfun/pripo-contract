@@ -68,7 +68,9 @@ library MarketAccounting {
         // slither-disable-next-line incorrect-equality
         if (isDegraded(s) && s._config.status == T.Status.Active) setStatus(s, T.Status.Degraded);
         s._twap.write(Curve.mark(s._amm), currentBlock());
-        emit IMarketCore.FundingAccrued(address(this), rate, s._funding.longIndex, s._funding.shortIndex, currentBlock());
+        emit IMarketCore.FundingAccrued(
+            address(this), rate, s._funding.longIndex, s._funding.shortIndex, currentBlock()
+        );
     }
 
     function settleFunding(S.Data storage s, address user) public returns (int256 owed) {
@@ -101,6 +103,28 @@ library MarketAccounting {
         s._amm.baseReserve = fill.baseReserve;
         s._amm.quoteReserve = fill.quoteReserve;
         s._twap.write(fill.newMark, currentBlock());
+    }
+
+    function applyClose(S.Data storage s, address user, S.CloseQuote memory q) internal {
+        T.Position storage p = s._positions[user];
+        int256 remaining = p.size - q.closedSize;
+        resize(s, p.size, remaining);
+        p.size = remaining;
+        p.entryCost -= q.closedEntry;
+        s._amm.entryCostNet -= q.closedSize > 0 ? F.toInt(q.closedEntry) : -F.toInt(q.closedEntry);
+        applyFill(s, q.fill);
+        s.vault.settlePnl(user, q.pnl);
+    }
+
+    /// @dev Until ADL/terminal settlement integration, no market transition may leave an uncovered deficit.
+    // The market holds its guard; the bound backstop controller makes only static reads before updating its budget.
+    // slither-disable-next-line reentrancy-events
+    function coverDebt(S.Data storage s, address user) internal returns (uint256 debt) {
+        (uint256 insurance, uint256 backstop, uint256 remaining) = s.vault.coverBadDebt(user);
+        if (remaining != 0) revert E.UncoveredBadDebt(remaining);
+        debt = insurance + backstop;
+        if (insurance != 0) emit IMarketCore.BadDebt(address(this), user, insurance, 0);
+        if (backstop != 0) emit IMarketCore.BadDebt(address(this), user, backstop, 1);
     }
 
     // The pinned vault chargeFee makes only ledger writes; the market holds its guard through this call.
@@ -200,7 +224,7 @@ library MarketAccounting {
                 || c.sideCapBps > Risk.sideCapBps(c.maxLeverageX) || c.mmrBps != (s.externalIndex ? 250 : 1500)
                 || c.impactMarginBps != F.BPS || c.skewCoeff != 0 || c.takerFeeBps != 8 || c.creatorShareBps != 3000
                 || c.insuranceShareBps != 3000 || c.referralShareBps != 1000 || c.receiveCapX != 10
-                || c.maxOracleAgeBlocks == 0 || c.degradeAfterBlocks <= c.maxOracleAgeBlocks
+                || c.liqPenaltyBps != 150 || c.maxOracleAgeBlocks == 0 || c.degradeAfterBlocks <= c.maxOracleAgeBlocks
                 || c.degradedTwapBlocks != 600
                 || c.fundingCapPerBlock > (s.externalIndex ? uint256(0.001e18) / 12_000 : uint256(0.005e18) / 12_000)
                 || (s.externalIndex && c.priceSource.code.length == 0)

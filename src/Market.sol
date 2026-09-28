@@ -14,6 +14,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {MarketAccounting as Engine} from "./market/MarketAccounting.sol";
 import {MarketLens as Lens} from "./market/MarketLens.sol";
+import {MarketLiquidation as Liquidation} from "./market/MarketLiquidation.sol";
 import {MarketState as S} from "./market/MarketState.sol";
 import {MarketTrading as Trading} from "./market/MarketTrading.sol";
 
@@ -140,6 +141,10 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     {
         if (msg.value != 0) revert UnexpectedValue();
         Trading.close(S.load(), user, fraction, limitPrice, proof);
+    }
+
+    function liquidate(address user, bytes calldata update) external payable nonReentrant {
+        Liquidation.liquidate(S.load(), user, update, msg.value);
     }
 
     function addMargin(uint256 amount) external nonReentrant {

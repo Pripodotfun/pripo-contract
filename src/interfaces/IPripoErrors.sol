@@ -26,6 +26,7 @@ interface IPripoErrors {
     error UnsupportedToken();
     error InvalidReferral();
     error InsufficientInsurance(uint256 have, uint256 need);
+    error UncoveredBadDebt(uint256 remaining);
     error MarketNotActive();
     error UnexpectedValue();
     error InvalidOracle();
