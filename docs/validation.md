@@ -68,3 +68,9 @@ Fourteen new integration tests (including the two-sided funding fuzz property) a
 The new event-reentrancy annotations are scoped to guarded liquidation and coverage functions. The callback test exercises the linked liquidation entry point; the actual backstop controller has no state-changing callback. `coverDebt` deliberately ignores no success flag: a vault/controller failure or remaining shortfall propagates as a revert.
 
 The stateful market handler still covers trading and funding rather than arbitrary liquidation sequences. Liquidation coverage comes from the integration/fuzz suite; no complete ADL waterfall invariant is claimed.
+
+## Terminal-funding specification update
+
+The spec now defines paired ADL, terminal local-fee absorption, an uncapped terminal backstop draw, a protocol reserve, and deficit repayment on already-settled markets. This documentation change does not add those paths to the contracts or to the 88-test verification scope above. The spec restores signed collateral, six-decimal USDC/WAD conversion, exact funding-rounding accounts and applied integer side caps from the existing implementation.
+
+Specification checks cover six-step source order, reserve-floor units and aggregate market-count examples, balanced terminal-deficit/repayment entries, Phase 1 `deficit > 0 ⇒ Settled`, treasury sweep gates, and the distinction between accounting equality and actual cash backing. The terminal vectors are future implementation requirements, not passing contract tests. Full cash-backing enforcement, bounded book enumeration, candidate-completeness checks and terminal curve accounting remain explicit implementation gates.

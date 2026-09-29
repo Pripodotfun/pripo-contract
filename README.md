@@ -4,7 +4,7 @@ Solidity foundation for permissionless perpetual markets with virtual pricing an
 
 The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, liquidation, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
 
-This is the liquidation/backstop development milestone. Liquidations and voluntary full closes cover debt from market insurance, then the capped global backstop. Uncovered debt currently reverts atomically. ADL, a final shortfall policy, factory/adapters, exact remaining risk views, and resolver settlement are still required before deployment.
+This is the liquidation/backstop development milestone. Liquidations and voluntary full closes cover debt from market insurance, then the capped global backstop. Uncovered debt currently reverts atomically. The spec now selects paired ADL and forced settlement with protocol reserves and terminal deficit repayment. That machinery, factory/adapters, exact remaining risk views, and resolver settlement are still required before deployment.
 
 ## Development
 

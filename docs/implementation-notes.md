@@ -61,15 +61,26 @@
 - A normal partial must leave maintenance equity after its penalty; otherwise it closes the rest in the same transaction. Degraded mode deliberately retains its half-size limit even if another call is needed. This is an explicit exception to the general completeness invariant and follows the spec's degraded-mode rule.
 - Every fill uses actual curve reserves. Entry-cost reductions, funding weights, aggregate sizes and clearing use the same transition as voluntary close. Partial collateral stays locked. Full close releases any positive balance and deletes the position.
 - The 150-bps penalty is calculated once on total actual curve quote closed, rounded up, and capped to positive post-PnL collateral. Keeper share rounds down to 40%; insurance receives the rest. Liquidation does not add the ordinary taker fee. `Liquidated.badDebt` reports the positive amount covered, while `BadDebt.coveredBy` identifies insurance (0) or backstop (1).
-- If insurance and available backstop coverage are insufficient, `UncoveredBadDebt(remaining)` rolls back fills, funding, penalties and claim-budget consumption. This is an incomplete development path pending ADL/terminal settlement; it does not satisfy the spec's unconditional payout guarantee.
+- If insurance and available backstop coverage are insufficient, `UncoveredBadDebt(remaining)` rolls back fills, funding, penalties and claim-budget consumption. This is an incomplete development path pending ADL/terminal settlement; it does not implement the updated terminal settlement and protocol-recapitalization policy.
 
-## Open design decisions and next milestone
+## Accepted target policy and next milestone
 
-The spec requires two economic decisions before the full waterfall can be completed:
+The updated protocol spec resolves the ADL and terminal-shortfall choices:
 
-1. **ADL execution:** the liquidation section specifies a reference-price close, while curve accounting and the solvency section require realizable value. Executing on the curve and transferring eligible realized profit to the debtor preserves the existing exact clearing identity. A reference-price fill needs a separately specified adjustment account and funding source.
-2. **Final shortfall:** the spec guarantees payouts even when insurance, backstop and eligible opposite-side open profits are exhausted, while forbidding clawback of free profits. That guarantee needs additional capital or defined settlement claims/haircuts. The current atomic revert is a development limitation, not an approved final economic policy.
+- ADL pairs equal opposite sizes off the curve at `p_adl`, with no reserve movement. Paired PnL and entry-cost removal preserve clearing. Submitted candidates are checked for eligibility and score ordering; the keeper uses the indexer for ranking.
+- Insufficient eligible size triggers whole-market settlement at the 300-block mark TWAP. After applying remaining market insurance, funding comes from losing collateral, open-profit haircuts, this market's unclaimed creator/protocol fees, the global backstop without its live daily cap, then a protocol reserve. Only the remaining gap becomes protocol deficit on a `Settled` market.
+- The protocol reserve target is `max(10_000e18, Σ ceil(oiCap × fundingCapPerPeriod × 8 / WAD))`, using admitted exposure ceilings. It requires initial cash funding. Protocol allocations repay terminal deficits first, refill reserve second, and distribute to treasury last. Every successful treasury sweep must leave the reserve floor intact and aggregate deficit zero.
+- In Phase 1 any terminal deficit globally pauses opens. The Guardian must arrange and verify recapitalization within 24 hours. Deficit repayment does not reopen a settled market. `Impaired` and the advanced-profit claims cap remain Phase 2.
 
-After those decisions: implement ADL ordering, eligibility and bounded execution, terminal shortfall handling, `liquidationPrice` and `maxOpenable`, and expand custody invariants to ADL. Factory/adapters, resolver settlement, governance parameter changes and Monad fork tests follow. The runtime has not been deployed.
+**Implementation status:** none of the paired ADL, terminal fee absorption, backstop cap waiver, protocol reserve, terminal deficit, global pause/repayment or claims machinery is implemented yet. Current `Market.liquidate(user, update)` and voluntary full close still revert with `UncoveredBadDebt` after ordinary insurance/capped-backstop exhaustion. The existing locked-collateral ADL transfer primitive is not an implementation of the newly accepted paired-close design. Runtime ABIs remain generated from actual contracts; spec target selectors are not advertised as deployed functionality.
 
-The funding and real-token invariant suites complement the liquidation integration/fuzz tests. The existing stateful handlers do not yet generate ADL or terminal settlement transitions.
+**Remaining design/verification gates:**
+
+1. A recorded protocol deficit is not a cash asset. After protocol capital is exhausted, deficit booking can leave nominal user balances larger than available cash. The eight-period buffer is a sizing assumption; a cash-backing guarantee needs enforceable funding-lag/notional limits or additional prefunded coverage. Guardian top-up promises do not close that proof.
+2. Atomic whole-market settlement needs an enumerable book with a tested worst-case position bound. An omitted/empty caller-supplied candidate list is not proof that eligible opposite positions are exhausted; the terminal trigger must be checked against actual book availability.
+3. Specify paired-price rounding, zero/negative-margin ranking, partial-position collateral allocation, and terminal PnL/haircut/reserve-reset counter-entries before extending the exact curve and funding invariants. New cash sources cannot be counted twice or borrowed from unrelated user balances.
+4. The Phase 2 advanced-profit cap must reserve capacity across recipients and include positive funding receipts, so receivers cannot bypass it by settling and withdrawing before a close.
+
+Next implementation work is paired ADL, bounded forced settlement, reserve/deficit custody and fee allocation, and invariant coverage for all terminal sources. Exact remaining risk views (`liquidationPrice`, `maxOpenable`), factory/adapters, resolver governance integration, parameter changes and Monad fork tests follow. The runtime has not been deployed.
+
+The existing funding and real-token invariant suites complement the liquidation integration/fuzz tests. They do not yet generate paired ADL, protocol reserve or terminal settlement transitions.
