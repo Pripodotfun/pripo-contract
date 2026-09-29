@@ -97,6 +97,7 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         Engine.validateDepth(s, depth);
         s._funding.lastBlock = Engine.currentBlock();
         s._twap.initialize(Curve.mark(s._amm), Engine.currentBlock());
+        s.vault.admitMarket(MARKET_NOTIONAL_CAP, cfg.fundingCapPerBlock);
     }
 
     function open(int256 size, uint256 limitPrice, bytes calldata update) external payable nonReentrant {
@@ -315,6 +316,7 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     function resumeOpens() external nonReentrant {
         S.Data storage s = S.load();
         if (msg.sender != s.vault.governor()) revert Unauthorized();
+        s.vault.requireOpenAllowed(address(this));
         Engine.touch(s);
         s.guardianPaused = false;
         Engine.setStatus(s, Engine.isDegraded(s) ? T.Status.Degraded : T.Status.Active);

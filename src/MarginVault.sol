@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IInsuranceBackstop} from "./interfaces/IInsuranceBackstop.sol";
 import {IMarginVault} from "./interfaces/IMarginVault.sol";
+import {IMarketCore} from "./interfaces/IMarketCore.sol";
 import {FixedPointMath as F} from "./libraries/FixedPointMath.sol";
 import {PripoTypes as T} from "./types/PripoTypes.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -14,11 +15,18 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Heap} from "@openzeppelin/contracts/utils/structs/Heap.sol";
 
 /// @notice Isolated collateral custody. Registered market code is trusted to authorize each user action.
 /// @dev Every internal credit has an explicit debit. No aggregate counter is written on the trade path.
 contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using Heap for Heap.Uint256Heap;
+
+    uint256 public constant MIN_PROTOCOL_RESERVE = 10_000e18;
+    uint256 public constant RESERVE_BLOCKS = 96_000;
+    uint256 public constant MAX_ALLOCATION_ENTRIES = 32;
+    uint256 public constant MAX_TERMINAL_ACCOUNTS = 256;
 
     IERC20 public token;
     address public governor;
@@ -42,6 +50,16 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     // Appended fields preserve the existing UUPS vault storage layout.
     uint256 public backstopBalance;
     IInsuranceBackstop public backstopController;
+    // Append-only capital accounts. Aggregate controls are not additional terms in the cash identity.
+    uint256 public protocolReserve;
+    uint256 public totalDeficit;
+    uint256 public aggregateReserveBudget;
+    mapping(address => uint256) public reserveBudget;
+    mapping(address => bool) public terminalFinalized;
+    mapping(address => uint256) public deficit;
+    mapping(address => uint256) public deficitCreatedAt;
+    Heap.Uint256Heap private _deficitQueue;
+    mapping(address => bool) public marketAdmitted;
 
     event RegistrarSet(address indexed registrar, bool allowed);
     event UpgradeScheduled(address indexed implementation, bytes32 dataHash, uint256 readyAt);
@@ -92,6 +110,146 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
 
     function ledger(address market) external view returns (T.Ledger memory) {
         return _ledgers[market];
+    }
+
+    function reserveFloor() public view returns (uint256) {
+        return Math.max(MIN_PROTOCOL_RESERVE, aggregateReserveBudget);
+    }
+
+    /// @notice Reserve the admitted ceiling, irrespective of current insurance, open interest or pause state.
+    /// @dev Trusted immutable market code supplies its validated launch parameters. Admission is permanent until settlement.
+    function admitMarket(uint256 oiCap, uint64 fundingCapPerBlock) external nonReentrant onlyMarket {
+        if (marketAdmitted[msg.sender] || terminalFinalized[msg.sender]) revert InvalidConfiguration();
+        if (oiCap == 0) revert InvalidConfiguration();
+        uint256 budget = Math.mulDiv(oiCap, uint256(fundingCapPerBlock) * RESERVE_BLOCKS, F.WAD, Math.Rounding.Ceil);
+        reserveBudget[msg.sender] = budget;
+        marketAdmitted[msg.sender] = true;
+        aggregateReserveBudget += budget;
+        requireOpenAllowed(msg.sender);
+        emit ReserveBudgetAdmitted(msg.sender, oiCap, fundingCapPerBlock, budget);
+    }
+
+    function requireOpenAllowed(address market) public view {
+        if (!marketAdmitted[market] || terminalFinalized[market]) revert MarketNotAdmitted();
+        if (totalDeficit != 0) revert ProtocolDeficit(totalDeficit);
+        uint256 floor = reserveFloor();
+        if (protocolReserve < floor) revert ReserveBelowFloor(protocolReserve, floor);
+    }
+
+    /// @notice Irrevocable real-USDC contribution: oldest deficits first, then reserve. Bypasses the user deposit cap.
+    /// @dev At most 32 queue entries per call; an oversized contribution reverts atomically. Allocate fees to prune
+    ///      cleared queue entries, or split contributions into smaller amounts, before retrying.
+    function fundProtocolReserve(uint256 usdc) external nonReentrant {
+        _receiveCapital(usdc);
+        _allocateContribution(F.usdcToWad(usdc));
+    }
+
+    /// @notice Repay a selected terminal deficit; excess follows global deficit priority before entering reserve.
+    function recapitalize(address market, uint256 usdc) external nonReentrant {
+        if (deficit[market] == 0) revert InvalidTerminalState();
+        _receiveCapital(usdc);
+        uint256 amount = F.usdcToWad(usdc);
+        uint256 repaid = Math.min(amount, deficit[market]);
+        _repayDeficit(market, repaid, 2);
+        _allocateContribution(amount - repaid);
+    }
+
+    /// @notice Irrevocably donate existing free collateral to a terminal deficit, with no token inflow or user credit.
+    function contributeToDeficit(address market, uint256 amount) external nonReentrant {
+        if (amount == 0) revert ZeroAmount();
+        if (amount > deficit[market]) revert InvalidTerminalState();
+        _debitFree(msg.sender, amount);
+        _repayDeficit(market, amount, 2);
+    }
+
+    /// @notice Allocate accrued fees without a token transfer. Unprocessed fees stay in their originating ledger.
+    /// @dev maxEntries bounds queue processing, including entries already cleared by targeted recapitalization.
+    function allocateProtocolFees(address market, uint256 maxEntries)
+        external
+        nonReentrant
+        returns (uint256 repaid, uint256 reserved)
+    {
+        if (registrarOf[market] == address(0)) revert Unauthorized();
+        if (maxEntries == 0 || maxEntries > MAX_ALLOCATION_ENTRIES) revert AllocationLimit();
+        T.Ledger storage l = _ledgers[market];
+        repaid = _repayOldest(l.protocolOwed, maxEntries, 1);
+        l.protocolOwed -= repaid;
+        uint256 floor = reserveFloor();
+        if (totalDeficit == 0 && protocolReserve < floor) {
+            reserved = Math.min(l.protocolOwed, floor - protocolReserve);
+            l.protocolOwed -= reserved;
+            _addReserve(reserved, 1);
+        }
+        emit ProtocolFeesAllocated(market, repaid, reserved);
+    }
+
+    /// @notice Queue inspection for bounded allocation keepers; cleared entries may remain until a later allocation.
+    function deficitQueueHead() external view returns (address market, uint256 entries) {
+        entries = _deficitQueue.length();
+        if (entries != 0) market = address(uint160(_deficitQueue.peek()));
+    }
+
+    /// @notice Finish terminal custody after the market has realized all PnL/funding and applied eligible profit haircuts.
+    /// @dev This is not the price/position settlement engine. Trusted registered code supplies the complete debtor list,
+    ///      sets Settled with both aggregate sizes zero, and calls this once in the same atomic transaction.
+    function finalizeSettlement(address[] calldata debtors)
+        external
+        nonReentrant
+        onlyMarket
+        returns (uint256 uncovered)
+    {
+        if (terminalFinalized[msg.sender] || debtors.length > MAX_TERMINAL_ACCOUNTS) {
+            revert InvalidTerminalState();
+        }
+        IMarketCore market = IMarketCore(msg.sender);
+        // The state is required; its transition block is irrelevant once the whole book is closed.
+        // slither-disable-next-line unused-return
+        (uint8 state,) = market.status();
+        if (state != uint8(T.Status.Settled) || market.longSize() != 0 || market.shortSize() != 0) {
+            revert InvalidTerminalState();
+        }
+        terminalFinalized[msg.sender] = true;
+        for (uint256 i; i < debtors.length; ++i) {
+            int256 collateral = locked[debtors[i]][msg.sender];
+            if (collateral < 0) {
+                uncovered += F.abs(collateral);
+                locked[debtors[i]][msg.sender] = 0;
+            }
+        }
+        T.Ledger storage l = _ledgers[msg.sender];
+        uint256 used = _terminalUse(uncovered, l.insurance, 0);
+        l.insurance -= used;
+        uncovered -= used;
+        used = _terminalUse(uncovered, l.creatorOwed, 3);
+        l.creatorOwed -= used;
+        uncovered -= used;
+        used = _terminalUse(uncovered, l.protocolOwed, 4);
+        l.protocolOwed -= used;
+        uncovered -= used;
+        // A terminal draw spends actual vault capital, without calling the live controller or changing its window.
+        used = _terminalUse(uncovered, backstopBalance, 5);
+        backstopBalance -= used;
+        uncovered -= used;
+        used = _terminalUse(uncovered, protocolReserve, 6);
+        if (used != 0) {
+            uint256 previous = protocolReserve;
+            protocolReserve -= used;
+            emit ProtocolReserveChanged(previous, protocolReserve, 2);
+        }
+        uncovered -= used;
+        if (uncovered != 0) {
+            deficit[msg.sender] = uncovered;
+            totalDeficit += uncovered;
+            deficitCreatedAt[msg.sender] = block.timestamp;
+            uint256 key = (uint256(SafeCast.toUint96(block.timestamp)) << 160) | uint160(msg.sender);
+            _deficitQueue.insert(key);
+            emit DeficitChanged(msg.sender, 0, uncovered, 0);
+            emit TerminalCoverage(msg.sender, 7, uncovered);
+        }
+        uint256 budget = reserveBudget[msg.sender];
+        aggregateReserveBudget -= budget;
+        delete reserveBudget[msg.sender];
+        emit ReserveBudgetRetired(msg.sender, budget);
     }
 
     function deposit(uint256 usdc) external nonReentrant {
@@ -260,9 +418,13 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     }
 
     function claimProtocolFees(address market) external nonReentrant returns (uint256 amount) {
+        if (totalDeficit != 0) revert ProtocolDeficit(totalDeficit);
+        uint256 floor = reserveFloor();
+        if (protocolReserve < floor) revert ReserveBelowFloor(protocolReserve, floor);
         amount = _payableWad(_ledgers[market].protocolOwed);
         _ledgers[market].protocolOwed -= amount;
         if (amount != 0) token.safeTransfer(treasury, amount / F.USDC_SCALE);
+        emit ProtocolFeesClaimed(market, amount);
     }
 
     function setOperator(address op, T.OperatorPolicy calldata policy) external {
@@ -286,6 +448,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         onlyMarket
     {
         if (user == address(0) || op == address(0)) revert InvalidAddress();
+        if (!isClose) requireOpenAllowed(msg.sender);
         if (user == op) return;
         T.OperatorPolicy storage policy = operators[user][op];
         if (policy.expiry <= block.number) revert PolicyViolation(1);
@@ -362,6 +525,60 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         uint256 available = freeBalance[user];
         if (available < amount) revert InsufficientMargin(available, amount);
         freeBalance[user] = available - amount;
+    }
+
+    function _receiveCapital(uint256 usdc) private {
+        if (usdc == 0) revert ZeroAmount();
+        uint256 beforeCash = token.balanceOf(address(this));
+        token.safeTransferFrom(msg.sender, address(this), usdc);
+        if (token.balanceOf(address(this)) != beforeCash + usdc) revert UnsupportedToken();
+        emit ProtocolCapitalFunded(msg.sender, usdc);
+    }
+
+    function _allocateContribution(uint256 amount) private {
+        if (amount == 0) return;
+        amount -= _repayOldest(amount, MAX_ALLOCATION_ENTRIES, 2);
+        if (amount != 0) {
+            if (totalDeficit != 0) revert AllocationLimit();
+            _addReserve(amount, 0);
+        }
+    }
+
+    function _addReserve(uint256 amount, uint8 reason) private {
+        if (amount == 0) return;
+        uint256 previous = protocolReserve;
+        protocolReserve += amount;
+        emit ProtocolReserveChanged(previous, protocolReserve, reason);
+    }
+
+    function _repayOldest(uint256 available, uint256 maxEntries, uint8 reason) private returns (uint256 repaid) {
+        for (uint256 i; i < maxEntries && _deficitQueue.length() != 0; ++i) {
+            address market = address(uint160(_deficitQueue.peek()));
+            uint256 owed = deficit[market];
+            if (owed != 0) {
+                if (available == 0) break;
+                uint256 amount = Math.min(available, owed);
+                _repayDeficit(market, amount, reason);
+                repaid += amount;
+                available -= amount;
+                if (amount != owed) break;
+            }
+            // The root was already read above. Removal must retain the same minimum comparator as insertion.
+            // slither-disable-next-line unused-return
+            _deficitQueue.pop();
+        }
+    }
+
+    function _repayDeficit(address market, uint256 amount, uint8 reason) private {
+        uint256 previous = deficit[market];
+        deficit[market] = previous - amount;
+        totalDeficit -= amount;
+        emit DeficitChanged(market, previous, previous - amount, reason);
+    }
+
+    function _terminalUse(uint256 debt, uint256 available, uint8 source) private returns (uint256 used) {
+        used = Math.min(debt, available);
+        if (used != 0) emit TerminalCoverage(msg.sender, source, used);
     }
 
     function _payableWad(uint256 amount) private pure returns (uint256) {

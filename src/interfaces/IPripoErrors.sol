@@ -34,4 +34,9 @@ interface IPripoErrors {
     error PositionExists();
     error NoPosition();
     error UpgradeNotReady();
+    error ProtocolDeficit(uint256 amount);
+    error ReserveBelowFloor(uint256 have, uint256 need);
+    error MarketNotAdmitted();
+    error InvalidTerminalState();
+    error AllocationLimit();
 }

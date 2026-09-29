@@ -23,6 +23,14 @@ interface IMarginVault is IPripoErrors {
         address indexed market, address indexed user, address indexed liquidator, uint256 total, uint256 reward
     );
     event AdlProfitTransferred(address indexed market, address indexed donor, address indexed debtor, uint256 amount);
+    event ReserveBudgetAdmitted(address indexed market, uint256 oiCap, uint64 fundingCapPerBlock, uint256 budget);
+    event ReserveBudgetRetired(address indexed market, uint256 budget);
+    event ProtocolReserveChanged(uint256 previous, uint256 current, uint8 reason);
+    event DeficitChanged(address indexed market, uint256 previous, uint256 current, uint8 reason);
+    event TerminalCoverage(address indexed market, uint8 source, uint256 amount);
+    event ProtocolFeesAllocated(address indexed market, uint256 repaid, uint256 reserved);
+    event ProtocolFeesClaimed(address indexed market, uint256 amount);
+    event ProtocolCapitalFunded(address indexed contributor, uint256 usdc);
 
     function deposit(uint256 usdc) external;
     function withdraw(uint256 usdc) external;
@@ -51,6 +59,20 @@ interface IMarginVault is IPripoErrors {
     function claimCreatorFees() external returns (uint256);
     function transferCreator(address to) external;
     function claimProtocolFees(address market) external returns (uint256);
+    function protocolReserve() external view returns (uint256);
+    function reserveFloor() external view returns (uint256);
+    function totalDeficit() external view returns (uint256);
+    function deficit(address market) external view returns (uint256);
+    function admitMarket(uint256 oiCap, uint64 fundingCapPerBlock) external;
+    function requireOpenAllowed(address market) external view;
+    function fundProtocolReserve(uint256 usdc) external;
+    function recapitalize(address market, uint256 usdc) external;
+    function contributeToDeficit(address market, uint256 amount) external;
+    function allocateProtocolFees(address market, uint256 maxEntries)
+        external
+        returns (uint256 repaid, uint256 reserved);
+    /// @notice Trusted market calls once after closing its whole book and applying losses/profit haircuts.
+    function finalizeSettlement(address[] calldata debtors) external returns (uint256 uncovered);
     function setOperator(address op, T.OperatorPolicy calldata policy) external;
     function revokeOperator(address op) external;
     function checkAndConsume(address user, address op, uint256 notional, bool isClose, bytes32[] calldata marketProof)

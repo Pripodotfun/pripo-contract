@@ -1493,6 +1493,11 @@
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -1592,7 +1597,17 @@
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -1666,8 +1681,35 @@
   },
   {
     "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ReentrancyGuardReentrantCall",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

@@ -4,7 +4,7 @@ Solidity foundation for permissionless perpetual markets with virtual pricing an
 
 The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, liquidation, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
 
-This is the liquidation/backstop development milestone. Liquidations and voluntary full closes cover debt from market insurance, then the capped global backstop. Uncovered debt currently reverts atomically. The spec now selects paired ADL and forced settlement with protocol reserves and terminal deficit repayment. That machinery, factory/adapters, exact remaining risk views, and resolver settlement are still required before deployment.
+This is the reserve and terminal-capital custody milestone. The vault now tracks prefunded reserves, market admission budgets, terminal deficits, ordered fee repayment, and treasury/opening gates. Liquidations and voluntary full closes still cover debt from market insurance and the capped global backstop, then revert on uncovered debt. Paired ADL and the whole-book settlement engine must be integrated with the new custody primitives before those paths can finish terminal settlement. Factory/adapters, exact remaining risk views, resolver settlement, and the cash-backing deployment gate also remain.
 
 ## Development
 
@@ -25,7 +25,7 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 
 | Path | Contents |
 | --- | --- |
-| `src/MarginVault.sol` | Token custody, balanced ledgers, operators, referrals, upgrade controls |
+| `src/MarginVault.sol` | Token custody, balanced ledgers, reserves/deficits, fee allocation, operators, referrals, upgrade controls |
 | `src/InsuranceBackstop.sol` | Global insurance policy and fixed per-market claim windows |
 | `src/market/` | Shared market storage, trading, liquidation, accounting, and quote modules |
 | `src/Market.sol` | Immutable clone implementation for isolated trading |
@@ -41,7 +41,7 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 
 ## Current verification scope
 
-The funding harness isolates numerical accounting. The market invariant uses an ERC-1967 vault proxy, an EIP-1167 market clone, and six-decimal mock USDC with actual ERC-20 transfers. It checks custody equality, curve conservation, position/entry-cost/weighted-index totals, initial margin after opens, pending funding, sweeps, and a complete unwind. Both suites run 10,000 sequences of depth 50 under the CI profile.
+The funding harness isolates numerical accounting. The market invariant uses an ERC-1967 vault proxy, an EIP-1167 market clone, and six-decimal mock USDC with actual ERC-20 transfers. It checks custody equality, curve conservation, position/entry-cost/weighted-index totals, initial margin after opens, pending funding, sweeps, and a complete unwind. A third suite checks capital allocation across eight terminal-market stubs: signed cash equality, terminal-only deficits, aggregate admission budgets, repayment ordering and treasury gates. All three run 10,000 sequences of depth 50 under the CI profile. The stubs model the trusted settlement boundary; they do not validate whole-book pricing or haircuts.
 
 `marketAbi` and `marginVaultAbi` describe the implemented contracts. `plannedMarketAbi` describes the remaining Phase 1 surface and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts. `@pripo/sdk` currently exports ABI constants; transaction preparation and signing are later work.
 

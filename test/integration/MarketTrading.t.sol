@@ -223,6 +223,7 @@ contract MarketTradingTest is MarketFixture {
         T.Ledger memory other = vault.ledger(address(second));
         int256 sum = int256(
             vault.freeBalance(alice) + vault.freeBalance(bob) + vault.freeBalance(carol) + vault.freeBalance(creator)
+                + vault.protocolReserve()
         );
         sum += vault.locked(alice, address(market));
         sum += int256(

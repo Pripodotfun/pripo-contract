@@ -1,6 +1,6 @@
 # Contract validation
 
-Validation covers the math libraries, a proxy-based vault, immutable market clones and liquidation/backstop accounting using six-decimal mock USDC with actual token transfers. The final default-profile run passes **88 tests**. The September 28 CI campaign validated seven fuzz properties at 10,000 runs, and two invariant suites at 10,000 runs/depth 50: **1,000,000 total handler calls, zero reverts**. The initial CI invocation passed 87 tests and exposed an incorrect healthy-short assumption in the new fuzz harness; after correcting the harness, the focused CI rerun passed 10,001 cases (including the saved failure). No production logic changed for that correction. ADL and terminal settlement remain unimplemented.
+Validation covers the math libraries, a proxy-based vault, immutable market clones, liquidation/backstop accounting, and reserve/terminal-capital custody using six-decimal mock USDC with actual token transfers. The September 29 full CI run passes **105 tests**, with eight fuzz properties at 10,000 runs and three invariant suites at 10,000 runs/depth 50: **1,500,000 total handler calls, zero reverts**. This includes all 88 prior tests and 17 new capital tests. Paired ADL and the whole-book market settlement engine remain unimplemented; terminal custody tests use a registered market stub.
 
 ## Reproduce
 
@@ -10,7 +10,7 @@ make ci
 make analyze
 ```
 
-The CI profile runs each fuzz property 10,000 times and each invariant 10,000 times at depth 50. `fail_on_revert = true` prevents the handlers from silently discarding reverted operations. Both end-of-run checks close every position and sweep the remaining funding surplus. The real-token suite additionally requires zero curve clearing and entry cost, with reserves restored to their seed values.
+The CI profile runs each fuzz property 10,000 times and each invariant 10,000 times at depth 50. `fail_on_revert = true` prevents the handlers from silently discarding reverted operations. The funding/trading end-of-run checks close every position and sweep the remaining funding surplus. The real-token trading suite additionally requires zero curve clearing and entry cost, with reserves restored to their seed values. The separate capital suite checks custody transitions against terminal-market stubs.
 
 The market handler exercises opens/increases, partial/full closes, margin changes, block advances, funding sweeps, claims, deposits and withdrawals across eight traders. It recomputes signed cash equality against the token balance, entry-cost and weighted-index sums, base exposure, and the exact funding-surplus identity after every call. Opens assert impact margin and both side caps. The bounded campaign uses at most 18 base units per trader and 12,000 blocks per advance; it does not model exhausted-insurance liquidation. A separate long-idle regression exercises funding debt exceeding margin and insurance coverage on voluntary close.
 
@@ -21,10 +21,10 @@ On this macOS installation, sandboxed `forge test` crashes in the system proxy s
 | Tool | Version | Result |
 | --- | --- | --- |
 | Forge source lint | 1.5.1 | No warnings in `src/` |
-| Slither | 0.11.5 | 44 contracts analyzed, 101 detectors; one low timestamp finding and one informational assembly finding after scoped annotations |
+| Slither | 0.11.5 | 48 contracts analyzed, 101 detectors; one low timestamp finding and one informational assembly finding after scoped annotations |
 | Aderyn | 0.1.9 | 24 project source files, 63 detectors; three high categories and five low categories, reviewed below |
 
-The size gate passes: Market is 21,876 bytes, MarketTrading 6,230 bytes, MarketLiquidation 5,062 bytes, MarketAccounting 8,949 bytes, MarketLens 7,753 bytes, MarginVault 11,258 bytes and InsuranceBackstop 2,793 bytes with the pinned compiler and settings. The implementation and every linked module fit within EIP-170's 24,576-byte limit. ABI freshness checks and a TypeScript import check pass; the concrete market ABI includes liquidation; exact remaining risk views and settlement stay in the planned interface.
+The size gate passes: Market is 22,044 bytes, MarketTrading 6,230 bytes, MarketLiquidation 5,062 bytes, MarketAccounting 8,949 bytes, MarketLens 7,753 bytes, MarginVault 17,008 bytes and InsuranceBackstop 2,793 bytes with the pinned compiler and settings. The implementation and every linked module fit within EIP-170's 24,576-byte limit. ABI freshness checks and a TypeScript import/selector check pass. The concrete vault ABI includes capital accounting and terminal custody; the market's whole-book settlement and exact remaining risk views remain unimplemented.
 
 The Aderyn command explicitly sets `FOUNDRY_EVM_VERSION=cancun` to match the project. This installed version otherwise fails while parsing a `prague` default. Dependency/test path filters use `lib/` and `test/`, including the slash, so they do not accidentally exclude `src/libraries/`.
 
@@ -71,6 +71,18 @@ The stateful market handler still covers trading and funding rather than arbitra
 
 ## Terminal-funding specification update
 
-The spec now defines paired ADL, terminal local-fee absorption, an uncapped terminal backstop draw, a protocol reserve, and deficit repayment on already-settled markets. This documentation change does not add those paths to the contracts or to the 88-test verification scope above. The spec restores signed collateral, six-decimal USDC/WAD conversion, exact funding-rounding accounts and applied integer side caps from the existing implementation.
+The preceding documentation stage defined paired ADL, terminal local-fee absorption, an uncapped terminal backstop draw, a protocol reserve, and deficit repayment on already-settled markets. That stage retained the earlier 88-test implementation scope. It also restored signed collateral, six-decimal USDC/WAD conversion, exact funding-rounding accounts and applied integer side caps from the implementation.
 
 Specification checks cover six-step source order, reserve-floor units and aggregate market-count examples, balanced terminal-deficit/repayment entries, Phase 1 `deficit > 0 ⇒ Settled`, treasury sweep gates, and the distinction between accounting equality and actual cash backing. The terminal vectors are future implementation requirements, not passing contract tests. Full cash-backing enforcement, bounded book enumeration, candidate-completeness checks and terminal curve accounting remain explicit implementation gates.
+
+## Reserve and terminal-capital stage
+
+Fourteen new unit tests cover admission ceiling/rounding and the eleventh oracle-less market, zero-rate admission, persistent budgets through pauses and zero exposure, terminal source boundaries under fuzzing, local-fee isolation, uncapped terminal backstop use, reserve exhaustion and residual deficit, state/exposure/authorization checks, repeat-finalization rejection, duplicate debtor handling, fee repayment order and address ties, bounded progress across 34 deficits, pruning targeted repayments, sub-token dust, partial reserve refill, treasury gates, external and free-balance contributions, emergency deposit-cap bypass, upgrade storage persistence, taxed-token rejection and callback reentrancy.
+
+Two new clone integration tests create a synthetic terminal obligation on a separate registered stub. They verify that actual owner/operator opens and governor resume are blocked, failed opens do not consume operator allowances, existing close/withdraw paths remain callable, admission rolls back below the reserve floor, and admission/opening can resume after recapitalization and refill. The dead stub remains settled.
+
+The new eight-market capital invariant randomizes fee accrual, terminal custody, external funding, targeted recapitalization, free-balance donations, partial allocations, time advances and treasury claims. It recomputes actual token cash including reserve minus deficits, deficit totals, terminal states, admitted budget totals, repayment priority and exact treasury transfers. Every successful sweep asserts the reserve floor and zero deficit. Synthetic obligations are balanced against the funding pool to isolate custody; this is not a simulation of market liquidation pricing or whole-book settlement.
+
+Static review found two new unused-return reports: terminal status ignores the transition block, and heap removal ignores the already-read root. Both received narrow annotations explaining the intentional omission. Capital-account mutations share the token-transfer reentrancy guard. The prior timestamp/assembly findings and Aderyn categories remain as triaged above. Storage additions are append-only; no vault base contract or pre-existing field moved.
+
+This stage does not establish a complete settlement gas bound or full cash backing after a deficit. The 256-debtor custody limit still needs a compatible enforced position bound and whole-book gas tests. Complete book enumeration, paired ADL, profitable-position haircuts, terminal curve/funding counter-entries, and the funding-lag cash-backing gate remain required before deployment.

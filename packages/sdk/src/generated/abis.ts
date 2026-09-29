@@ -1495,6 +1495,11 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -1594,7 +1599,17 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -1668,8 +1683,35 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ReentrancyGuardReentrantCall",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -2114,6 +2156,19 @@ export const marketCoreAbi = [
   },
   {
     "type": "function",
+    "name": "longSize",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "markPrice",
     "inputs": [],
     "outputs": [
@@ -2494,6 +2549,19 @@ export const marketCoreAbi = [
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "shortSize",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -2911,6 +2979,11 @@ export const marketCoreAbi = [
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -3005,7 +3078,17 @@ export const marketCoreAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -3071,6 +3154,33 @@ export const marketCoreAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -3536,6 +3646,19 @@ export const plannedMarketAbi = [
   },
   {
     "type": "function",
+    "name": "longSize",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "markPrice",
     "inputs": [],
     "outputs": [
@@ -3940,6 +4063,19 @@ export const plannedMarketAbi = [
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "shortSize",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -4420,6 +4556,11 @@ export const plannedMarketAbi = [
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -4514,7 +4655,17 @@ export const plannedMarketAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -4580,6 +4731,33 @@ export const plannedMarketAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -4862,6 +5040,11 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -4956,7 +5139,17 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -5022,6 +5215,33 @@ export const marketFactoryAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -5122,6 +5342,58 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_ALLOCATION_ENTRIES",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_TERMINAL_ACCOUNTS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MIN_PROTOCOL_RESERVE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "RESERVE_BLOCKS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "UPGRADE_INTERFACE_VERSION",
     "inputs": [],
     "outputs": [
@@ -5132,6 +5404,66 @@ export const marginVaultAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "admitMarket",
+    "inputs": [
+      {
+        "name": "oiCap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundingCapPerBlock",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "aggregateReserveBudget",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "allocateProtocolFees",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxEntries",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "repaid",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserved",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -5319,6 +5651,24 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "contributeToDeficit",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "coverBadDebt",
     "inputs": [
       {
@@ -5386,6 +5736,62 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "deficit",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "deficitCreatedAt",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "deficitQueueHead",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "entries",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "deposit",
     "inputs": [
       {
@@ -5409,6 +5815,25 @@ export const marginVaultAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "finalizeSettlement",
+    "inputs": [
+      {
+        "name": "debtors",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "uncovered",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -5453,6 +5878,19 @@ export const marginVaultAbi = [
       },
       {
         "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fundProtocolReserve",
+    "inputs": [
+      {
+        "name": "usdc",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -5609,6 +6047,25 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "marketAdmitted",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "moveInsuranceToBackstop",
     "inputs": [
       {
@@ -5689,6 +6146,19 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "protocolReserve",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "proxiableUUID",
     "inputs": [],
     "outputs": [
@@ -5699,6 +6169,24 @@ export const marginVaultAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "recapitalize",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -5862,6 +6350,51 @@ export const marginVaultAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "requireOpenAllowed",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "reserveBudget",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "reserveFloor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -6039,6 +6572,25 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "terminalFinalized",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "token",
     "inputs": [],
     "outputs": [
@@ -6046,6 +6598,19 @@ export const marginVaultAbi = [
         "name": "",
         "type": "address",
         "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalDeficit",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -6252,6 +6817,37 @@ export const marginVaultAbi = [
   },
   {
     "type": "event",
+    "name": "DeficitChanged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "previous",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "current",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Deposited",
     "inputs": [
       {
@@ -6440,6 +7036,94 @@ export const marginVaultAbi = [
   },
   {
     "type": "event",
+    "name": "ProtocolCapitalFunded",
+    "inputs": [
+      {
+        "name": "contributor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolFeesAllocated",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "repaid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserved",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolFeesClaimed",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolReserveChanged",
+    "inputs": [
+      {
+        "name": "previous",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "current",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ReferralClaimed",
     "inputs": [
       {
@@ -6510,6 +7194,81 @@ export const marginVaultAbi = [
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReserveBudgetAdmitted",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oiCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundingCapPerBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "budget",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReserveBudgetRetired",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "budget",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TerminalCoverage",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "source",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -6599,6 +7358,11 @@ export const marginVaultAbi = [
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
   },
   {
     "type": "error",
@@ -6722,7 +7486,17 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -6796,8 +7570,35 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ReentrancyGuardReentrantCall",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -6934,6 +7735,53 @@ export const marginVaultAbi = [
 ] as const;
 
 export const marginVaultInterfaceAbi = [
+  {
+    "type": "function",
+    "name": "admitMarket",
+    "inputs": [
+      {
+        "name": "oiCap",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundingCapPerBlock",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "allocateProtocolFees",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxEntries",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "repaid",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserved",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
   {
     "type": "function",
     "name": "backstopBalance",
@@ -7100,6 +7948,24 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "contributeToDeficit",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "coverBadDebt",
     "inputs": [
       {
@@ -7167,6 +8033,25 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "deficit",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "deposit",
     "inputs": [
       {
@@ -7176,6 +8061,25 @@ export const marginVaultInterfaceAbi = [
       }
     ],
     "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "finalizeSettlement",
+    "inputs": [
+      {
+        "name": "debtors",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "uncovered",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -7221,6 +8125,19 @@ export const marginVaultInterfaceAbi = [
       },
       {
         "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fundProtocolReserve",
+    "inputs": [
+      {
+        "name": "usdc",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -7367,6 +8284,37 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "protocolReserve",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "recapitalize",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "referrerOf",
     "inputs": [
       {
@@ -7433,6 +8381,32 @@ export const marginVaultInterfaceAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "requireOpenAllowed",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "reserveFloor",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -7558,6 +8532,19 @@ export const marginVaultInterfaceAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "totalDeficit",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -7698,6 +8685,37 @@ export const marginVaultInterfaceAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DeficitChanged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "previous",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "current",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -7879,6 +8897,94 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "event",
+    "name": "ProtocolCapitalFunded",
+    "inputs": [
+      {
+        "name": "contributor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolFeesAllocated",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "repaid",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserved",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolFeesClaimed",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProtocolReserveChanged",
+    "inputs": [
+      {
+        "name": "previous",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "current",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "ReferralClaimed",
     "inputs": [
       {
@@ -7936,6 +9042,81 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "event",
+    "name": "ReserveBudgetAdmitted",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "oiCap",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundingCapPerBlock",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "budget",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReserveBudgetRetired",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "budget",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TerminalCoverage",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "source",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Withdrawn",
     "inputs": [
       {
@@ -7956,6 +9137,11 @@ export const marginVaultInterfaceAbi = [
   {
     "type": "error",
     "name": "AccountingInvariant",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AllocationLimit",
     "inputs": []
   },
   {
@@ -8054,7 +9240,17 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -8120,6 +9316,33 @@ export const marginVaultInterfaceAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -8681,6 +9904,11 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -8775,7 +10003,17 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -8841,6 +10079,33 @@ export const resolverAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -9002,6 +10267,11 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -9096,7 +10366,17 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -9162,6 +10442,33 @@ export const pripoErrorsAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

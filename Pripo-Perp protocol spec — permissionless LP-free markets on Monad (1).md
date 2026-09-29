@@ -448,7 +448,7 @@ At a 25,000-USDC admitted cap, an oracle-fed market contributes at most 200 USDC
 
 Protocol fee allocation runs **terminal deficit repayment → reserve refill → treasury**. Fee accrual stays per market; the repayment allocator consumes those accrued protocol balances in batches before any distribution. Internal partial repayment/refill can proceed while the target is unmet. A successful external treasury sweep requires zero terminal deficit and leaves `protocolReserve ≥ reserveFloor()`; if those conditions cannot be met, the treasury sweep is blocked. Spending reserve during terminal settlement is an explicit exception to the floor, not a treasury sweep. A terminal deficit cannot be erased by lowering the reserve target.
 
-**Balanced deficit entries.** Recording an uncovered negative locked balance `−D` as a terminal obligation sets that isolated balance to zero and increases `deficit` by `D`: `+D` to locked and `−D` through the deficit term cancel. Coverage from protocol fees instead debits the named owed account and credits the settlement account; reserve coverage debits `protocolReserve` and credits that account. Repaying `R` from accrued protocol fees debits `protocolOwed` by `R` and decreases `deficit` by `R`; there is no second cash credit. A direct external recapitalization increases cash and decreases `deficit` by the same amount, with any excess credited to the reserve. A contribution from an existing free balance debits that balance and decreases deficit; it is not counted as a new token deposit. Terminal PnL, reserve reset and haircuts also need explicit counter-entries that preserve curve conservation; recording a deficit cannot be used to hide an unexplained clearing mismatch.
+**Balanced deficit entries.** Recording an uncovered negative locked balance `−D` as a terminal obligation sets that isolated balance to zero and increases `deficit` by `D`: `+D` to locked and `−D` through the deficit term cancel. Coverage from protocol fees instead debits the named owed account and credits the settlement account; reserve coverage debits `protocolReserve` and credits that account. Repaying `R` from accrued protocol fees debits `protocolOwed` by `R` and decreases `deficit` by `R`; there is no second cash credit. A direct external recapitalization increases cash and decreases `deficit` by the same amount; excess repays other terminal deficits in priority order before entering reserve. A contribution from an existing free balance debits that balance and decreases deficit; it is not counted as a new token deposit. Terminal PnL, reserve reset and haircuts also need explicit counter-entries that preserve curve conservation; recording a deficit cannot be used to hide an unexplained clearing mismatch.
 
 **Terminal accounting regression vectors.** Values in this table are ordinary USDC for readability; implementation scales them to quote WAD. These are arithmetic vectors, not a claim that terminal handling is already implemented.
 
@@ -659,13 +659,19 @@ function referrerOf(address user) external view returns (address);
 // chargeFee credits referralOwed only as part of a balanced fee debit
 function claimReferral() external;
 
-// Target Phase 1 reserve/terminal-debt views and funding entry points; implementation must expose equivalent selectors.
+// Implemented reserve/terminal-custody surface; whole-book market settlement is still an integration milestone.
 function protocolReserve() external view returns (uint256); // quote WAD
 function reserveFloor() external view returns (uint256);    // quote WAD
 function totalDeficit() external view returns (uint256);    // quote WAD
 function deficit(address market) external view returns (uint256);
 function fundProtocolReserve(uint256 rawUsdc) external;     // actual token contribution; repay deficits before refill
-function recapitalize(address market, uint256 rawUsdc) external; // repay this Settled market's deficit; excess to reserve
+function recapitalize(address market, uint256 rawUsdc) external; // repay selected terminal deficit; excess to other deficits, then reserve
+function contributeToDeficit(address market, uint256 wad) external; // voluntarily debit caller's free balance, no token inflow
+function allocateProtocolFees(address market, uint256 maxEntries) external returns (uint256 repaid, uint256 reserved);
+function claimProtocolFees(address market) external returns (uint256 paidWad); // debt/floor gates; whole token units only
+function admitMarket(uint256 oiCap, uint64 fundingCapPerBlock) external; // trusted market's validated ceiling; once
+function requireOpenAllowed(address market) external view; // admission, zero aggregate deficit and funded reserve floor
+function finalizeSettlement(address[] calldata debtors) external returns (uint256 uncovered); // trusted settled market only
 
 // phase 2 surface, reserved in the design
 function enableCrossMargin(bool on) external;
@@ -673,6 +679,10 @@ function accountHealth(address user) external view returns (int256);
 ```
 
 Vault settlement methods write isolated user collateral and the corresponding per-market source accounts. Operator/referral writes remain scoped to their policies and accounts. Protocol reserve and deficit totals are updated only on exceptional terminal-coverage or batched repayment/sweep paths.
+
+**Current custody limits.** Fee allocation accepts 1–32 queue entries per call, including cleared entries awaiting pruning after targeted recapitalization. Unprocessed fees remain in `protocolOwed`; internal allocation can succeed below the reserve floor. Real-token contributions repay before reserving and process at most 32 queue entries; excess that would skip an outstanding deficit reverts the entire contribution. Keepers split funding or repay/prune the backlog first, using fee allocations or WAD free-balance contributions for sub-token dust. Capital contributions bypass the user deposit cap. Treasury claims and all owner/operator opens require zero aggregate deficit and a funded reserve floor; existing exits remain subject to their normal checks.
+
+`finalizeSettlement` accepts at most 256 debtor addresses and requires an already `Settled` market with zero aggregate long/short sizes. It is called once, after the trusted engine realizes all funding/PnL and applies losing-collateral collection and profit haircuts. It consumes only remaining insurance and subsequent terminal sources, zeros residual negative locked accounts and books the uncovered remainder. This custody limit does not establish a market position bound or whole-book settlement gas guarantee. Complete book enumeration, price/haircut computation, curve/funding reset and atomic engine integration remain required; the current market runtime still reverts on debt beyond ordinary insurance/capped-backstop coverage.
 
 **Operator flow.** A user registers an agent's key once with `setOperator`. The agent then calls `market.openFor(user, size, maxPrice, oracleUpdate)`; the market calls `vault.checkAndConsume`, which verifies the caller is the registered operator, the policy has not expired, the market is in `marketsRoot` (or root is zero), `notional ≤ maxNotionalPerTx`, and `usedNotional + notional ≤ maxTotalNotional`. Any failure reverts before state changes.
 

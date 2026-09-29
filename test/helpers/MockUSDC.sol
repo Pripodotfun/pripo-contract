@@ -20,6 +20,12 @@ contract HookUSDC is MockUSDC {
     bool public hookSucceeded;
     bool private _inHook;
     bool public tax;
+    bool public hookOnReceive;
+    bytes public hookResult;
+
+    function configureIncomingHook(bool enabled) external {
+        hookOnReceive = enabled;
+    }
 
     function configure(address target, bytes calldata data, bool tax_) external {
         hookTarget = target;
@@ -30,9 +36,9 @@ contract HookUSDC is MockUSDC {
     function _update(address from, address to, uint256 amount) internal override {
         super._update(from, to, amount);
         if (tax && from != address(0) && to != address(0) && amount > 0) super._update(to, address(0), 1);
-        if (from == hookTarget && !_inHook) {
+        if ((from == hookTarget || (hookOnReceive && to == hookTarget)) && !_inHook) {
             _inHook = true;
-            (hookSucceeded,) = hookTarget.call(hookData);
+            (hookSucceeded, hookResult) = hookTarget.call(hookData);
             _inHook = false;
         }
     }

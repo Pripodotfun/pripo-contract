@@ -7,6 +7,8 @@ import {IPripoErrors} from "./IPripoErrors.sol";
 /// @notice Implemented isolated trading runtime. Proof overloads use the vault's double-hashed market leaves.
 interface IMarketCore is IPripoErrors {
     function externalIndex() external view returns (bool);
+    function longSize() external view returns (uint256);
+    function shortSize() external view returns (uint256);
     event PositionOpened(
         address indexed market,
         address indexed user,

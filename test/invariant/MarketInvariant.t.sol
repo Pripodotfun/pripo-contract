@@ -180,7 +180,8 @@ contract MarketInvariantTest is StdInvariant, MarketFixture {
         T.AmmState memory a = market.ammState();
         T.FundingState memory f = market.fundingState();
         T.Ledger memory l = vault.ledger(address(market));
-        int256 cash = int256(vault.freeBalance(creator) + vault.referralOwed(creator));
+        int256 cash = int256(vault.freeBalance(creator) + vault.referralOwed(creator) + vault.protocolReserve())
+            - int256(vault.totalDeficit());
         int256 entryNet;
         int256 longWeighted;
         int256 shortWeighted;

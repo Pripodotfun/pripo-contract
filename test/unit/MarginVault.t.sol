@@ -29,6 +29,10 @@ contract MarginVaultTest is Test {
             )
         );
         vault.registerMarket(address(this), bob);
+        usdc.mint(address(this), 10_000e6);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.fundProtocolReserve(10_000e6);
+        vault.admitMarket(25_000e18, uint64(uint256(0.005e18) / 12_000));
         usdc.mint(alice, 100_000e6);
         vm.startPrank(alice);
         usdc.approve(address(vault), type(uint256).max);
@@ -45,7 +49,7 @@ contract MarginVaultTest is Test {
         vault.release(alice, 100e18);
         vm.prank(alice);
         vault.withdraw(9_900e6);
-        assertEq(usdc.balanceOf(address(vault)), 100e6);
+        assertEq(usdc.balanceOf(address(vault)), 10_100e6);
         assertEq(vault.locked(alice, address(this)), 100e18);
         vm.prank(operator);
         vm.expectRevert(E.Unauthorized.selector);
@@ -86,7 +90,7 @@ contract MarginVaultTest is Test {
         vault.claimReferral();
         assertEq(usdc.balanceOf(bob), 4e6);
         assertEq(vault.referralOwed(bob), 1);
-        assertEq(usdc.balanceOf(address(vault)), 9_993e6);
+        assertEq(usdc.balanceOf(address(vault)), 19_993e6);
         fee.total++;
         vm.expectRevert(E.AccountingInvariant.selector);
         vault.chargeFee(alice, fee, false);
@@ -151,7 +155,7 @@ contract MarginVaultTest is Test {
 
     function testDepositCapAndInitializers() public {
         vm.prank(alice);
-        vault.deposit(90_000e6);
+        vault.deposit(80_000e6);
         usdc.mint(alice, 1);
         vm.prank(alice);
         vm.expectRevert(E.DepositCapExceeded.selector);

@@ -334,6 +334,19 @@
   },
   {
     "type": "function",
+    "name": "longSize",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "markPrice",
     "inputs": [],
     "outputs": [
@@ -714,6 +727,19 @@
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "shortSize",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1131,6 +1157,11 @@
   },
   {
     "type": "error",
+    "name": "AllocationLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "DepositCapExceeded",
     "inputs": []
   },
@@ -1225,7 +1256,17 @@
   },
   {
     "type": "error",
+    "name": "InvalidTerminalState",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotActive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotAdmitted",
     "inputs": []
   },
   {
@@ -1291,6 +1332,33 @@
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProtocolDeficit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReserveBelowFloor",
+    "inputs": [
+      {
+        "name": "have",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "need",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

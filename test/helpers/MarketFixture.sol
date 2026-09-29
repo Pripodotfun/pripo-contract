@@ -83,6 +83,9 @@ abstract contract MarketFixture is Test {
                 )
             )
         );
+        usdc.mint(address(this), 10_000e6);
+        usdc.approve(address(vault), type(uint256).max);
+        vault.fundProtocolReserve(10_000e6);
         _deposit(creator, 20_000e6);
         _deposit(alice, 10_000e6);
         _deposit(bob, 10_000e6);
@@ -146,12 +149,13 @@ abstract contract MarketFixture is Test {
         T.Ledger memory l = vault.ledger(address(market));
         int256 sum = int256(
             vault.freeBalance(alice) + vault.freeBalance(bob) + vault.freeBalance(carol) + vault.freeBalance(creator)
-                + vault.backstopBalance()
+                + vault.backstopBalance() + vault.protocolReserve()
         );
         sum += vault.locked(alice, address(market)) + vault.locked(bob, address(market))
         + vault.locked(carol, address(market));
         sum += int256(l.insurance + l.protocolOwed + l.creatorOwed + l.skewPool + vault.referralOwed(creator));
         sum += l.clearing + l.fundingPool;
+        sum -= int256(vault.totalDeficit());
         assertEq(sum, int256(usdc.balanceOf(address(vault)) * 1e12), "cash equality");
         T.AmmState memory a = market.ammState();
         assertEq(l.clearing, int256(a.quoteReserve) - int256(a.curveBase) - a.entryCostNet, "curve conservation");
