@@ -2234,6 +2234,17 @@
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {

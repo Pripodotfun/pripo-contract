@@ -23,6 +23,8 @@ library MarketState {
         MarkTwap.State _twap;
         uint256 _index;
         uint64 _indexBlock;
+        address[] _accounts;
+        mapping(address => uint256) _accountIndex;
     }
 
     struct OpenQuote {

@@ -8,6 +8,7 @@ import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
 import {MarketLens as Lens} from "./MarketLens.sol";
 import {MarketState as S} from "./MarketState.sol";
+import {PositionBook as Book} from "./PositionBook.sol";
 
 /// @notice Linked trading transitions, called only while the market holds its reentrancy guard.
 library MarketTrading {
@@ -41,6 +42,7 @@ library MarketTrading {
         Engine.chargeFee(s, user, q.fee, false);
         T.Position storage p = s._positions[user];
         int256 oldSize = p.size;
+        if (oldSize == 0) Book.add(s, user);
         Engine.resize(s, oldSize, q.newSize);
         p.size = q.newSize;
         p.entryCost = q.newEntry;

@@ -21,6 +21,19 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "MAX_POSITIONS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "USER_NOTIONAL_CAP",
     "inputs": [],
     "outputs": [
@@ -815,6 +828,43 @@ export const marketAbi = [
             "internalType": "int256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionAccounts",
+    "inputs": [
+      {
+        "name": "offset",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "limit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1683,6 +1733,17 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {
@@ -2338,6 +2399,43 @@ export const marketCoreAbi = [
             "internalType": "int256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionAccounts",
+    "inputs": [
+      {
+        "name": "offset",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "limit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -3157,6 +3255,17 @@ export const marketCoreAbi = [
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {
@@ -3852,6 +3961,43 @@ export const plannedMarketAbi = [
             "internalType": "int256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionAccounts",
+    "inputs": [
+      {
+        "name": "offset",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "limit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "positionCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -4734,6 +4880,17 @@ export const plannedMarketAbi = [
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {
@@ -5215,6 +5372,17 @@ export const marketFactoryAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",
@@ -7570,6 +7738,17 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {
@@ -9319,6 +9498,17 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {
@@ -10082,6 +10272,17 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ProtocolDeficit",
     "inputs": [
       {
@@ -10442,6 +10643,17 @@ export const pripoErrorsAbi = [
     "type": "error",
     "name": "PositionExists",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PositionLimit",
+    "inputs": [
+      {
+        "name": "maximum",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

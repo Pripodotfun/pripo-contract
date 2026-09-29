@@ -17,12 +17,14 @@ import {MarketLens as Lens} from "./market/MarketLens.sol";
 import {MarketLiquidation as Liquidation} from "./market/MarketLiquidation.sol";
 import {MarketState as S} from "./market/MarketState.sol";
 import {MarketTrading as Trading} from "./market/MarketTrading.sol";
+import {PositionBook as Book} from "./market/PositionBook.sol";
 
 /// @notice Immutable clone entry points with shared, fixed linked modules.
 contract Market is IMarketCore, Initializable, ReentrancyGuard {
     using MarkTwap for MarkTwap.State;
     uint256 public constant USER_NOTIONAL_CAP = 2_000e18;
     uint256 public constant MARKET_NOTIONAL_CAP = 25_000e18;
+    uint256 public constant MAX_POSITIONS = Book.MAX_POSITIONS;
 
     constructor() {
         _disableInitializers();
@@ -50,6 +52,15 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
 
     function shortSize() external view returns (uint256) {
         return S.load().shortSize;
+    }
+
+    function positionCount() external view returns (uint256) {
+        return S.load()._accounts.length;
+    }
+
+    /// @notice Read a bounded page; pin the block when reading multiple pages because removals swap the last account.
+    function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory) {
+        return Book.page(S.load(), offset, limit);
     }
 
     function health(address user) external view returns (int256, bool) {

@@ -39,4 +39,5 @@ interface IPripoErrors {
     error MarketNotAdmitted();
     error InvalidTerminalState();
     error AllocationLimit();
+    error PositionLimit(uint256 maximum);
 }

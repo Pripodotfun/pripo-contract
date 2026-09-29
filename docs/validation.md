@@ -1,6 +1,6 @@
 # Contract validation
 
-Validation covers the math libraries, a proxy-based vault, immutable market clones, liquidation/backstop accounting, and reserve/terminal-capital custody using six-decimal mock USDC with actual token transfers. The September 29 full CI run passes **105 tests**, with eight fuzz properties at 10,000 runs and three invariant suites at 10,000 runs/depth 50: **1,500,000 total handler calls, zero reverts**. This includes all 88 prior tests and 17 new capital tests. Paired ADL and the whole-book market settlement engine remain unimplemented; terminal custody tests use a registered market stub.
+Validation covers the math libraries, a proxy-based vault, immutable market clones, liquidation/backstop accounting, and reserve/terminal-capital custody using six-decimal mock USDC with actual token transfers. The reserve-stage September 29 full CI run passes **105 tests**, with eight fuzz properties at 10,000 runs and three invariant suites at 10,000 runs/depth 50: **1,500,000 total handler calls, zero reverts**. This includes all 88 prior tests and 17 new capital tests. The subsequent bounded-book stage passes **108 tests** under the default profile, with 256 runs/depth 50 for each invariant. Paired ADL and the whole-book market settlement engine remain unimplemented; terminal custody tests use a registered market stub.
 
 ## Reproduce
 
@@ -21,10 +21,10 @@ On this macOS installation, sandboxed `forge test` crashes in the system proxy s
 | Tool | Version | Result |
 | --- | --- | --- |
 | Forge source lint | 1.5.1 | No warnings in `src/` |
-| Slither | 0.11.5 | 48 contracts analyzed, 101 detectors; one low timestamp finding and one informational assembly finding after scoped annotations |
-| Aderyn | 0.1.9 | 24 project source files, 63 detectors; three high categories and five low categories, reviewed below |
+| Slither | 0.11.5 | 49 contracts analyzed, 101 detectors; one low timestamp finding and one informational assembly finding after scoped annotations |
+| Aderyn | 0.1.9 | 25 project source files, 63 detectors; three high categories and five low categories, reviewed below |
 
-The size gate passes: Market is 22,044 bytes, MarketTrading 6,230 bytes, MarketLiquidation 5,062 bytes, MarketAccounting 8,949 bytes, MarketLens 7,753 bytes, MarginVault 17,008 bytes and InsuranceBackstop 2,793 bytes with the pinned compiler and settings. The implementation and every linked module fit within EIP-170's 24,576-byte limit. ABI freshness checks and a TypeScript import/selector check pass. The concrete vault ABI includes capital accounting and terminal custody; the market's whole-book settlement and exact remaining risk views remain unimplemented.
+The size gate passes: Market is 22,643 bytes, MarketTrading 6,765 bytes, MarketLiquidation 5,373 bytes, MarketAccounting 8,949 bytes, MarketLens 7,753 bytes, MarginVault 17,008 bytes and InsuranceBackstop 2,793 bytes with the pinned compiler and settings. The implementation and every linked module fit within EIP-170's 24,576-byte limit. ABI freshness checks and a TypeScript import/selector check pass. The concrete vault ABI includes capital accounting and terminal custody; the market's whole-book settlement and exact remaining risk views remain unimplemented.
 
 The Aderyn command explicitly sets `FOUNDRY_EVM_VERSION=cancun` to match the project. This installed version otherwise fails while parsing a `prague` default. Dependency/test path filters use `lib/` and `test/`, including the slash, so they do not accidentally exclude `src/libraries/`.
 
@@ -86,3 +86,7 @@ The new eight-market capital invariant randomizes fee accrual, terminal custody,
 Static review found two new unused-return reports: terminal status ignores the transition block, and heap removal ignores the already-read root. Both received narrow annotations explaining the intentional omission. Capital-account mutations share the token-transfer reentrancy guard. The prior timestamp/assembly findings and Aderyn categories remain as triaged above. Storage additions are append-only; no vault base contract or pre-existing field moved.
 
 This stage does not establish a complete settlement gas bound or full cash backing after a deficit. The 256-debtor custody limit still needs a compatible enforced position bound and whole-book gas tests. Complete book enumeration, paired ADL, profitable-position haircuts, terminal curve/funding counter-entries, and the funding-lag cash-backing gate remain required before deployment.
+
+## Bounded-book stage
+
+Three new integration tests cover the full 256-position limit, atomic rejection of a 257th account, increases and partial closes at capacity, slot reuse on full close, swap removal, pagination boundaries, reopening and full liquidation removal. The real-token trading invariant now compares registry cardinality to nonempty positions and checks every returned account is unique and open. All 108 default-profile tests pass; all three invariant suites ran 256 sequences of depth 50 with zero reverts. Size, lint, ABI freshness, Slither and Aderyn gates pass with the existing triaged findings. No complete-settlement gas bound is claimed by the registry tests.

@@ -12,6 +12,7 @@ import {MarkTwap} from "../libraries/MarkTwap.sol";
 import {RiskMath as Risk} from "../libraries/RiskMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketState as S} from "./MarketState.sol";
+import {PositionBook as Book} from "./PositionBook.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -110,6 +111,7 @@ library MarketAccounting {
         int256 remaining = p.size - q.closedSize;
         resize(s, p.size, remaining);
         p.size = remaining;
+        if (remaining == 0) Book.remove(s, user);
         p.entryCost -= q.closedEntry;
         s._amm.entryCostNet -= q.closedSize > 0 ? F.toInt(q.closedEntry) : -F.toInt(q.closedEntry);
         applyFill(s, q.fill);

@@ -187,6 +187,7 @@ contract MarketInvariantTest is StdInvariant, MarketFixture {
         int256 shortWeighted;
         uint256 longs;
         uint256 shorts;
+        uint256 positionCount;
         for (uint256 i; i < actors.length; i++) {
             address user = actors[i];
             T.Position memory p = market.position(user);
@@ -207,6 +208,7 @@ contract MarketInvariantTest is StdInvariant, MarketFixture {
                 assertEq(p.lastFundingIndex, 0);
             }
             if (p.size != 0) {
+                ++positionCount;
                 (,,, int256 fundingOwed) = market.quoteClose(user, 1e18);
                 int256 realizedEquity = collateral + Curve.realizablePnl(a, p.size, p.entryCost) - fundingOwed;
                 if (realizedEquity < 0) {
@@ -222,6 +224,15 @@ contract MarketInvariantTest is StdInvariant, MarketFixture {
         assertEq(int256(longs) - int256(shorts), int256(a.baseAtSeed) - int256(a.baseReserve));
         assertEq(longs, market.longSize());
         assertEq(shorts, market.shortSize());
+        address[] memory book = market.positionAccounts(0, 256);
+        assertEq(book.length, positionCount);
+        assertEq(market.positionCount(), positionCount);
+        for (uint256 i; i < book.length; ++i) {
+            assertTrue(market.position(book[i]).size != 0);
+            for (uint256 j; j < i; ++j) {
+                assertTrue(book[j] != book[i]);
+            }
+        }
         assertEq(f.longWeighted, longWeighted);
         assertEq(f.shortWeighted, shortWeighted);
         Funding.surplus(f, l.fundingPool, longs, shorts);

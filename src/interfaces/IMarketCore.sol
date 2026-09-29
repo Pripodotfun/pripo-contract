@@ -9,6 +9,8 @@ interface IMarketCore is IPripoErrors {
     function externalIndex() external view returns (bool);
     function longSize() external view returns (uint256);
     function shortSize() external view returns (uint256);
+    function positionCount() external view returns (uint256);
+    function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory);
     event PositionOpened(
         address indexed market,
         address indexed user,
