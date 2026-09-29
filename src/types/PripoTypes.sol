@@ -111,4 +111,16 @@ library PripoTypes {
         uint256 insurance;
         uint256 referral;
     }
+
+    struct SettlementQuote {
+        uint256 price;
+        uint256 positions;
+        uint256 losingCollateral;
+        uint256 profits;
+        uint256 debt;
+        int256 clearing;
+        uint256 fundingSurplus;
+        uint256 haircut;
+        uint256 capitalRequired;
+    }
 }

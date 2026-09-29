@@ -217,6 +217,23 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
             }
         }
         T.Ledger storage l = _ledgers[msg.sender];
+        // TWAP settlement of net virtual exposure can leave either sign of clearing. Net it exactly once:
+        // removing negative collateral adds isolatedDebt to the cash sum; removing clearing subtracts clearing.
+        // A positive net balance is insurance; a negative one must use the terminal funding waterfall.
+        int256 clearing = l.clearing;
+        emit TerminalClearingNetted(msg.sender, clearing, uncovered);
+        if (clearing >= 0) {
+            uint256 available = F.toUint(clearing);
+            if (available > uncovered) {
+                l.insurance += available - uncovered;
+                uncovered = 0;
+            } else {
+                uncovered -= available;
+            }
+        } else {
+            uncovered += F.abs(clearing);
+        }
+        l.clearing = 0;
         uint256 used = _terminalUse(uncovered, l.insurance, 0);
         l.insurance -= used;
         uncovered -= used;
@@ -362,7 +379,33 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     {
         int256 collateral = locked[user][msg.sender];
         if (collateral >= 0) return (0, 0, 0);
-        uint256 debt = F.abs(collateral);
+        return _coverLiquidationLoss(user, F.abs(collateral));
+    }
+
+    function liveCoverage(address market) external view returns (uint256 insurance, uint256 backstop) {
+        insurance = _ledgers[market].insurance;
+        if (address(backstopController) != address(0)) backstop = backstopController.capacity(market);
+    }
+
+    /// @notice Fund the planned loss of a closed portion without consuming the remaining portion's collateral.
+    /// @dev Trusted market code proves the amount from the paired fill and allocated margin. Uses live claim caps.
+    // The guarded, governor-bound controller only performs static vault/market reads before consuming its budget.
+    // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
+    function coverLiquidationLoss(address user, uint256 amount)
+        external
+        nonReentrant
+        onlyMarket
+        returns (uint256 insurance, uint256 backstop, uint256 remaining)
+    {
+        return _coverLiquidationLoss(user, amount);
+    }
+
+    // Both external entry points hold nonReentrant; the bound controller makes only static reads of this vault.
+    // slither-disable-next-line reentrancy-benign
+    function _coverLiquidationLoss(address user, uint256 debt)
+        private
+        returns (uint256 insurance, uint256 backstop, uint256 remaining)
+    {
         T.Ledger storage l = _ledgers[msg.sender];
         insurance = Math.min(debt, l.insurance);
         l.insurance -= insurance;
@@ -373,7 +416,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
             backstopBalance -= backstop;
             remaining -= backstop;
         }
-        locked[user][msg.sender] = -F.toInt(remaining);
+        locked[user][msg.sender] += F.toInt(insurance + backstop);
         emit DebtCovered(msg.sender, user, insurance, backstop);
     }
 

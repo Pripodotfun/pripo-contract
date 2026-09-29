@@ -15,6 +15,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MarketAccounting as Engine} from "./market/MarketAccounting.sol";
 import {MarketLens as Lens} from "./market/MarketLens.sol";
 import {MarketLiquidation as Liquidation} from "./market/MarketLiquidation.sol";
+import {MarketSettlement as Settlement} from "./market/MarketSettlement.sol";
 import {MarketState as S} from "./market/MarketState.sol";
 import {MarketTrading as Trading} from "./market/MarketTrading.sol";
 import {PositionBook as Book} from "./market/PositionBook.sol";
@@ -61,6 +62,15 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     /// @notice Read a bounded page; pin the block when reading multiple pages because removals swap the last account.
     function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory) {
         return Book.page(S.load(), offset, limit);
+    }
+
+    function settlementQuote() external view returns (T.SettlementQuote memory) {
+        return Settlement.quote(S.load());
+    }
+
+    function settlementInfo() external view returns (uint256 price, uint256 haircut, uint256 profits) {
+        S.Data storage s = S.load();
+        return (s.settlementPrice, s.settlementHaircut, s.settlementProfits);
     }
 
     function health(address user) external view returns (int256, bool) {
@@ -156,7 +166,15 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     }
 
     function liquidate(address user, bytes calldata update) external payable nonReentrant {
-        Liquidation.liquidate(S.load(), user, update, msg.value);
+        Liquidation.liquidate(S.load(), user, update, msg.value, new address[](0), true);
+    }
+
+    function liquidate(address user, bytes calldata update, address[] calldata candidates)
+        external
+        payable
+        nonReentrant
+    {
+        Liquidation.liquidate(S.load(), user, update, msg.value, candidates, false);
     }
 
     function addMargin(uint256 amount) external nonReentrant {
@@ -295,6 +313,7 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
 
     function fundingRatePerBlock() public view returns (int256) {
         S.Data storage s = S.load();
+        if (s._config.status >= T.Status.Settling) return 0;
         if (Engine.isDegraded(s)) return 0;
         return Engine.cachedRate(s);
     }

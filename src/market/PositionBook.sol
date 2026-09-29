@@ -6,7 +6,8 @@ import {MarketState as S} from "./MarketState.sol";
 
 /// @notice Bounded enumeration of nonempty positions. Indices are unstable after a removal.
 library PositionBook {
-    uint256 internal constant MAX_POSITIONS = 256;
+    uint256 internal constant MAX_POSITIONS = 128;
+    uint256 internal constant MAX_PAGE_SIZE = 256;
 
     function add(S.Data storage s, address user) internal {
         if (s._accountIndex[user] != 0) revert E.AccountingInvariant();
@@ -29,7 +30,7 @@ library PositionBook {
     }
 
     function page(S.Data storage s, uint256 offset, uint256 limit) internal view returns (address[] memory users) {
-        if (limit > MAX_POSITIONS) revert E.PositionLimit(MAX_POSITIONS);
+        if (limit > MAX_PAGE_SIZE) revert E.PositionLimit(MAX_PAGE_SIZE);
         uint256 count = s._accounts.length;
         if (offset >= count) return new address[](0);
         uint256 length = count - offset;

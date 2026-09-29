@@ -35,7 +35,7 @@ contract PositionBookTest is MarketFixture {
     }
 
     function testPositionCapAllowsIncreasesAndFreesSlotOnlyOnFullClose() public {
-        for (uint256 i; i < 256; ++i) {
+        for (uint256 i; i < 128; ++i) {
             address user = address(uint160(0x10000 + i));
             _deposit(user, 20e6);
             _open(user, i % 2 == 0 ? int256(0.1e18) : -int256(0.1e18));
@@ -52,10 +52,10 @@ contract PositionBookTest is MarketFixture {
         assertEq(keccak256(abi.encode(market.ammState(), vault.freeBalance(alice), market.fundingState())), beforeState);
         _open(users[0], 0.1e18);
         _close(users[1], 0.5e18);
-        assertEq(market.positionCount(), 256);
+        assertEq(market.positionCount(), 128);
         _close(users[1], 1e18);
         _open(alice, 1e18);
-        assertEq(market.positionCount(), 256);
+        assertEq(market.positionCount(), 128);
     }
 
     function testFullLiquidationRemovesBookEntry() public {

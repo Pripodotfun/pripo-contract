@@ -381,6 +381,40 @@
   },
   {
     "type": "function",
+    "name": "coverLiquidationLoss",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "backstop",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "remaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "creatorOf",
     "inputs": [
       {
@@ -663,6 +697,30 @@
             "internalType": "uint256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liveCoverage",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "backstop",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1914,6 +1972,31 @@
   },
   {
     "type": "event",
+    "name": "TerminalClearingNetted",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "clearing",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "isolatedDebt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "TerminalCoverage",
     "inputs": [
       {
@@ -2056,6 +2139,11 @@
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -2089,6 +2177,11 @@
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {

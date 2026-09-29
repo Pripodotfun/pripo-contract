@@ -31,6 +31,7 @@ interface IMarginVault is IPripoErrors {
     event ProtocolFeesAllocated(address indexed market, uint256 repaid, uint256 reserved);
     event ProtocolFeesClaimed(address indexed market, uint256 amount);
     event ProtocolCapitalFunded(address indexed contributor, uint256 usdc);
+    event TerminalClearingNetted(address indexed market, int256 clearing, uint256 isolatedDebt);
 
     function deposit(uint256 usdc) external;
     function withdraw(uint256 usdc) external;
@@ -54,6 +55,10 @@ interface IMarginVault is IPripoErrors {
     function fundBackstop(uint256 amount) external;
     function moveInsuranceToBackstop(address market, uint256 amount) external;
     function coverBadDebt(address user) external returns (uint256 insurance, uint256 backstop, uint256 remaining);
+    function liveCoverage(address market) external view returns (uint256 insurance, uint256 backstop);
+    function coverLiquidationLoss(address user, uint256 amount)
+        external
+        returns (uint256 insurance, uint256 backstop, uint256 remaining);
     function chargeLiquidationPenalty(address user, address liquidator, uint256 nominal) external returns (uint256);
     function transferAdlProfit(address donor, address debtor, uint256 amount) external;
     function claimCreatorFees() external returns (uint256);

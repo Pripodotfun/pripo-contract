@@ -11,6 +11,12 @@ interface IMarketCore is IPripoErrors {
     function shortSize() external view returns (uint256);
     function positionCount() external view returns (uint256);
     function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory);
+    function settlementQuote() external view returns (T.SettlementQuote memory);
+    function settlementInfo() external view returns (uint256 price, uint256 haircut, uint256 profits);
+    event ForcedSettlement(address indexed market, address indexed liquidatedUser, uint256 price);
+    event SettlementHaircut(address indexed market, uint256 profits, uint256 haircut);
+    event MarketSettled(address indexed market, uint256 price, uint16 haircutBps);
+    event AutoDeleveraged(address indexed market, address indexed user, int256 sizeClosed, uint256 price);
     event PositionOpened(
         address indexed market,
         address indexed user,
@@ -72,6 +78,7 @@ interface IMarketCore is IPripoErrors {
     ) external payable;
     function addMargin(uint256 amount) external;
     function liquidate(address user, bytes calldata oracleUpdate) external payable;
+    function liquidate(address user, bytes calldata oracleUpdate, address[] calldata adlCandidates) external payable;
     function removeMargin(uint256 amount) external;
     function poke() external;
     function sweepFundingSurplus() external;

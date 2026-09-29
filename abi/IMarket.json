@@ -352,6 +352,29 @@
   },
   {
     "type": "function",
+    "name": "liquidate",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "oracleUpdate",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "adlCandidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "liquidationPrice",
     "inputs": [
       {
@@ -828,6 +851,89 @@
   },
   {
     "type": "function",
+    "name": "settlementInfo",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settlementQuote",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.SettlementQuote",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "positions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "losingCollateral",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "profits",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "debt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "clearing",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "fundingSurplus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "haircut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "capitalRequired",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "shortSize",
     "inputs": [],
     "outputs": [
@@ -1014,6 +1120,31 @@
       },
       {
         "name": "insurance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ForcedSettlement",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "liquidatedUser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1282,6 +1413,31 @@
   },
   {
     "type": "event",
+    "name": "SettlementHaircut",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "StatusChanged",
     "inputs": [
       {
@@ -1328,6 +1484,11 @@
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -1361,6 +1522,11 @@
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {

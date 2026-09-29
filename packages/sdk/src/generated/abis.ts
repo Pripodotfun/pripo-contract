@@ -646,6 +646,29 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "liquidate",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "update",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "candidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "longSize",
     "inputs": [],
     "outputs": [
@@ -1079,6 +1102,89 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "settlementInfo",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settlementQuote",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.SettlementQuote",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "positions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "losingCollateral",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "profits",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "debt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "clearing",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "fundingSurplus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "haircut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "capitalRequired",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "shortSize",
     "inputs": [],
     "outputs": [
@@ -1153,6 +1259,37 @@ export const marketAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "AutoDeleveraged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sizeClosed",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -1253,6 +1390,31 @@ export const marketAbi = [
       },
       {
         "name": "insurance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ForcedSettlement",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "liquidatedUser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1405,6 +1567,31 @@ export const marketAbi = [
   },
   {
     "type": "event",
+    "name": "MarketSettled",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircutBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PositionClosed",
     "inputs": [
       {
@@ -1509,6 +1696,31 @@ export const marketAbi = [
   },
   {
     "type": "event",
+    "name": "SettlementHaircut",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "StatusChanged",
     "inputs": [
       {
@@ -1555,6 +1767,11 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -1588,6 +1805,11 @@ export const marketAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -2217,6 +2439,29 @@ export const marketCoreAbi = [
   },
   {
     "type": "function",
+    "name": "liquidate",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "oracleUpdate",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "adlCandidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "longSize",
     "inputs": [],
     "outputs": [
@@ -2650,6 +2895,89 @@ export const marketCoreAbi = [
   },
   {
     "type": "function",
+    "name": "settlementInfo",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settlementQuote",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.SettlementQuote",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "positions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "losingCollateral",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "profits",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "debt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "clearing",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "fundingSurplus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "haircut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "capitalRequired",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "shortSize",
     "inputs": [],
     "outputs": [
@@ -2698,6 +3026,37 @@ export const marketCoreAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "AutoDeleveraged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sizeClosed",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -2798,6 +3157,31 @@ export const marketCoreAbi = [
       },
       {
         "name": "insurance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ForcedSettlement",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "liquidatedUser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -2937,6 +3321,31 @@ export const marketCoreAbi = [
   },
   {
     "type": "event",
+    "name": "MarketSettled",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircutBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PositionClosed",
     "inputs": [
       {
@@ -3041,6 +3450,31 @@ export const marketCoreAbi = [
   },
   {
     "type": "event",
+    "name": "SettlementHaircut",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "StatusChanged",
     "inputs": [
       {
@@ -3087,6 +3521,11 @@ export const marketCoreAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -3120,6 +3559,11 @@ export const marketCoreAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -3736,6 +4180,29 @@ export const plannedMarketAbi = [
   },
   {
     "type": "function",
+    "name": "liquidate",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "oracleUpdate",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "adlCandidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
     "name": "liquidationPrice",
     "inputs": [
       {
@@ -4212,6 +4679,89 @@ export const plannedMarketAbi = [
   },
   {
     "type": "function",
+    "name": "settlementInfo",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settlementQuote",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.SettlementQuote",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "positions",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "losingCollateral",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "profits",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "debt",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "clearing",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "fundingSurplus",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "haircut",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "capitalRequired",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "shortSize",
     "inputs": [],
     "outputs": [
@@ -4398,6 +4948,31 @@ export const plannedMarketAbi = [
       },
       {
         "name": "insurance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ForcedSettlement",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "liquidatedUser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "price",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -4666,6 +5241,31 @@ export const plannedMarketAbi = [
   },
   {
     "type": "event",
+    "name": "SettlementHaircut",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "profits",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "haircut",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "StatusChanged",
     "inputs": [
       {
@@ -4712,6 +5312,11 @@ export const plannedMarketAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -4745,6 +5350,11 @@ export const plannedMarketAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -5207,6 +5817,11 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -5240,6 +5855,11 @@ export const marketFactoryAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -5885,6 +6505,40 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "coverLiquidationLoss",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "backstop",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "remaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "creatorOf",
     "inputs": [
       {
@@ -6167,6 +6821,30 @@ export const marginVaultAbi = [
             "internalType": "uint256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liveCoverage",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "backstop",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -7418,6 +8096,31 @@ export const marginVaultAbi = [
   },
   {
     "type": "event",
+    "name": "TerminalClearingNetted",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "clearing",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "isolatedDebt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "TerminalCoverage",
     "inputs": [
       {
@@ -7560,6 +8263,11 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -7593,6 +8301,11 @@ export const marginVaultAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -8193,6 +8906,40 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "coverLiquidationLoss",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "backstop",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "remaining",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "creatorOf",
     "inputs": [
       {
@@ -8397,6 +9144,30 @@ export const marginVaultInterfaceAbi = [
             "internalType": "uint256"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liveCoverage",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "backstop",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -9271,6 +10042,31 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "event",
+    "name": "TerminalClearingNetted",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "clearing",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      },
+      {
+        "name": "isolatedDebt",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "TerminalCoverage",
     "inputs": [
       {
@@ -9330,6 +10126,11 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -9363,6 +10164,11 @@ export const marginVaultInterfaceAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -10104,6 +10910,11 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -10137,6 +10948,11 @@ export const resolverAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {
@@ -10478,6 +11294,11 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -10511,6 +11332,11 @@ export const pripoErrorsAbi = [
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {

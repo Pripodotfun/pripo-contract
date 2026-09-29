@@ -63,14 +63,15 @@ contract MarketLiquidationTest is MarketFixture {
         _finish();
     }
 
-    function testUncoveredLiquidationRollsBackAllEffects() public {
+    function testUncoveredLiquidationSettlesWholeBookWithoutUsingLiveWindow() public {
         _indebted(10_000_000);
-        bytes32 beforeState = _stateHash();
         vm.prank(carol);
-        vm.expectPartialRevert(E.UncoveredBadDebt.selector);
         market.liquidate(alice, "");
-        assertEq(_stateHash(), beforeState);
-        assertEq(backstop.capacity(address(market)), 1_000e18);
+        (uint8 status,) = market.status();
+        assertEq(status, uint8(T.Status.Settled));
+        assertEq(market.positionCount(), 0);
+        assertEq(market.position(alice).size, 0);
+        assertEq(market.position(bob).size, 0);
         (, bool initialized,, uint256 used) = backstop.windows(address(market));
         assertFalse(initialized);
         assertEq(used, 0);
@@ -219,7 +220,7 @@ contract MarketOracleLiquidationTest is MarketFixture {
         _open(alice, 10e18);
         source.set(77e18, uint64(block.number), 0);
         source.setFee(1);
-        source.setCallback(address(market), abi.encodeCall(market.liquidate, (alice, bytes(""))));
+        source.setCallback(address(market), abi.encodeWithSignature("liquidate(address,bytes)", alice, bytes("")));
         vm.deal(carol, 1);
         vm.prank(carol);
         market.liquidate{value: 1}(alice, "update");

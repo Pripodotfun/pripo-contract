@@ -356,7 +356,7 @@ The stored parameter is `sideCapBps = floor(10_000 × φ(λ))`, and `C = floor(s
 
 **Liquidatable** when `health < mmrBps / 10_000`. Defaults: 2.5% for oracle-fed (20x), 15% for oracle-less (3x).
 
-**Liquidation flow** (`liquidate(user, oracleUpdate, adlCandidates)`, anyone may call). After funding settlement: the size to close is 50% if the position is above the partial threshold, else 100%; `pen = ceil(liqPenaltyBps × notional / 10_000)`, capped to available positive margin and taken from margin first and split 40% keeper, 60% market insurance; `X = loss_curve + pen − margin`, the projected shortfall of closing that size on the curve; `C = insurance[market] + the backstop's remaining daily allowance for it`. Three cases, and the call never reverts for lack of coverage:
+**Liquidation flow** (`liquidate(user, oracleUpdate, adlCandidates)`, anyone may call). After funding settlement: the size to close is 50% if the position is above the partial threshold, else 100%; `pen = ceil(liqPenaltyBps × notional / 10_000)`, capped to available positive margin and taken from margin first and split 40% keeper, 60% market insurance; `X = loss_curve + pen − margin`, the projected shortfall of closing that size on the curve; `C = insurance[market] + the backstop's remaining daily allowance for it`. The penalty uses the selected curve quote and is charged once from positive post-funding collateral before PnL. Preflight promotes a normal partial to full when its projected remainder would remain unhealthy; Degraded retains the partial limit unless terminal settlement is required. Three cases; lack of capital alone does not reject terminal settlement:
 
 1. `X ≤ 0`: close on the curve at the actual fill. No bad debt. Remaining margin stays in the position (partial) or returns to the vault (full).
 2. `0 < X ≤ C`: close on the curve; `X` is debited from insurance, then backstop; `BadDebt` is emitted.
@@ -366,7 +366,7 @@ The curve does not move on the ADL path: `longSize` and `shortSize` fall by the 
 
 **Terminal treatment.** Phase 1 never carries an uncovered deficit on a live market. Exhausted ADL triggers forced settlement, uses the remaining protocol capital in the order below, and books any final remainder as a protocol recapitalization obligation on the already `Settled` market. This assigns responsibility for the shortfall to the protocol; it does not by itself add cash to the vault. The `Impaired` live-market claim regime remains Phase 2.
 
-**Bounded book.** Launch markets allow at most 256 nonempty positions. First opens register the account; increases and partial closes retain its slot; full closes and liquidations remove it. At capacity, new accounts cannot open, while existing accounts may increase within the other risk caps or exit. `positionCount()` and `positionAccounts(offset, limit)` expose the book, with a maximum page size of 256. Removal swaps the last entry into the removed slot; read pages at a fixed block. Settlement must use this complete registry to check eligible opposite-side availability, independent of caller-supplied candidate omissions. The position bound is implemented; complete settlement gas measurement remains an integration gate.
+**Bounded book.** Launch markets allow at most 128 nonempty positions. First opens register the account; increases and partial closes retain its slot; full closes and liquidations remove it. At capacity, new accounts cannot open, while existing accounts may increase within the other risk caps or exit. `positionCount()` and `positionAccounts(offset, limit)` expose the book, with a maximum page size of 256. Removal swaps the last entry into the removed slot; read pages at a fixed block. Settlement must use this complete registry to check eligible opposite-side availability, independent of caller-supplied candidate omissions. Local gross-gas regressions include full preflight and execution: approximately 15.6 million for 128-position forced settlement and 11.4 million for a 128-position book pairing 125 winners. The previous 256-position bound exceeded the local 20-million budget. Target Monad fork measurements, including oracle updates, remain a deployment gate; the local budget is not a network limit.
 
 **OI caps** constrain each side in two units: quote notional must not exceed `(insuranceBalance + backstopAllocation) × oiMultiplier`, and base size must not exceed `C = floor(sideCapBps × B0 / 10_000)`. The quote notional of each side uses the current mark, including the post-trade mark when validating an open. Apply both checks independently; do not compare a quote amount directly with a base size. Launch notional caps apply in addition. The factory's depth minimum supports the initial insurance bound at the seed price; later price changes can change which bound binds. Opens that breach either bound revert; closes and liquidations remain available.
 
@@ -421,20 +421,28 @@ p_{adl} = \max\left( \frac{\text{entryCost} - (\text{margin} - \text{pen}) - C}{
 
 The liquidation penalty is taken from the liquidated position's margin first, so the keeper is paid on this path too. The remaining margin and all of `C` up to the floor are consumed: the position's loss at `p_adl` is exactly `(margin − pen) + C_used`. `p_real` is the price a candidate would realize closing alone on the curve at TWAP reserves; the floor exists so that a deep insurance fund never overpays winners beyond what the curve would give them, and coverage above the floor stays in insurance. Each paired winner is closed at `p_adl` for the matched size, its `entryCost` reduced pro-rata, and paid `margin share + PnL(p_adl)` to `free` in the same transaction. Winners give up only the part of their profit that coverage could not absorb.
 
-**Eligibility and order.** A candidate is eligible if it is open, on the opposite side, and has positive PnL at `p_adl`. Candidates rank by ADL score `= (realizable PnL at TWAP reserves / margin) × (entryCost / margin)`, highest first. In Phase 1 the liquidator passes `adlCandidates`; the contract verifies each is eligible and that the list is sorted by score, and matches in that order until the liquidated size is filled. Global top-k is not verified on-chain in Phase 1 (an on-chain ranking structure is Phase 2); the reference keeper takes the top-ranked from the indexer.
+**Eligibility and order.** A candidate is eligible if it is open, on the opposite side, and has positive PnL at `p_adl`. Candidates rank by ADL score `= (realizable PnL at TWAP reserves / margin) × (entryCost / margin)`, highest first. The explicit-list overload verifies unique eligible candidates in nonincreasing score order, then matches in that order. It does not enforce global top-k; the reference keeper selects candidates from the indexer. The two-argument overload enumerates the bounded book and heap-sorts it by score, with numeric address as the tie-breaker. Before any terminal transition, actual complete-book eligibility is checked independently of the caller's list. A list omission cannot force settlement.
+
+**Integer paired execution.** Ranking uses post-funding collateral; nonpositive collateral receives the maximum score. With positive collateral, the WAD-scaled score is `floor(realizablePnl × entryCost × WAD / collateral²)`. Candidates must have positive close-alone TWAP PnL, positive paired PnL and nonnegative equity in the closed slice. Entry-cost shares round down; positive collateral shares round down, negative shares round up in absolute value, and a final close takes all residuals. The target long's required price rounds up and the target short's rounds down. The candidate price is bounded by its full-position close-alone TWAP average. A winning long's quote rounds down and a winning short's rounds up; both legs use the identical quote. Coverage is computed for the aggregate selected target portion and cannot exceed the live budget. These rules preserve reserves, exact clearing and collateral without spending the unclosed portion's margin.
+
+**ADL liveness deployment gate.** Full eligible size is necessary but integer fragment allocation can still fail: a tiny final fragment may have zero paired profit. Current execution reverts `IncompleteAdlCandidates` if an allocation fails while enough full eligible opposite size remains. It never uses this condition as evidence to force whole-market settlement. A regression checks this rollback. The required no-uncovered-live-position outcome is not established for this boundary; quantity allocation must be resolved before deployment. This is an implementation gap, not an exemption from the liquidation requirement.
 
 **Decision 2: exhausted coverage triggers terminal settlement and protocol recapitalization.** In Phase 1 an uncovered live position does not remain open after a valid forced settlement. All positions are valued at the same frozen 300-block mark TWAP, funding is settled once, and the market ends in `Settled`. User balances are not debited to repay the protocol's terminal obligation. The protocol must repay any residual deficit from future protocol income and recapitalization. Full cash backing remains a separate deployment requirement, subject to the limitation below.
 
 **Forced-settlement funding order.** Compute one settlement budget for this market. Pooled token custody does not make unrelated users' free/locked balances, referral entitlements or another market's local insurance available to this budget. Credit any remaining market insurance to it and account for coverage already consumed exactly once. The remaining funding requirement follows this order:
 
 1. **Losing positions' collateral.** Collect each losing position's loss up to its available positive margin. Signed collateral records any pre-existing funding debt; clearing that debt does not manufacture a second collection of the same collateral.
-2. **Open profits.** Haircut open positive profits pro-rata, capped at 100% of those profits. Phase 2 also includes unpaid profit claims under the same allocation. This does not claw back existing `free` balances or withdrawn funds, and does not haircut an unaffected position's principal. Calculate the allocation before any settlement payout, with deterministic rounding and explicit dust entries.
+2. **Open profits.** Haircut open positive profits pro-rata, capped at 100% of those profits. Phase 2 also includes unpaid profit claims under the same allocation. This does not claw back existing `free` balances or withdrawn funds, and does not haircut an unaffected position's principal. Eligible profit is `min(positive ending equity, positive(trading PnL − unsettled funding))`, including pending funding receipts; already-realized locked collateral is principal for this calculation. Capture the complete book before any payout and allocate with cumulative floors: account haircut is `floor(totalHaircut × cumulativeProfit / totalProfit)` minus the preceding cumulative allocation. This sums exactly to the required amount, with less than one quote wei deviation per account from exact pro-rata. Candidate-list order cannot select the allocation order.
 3. **Unclaimed fees from this market.** Consume remaining `creatorOwed[market]` and `protocolOwed[market]`, in that order, up to the gap. These fees are subordinated protocol capital at risk in their originating market. Paid-out fees, referral balances and another market's creator fees are unavailable to this step.
 4. **Global backstop without the live daily cap.** Draw up to the remaining global backstop balance. The per-market daily cap still applies to live-market debt coverage and ADL. Only the authorized terminal-settlement path waives it, and that transaction must end with this market `Settled`. This is not an unlimited balance or an additional allocation on top of the same backstop funds.
 5. **Protocol reserve.** Consume `protocolReserve` up to the remaining gap. Terminal coverage may take it below its target floor, including to zero; subsequent protocol income replenishes it before treasury distributions, after terminal deficits have been repaid.
 6. **Residual protocol deficit on a settled market.** Increase `deficit[market]` by exactly the still-unfunded amount and `totalDeficit` by the same amount. This is the protocol's recapitalization obligation; it does not reduce users' nominal balances or credit new tokens. Phase 1 requires `deficit > 0 ⇒ Settled`. Any positive `totalDeficit` pauses opens across all markets. Every protocol fee flow across all markets is allocated to repayment before a treasury sweep or reserve refill. The Guardian arranges and confirms a cash top-up within 24 hours under the incident runbook; this is an operational obligation, not on-chain cash available in advance.
 
 Emit `ForcedSettlement`, `SettlementHaircut`, the per-source coverage amounts, and `DeficitChanged` for any remainder or repayment. No source can be consumed twice. Forced settlement never returns this market to `Active`, including after its deficit is repaid.
+
+**Terminal valuation and clearing.** After simulating all pending funding and common-price PnL, let `D` be total negative ending collateral, `C` post-valuation signed clearing, and `I` remaining local insurance plus final funding surplus. The pre-haircut gap is `max(D − C − I, 0)`. Haircut `min(gap, eligibleProfits)` before drawing later capital. Long valuation quotes round down and short quotes round up. Settlement removes all positions and funding weights, sweeps the final surplus, and freezes funding permanently. The vault zeros isolated debts and nets signed clearing: a positive residue beyond those debts becomes insurance; negative clearing increases the funding requirement. Named capital sources or terminal deficit offset the residual. Only then are positive entitlements released to free balances. Resetting virtual reserves at the frozen price has no independent cash effect; final clearing, funding pool, entry cost and both side totals are zero.
+
+`settlementQuote()` returns this hypothetical complete-book calculation before a future keeper penalty or oracle update; it does not prove liquidation or settlement eligibility. `settlementInfo()` retains the terminal price, exact haircut and eligible profits. Sources 1/2 of `TerminalCoverage` are emitted at the market address; other capital-source events are emitted at the vault. `TerminalClearingNetted` exposes clearing and isolated debt before netting. Terminal state rejects further funding accrual, price refresh, trading, reseeding and resume, including after recapitalization.
 
 **Protocol reserve and sweeps.** The target, in quote WAD, is:
 
@@ -452,7 +460,7 @@ Protocol fee allocation runs **terminal deficit repayment → reserve refill →
 
 **Balanced deficit entries.** Recording an uncovered negative locked balance `−D` as a terminal obligation sets that isolated balance to zero and increases `deficit` by `D`: `+D` to locked and `−D` through the deficit term cancel. Coverage from protocol fees instead debits the named owed account and credits the settlement account; reserve coverage debits `protocolReserve` and credits that account. Repaying `R` from accrued protocol fees debits `protocolOwed` by `R` and decreases `deficit` by `R`; there is no second cash credit. A direct external recapitalization increases cash and decreases `deficit` by the same amount; excess repays other terminal deficits in priority order before entering reserve. A contribution from an existing free balance debits that balance and decreases deficit; it is not counted as a new token deposit. Terminal PnL, reserve reset and haircuts also need explicit counter-entries that preserve curve conservation; recording a deficit cannot be used to hide an unexplained clearing mismatch.
 
-**Terminal accounting regression vectors.** Values in this table are ordinary USDC for readability; implementation scales them to quote WAD. These are arithmetic vectors, not a claim that terminal handling is already implemented.
+**Terminal accounting regression vectors.** Values in this table are ordinary USDC for readability; implementation scales them to quote WAD. These specify arithmetic outcomes; implementation coverage and measured test results are recorded in `docs/validation.md`.
 
 | Case | Starting state | Required result |
 | --- | --- | --- |
@@ -702,6 +710,17 @@ Freeze these first; the SDK, MCP server, indexer and front end are all generated
 
 ```solidity
 interface IMarket {
+    struct SettlementQuote {
+        uint256 price;
+        uint256 positions;
+        uint256 losingCollateral;
+        uint256 profits;
+        uint256 debt;
+        int256 clearing;
+        uint256 fundingSurplus;
+        uint256 haircut;
+        uint256 capitalRequired; // after local insurance/haircut, before local fees/backstop/reserve
+    }
     // --- trading ---
     function open(int256 size, uint256 limitPrice, bytes calldata oracleUpdate) external payable;
     function openFor(address user, int256 size, uint256 limitPrice, bytes calldata oracleUpdate) external payable;
@@ -709,6 +728,7 @@ interface IMarket {
     function closeFor(address user, uint256 sizeFraction, uint256 limitPrice, bytes calldata oracleUpdate) external payable;
     function addMargin(uint256 amount) external;
     function removeMargin(uint256 amount) external;
+    function liquidate(address user, bytes calldata oracleUpdate) external payable; // automatic complete-book ranking
     function liquidate(address user, bytes calldata oracleUpdate, address[] calldata adlCandidates) external payable; // candidates: opposite side, sorted by ADL score; verified on-chain
     function poke() external;
     function sweepFundingSurplus() external; // reserve pending funding before moving surplus to market insurance
@@ -726,6 +746,10 @@ interface IMarket {
     function fundingRatePerBlock() external view returns (int256);
     function openInterest() external view returns (uint256 longNotional, uint256 shortNotional, uint256 oiCap);
     function position(address user) external view returns (Position memory);
+    function positionCount() external view returns (uint256);
+    function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory); // limit <= 256; book <= 128
+    function settlementQuote() external view returns (SettlementQuote memory); // hypothetical, before keeper penalty/update
+    function settlementInfo() external view returns (uint256 price, uint256 haircut, uint256 profits);
     function config() external view returns (MarketConfig memory);
     function status() external view returns (uint8, uint64 since);       // Active, Degraded, Paused, Settling, Settled; Impaired reserved for Phase 2
     function remark() external;                                            // Degraded → Active on a fresh price; anyone may call
@@ -768,12 +792,13 @@ event Liquidated(address indexed market, address indexed user, address indexed l
 event FundingAccrued(address indexed market, int256 ratePerBlock, int256 longIndex, int256 shortIndex, uint64 blockNumber);
 event FundingSurplusSwept(address indexed market, uint256 amount);
 event StatusChanged(address indexed market, uint8 from, uint8 to, uint64 blockNumber);
-event BadDebt(address indexed market, address indexed user, uint256 amount, uint8 coveredBy); // 0 insurance, 1 backstop, 2 ADL price improvement, 3 terminal deficit
+event BadDebt(address indexed market, address indexed user, uint256 amount, uint8 coveredBy); // implemented coverage: 0 insurance, 1 capped backstop; terminal sources use TerminalCoverage
 event TerminalCoverage(address indexed market, uint8 source, uint256 amount); // 0 insurance, 1 loss collateral, 2 profit haircut, 3 creator fees, 4 protocol fees, 5 backstop, 6 reserve, 7 deficit
 event DeficitChanged(address indexed market, uint256 deficit, int256 delta, uint8 reason); // 0 terminal booking, 1 protocol-fee repayment, 2 recapitalization
 event ProtocolReserveChanged(uint256 balance, int256 delta, uint8 reason); // 0 funded contribution, 1 fee refill, 2 terminal coverage
-event ForcedSettlement(address indexed market, address indexed liquidator, uint256 price);
-event SettlementHaircut(address indexed market, uint16 bps, uint256 amount); // bps is a summary; exact amount governs accounting
+event ForcedSettlement(address indexed market, address indexed liquidatedUser, uint256 price);
+event SettlementHaircut(address indexed market, uint256 profits, uint256 haircut); // exact WAD amounts; MarketSettled carries summary bps
+event TerminalClearingNetted(address indexed market, int256 clearing, uint256 isolatedDebt);
 event AutoDeleveraged(address indexed market, address indexed user, int256 sizeClosed, uint256 price);
 event FeesAccrued(address indexed market, uint256 protocol, uint256 creator, uint256 insurance);
 event CreatorFeesClaimed(address indexed market, address indexed creator, uint256 amount);

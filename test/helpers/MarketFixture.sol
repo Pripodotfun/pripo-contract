@@ -98,13 +98,17 @@ abstract contract MarketFixture is Test {
     }
 
     function _newMarket(bool externalIndex) internal returns (Market deployed) {
-        deployed = Market(Clones.clone(address(new Market())));
+        deployed = Market(Clones.clone(_marketImplementation()));
         vault.registerMarket(address(deployed), creator);
         vm.prank(creator);
         vault.fundInsurance(address(deployed), externalIndex ? 5_000e18 : 2_000e18);
         deployed.initialize(
             IMarginVault(address(vault)), bytes32("TEST"), externalIndex, _config(externalIndex), 100e18, 2_000_000e18
         );
+    }
+
+    function _marketImplementation() internal virtual returns (address) {
+        return address(new Market());
     }
 
     function _config(bool externalIndex) internal view virtual returns (T.MarketConfig memory c) {
@@ -152,7 +156,7 @@ abstract contract MarketFixture is Test {
                 + vault.backstopBalance() + vault.protocolReserve()
         );
         sum += vault.locked(alice, address(market)) + vault.locked(bob, address(market))
-        + vault.locked(carol, address(market));
+        + vault.locked(carol, address(market)) + vault.locked(creator, address(market));
         sum += int256(l.insurance + l.protocolOwed + l.creatorOwed + l.skewPool + vault.referralOwed(creator));
         sum += l.clearing + l.fundingPool;
         sum -= int256(vault.totalDeficit());

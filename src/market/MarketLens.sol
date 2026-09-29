@@ -14,6 +14,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 /// @notice Linked quote and risk calculations using the same state and arithmetic as execution.
 library MarketLens {
     function quoteOpen(S.Data storage s, address user, int256 size) public view returns (S.OpenQuote memory q) {
+        if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
         if (user == address(0) || size == 0 || size == type(int256).min) revert E.InvalidSize();
         T.Position memory p = s._positions[user];
         if (p.size != 0 && (p.size > 0) != (size > 0)) revert E.PositionExists();

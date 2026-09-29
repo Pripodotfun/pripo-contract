@@ -25,6 +25,9 @@ library MarketState {
         uint64 _indexBlock;
         address[] _accounts;
         mapping(address => uint256) _accountIndex;
+        uint256 settlementPrice;
+        uint256 settlementHaircut;
+        uint256 settlementProfits;
     }
 
     struct OpenQuote {

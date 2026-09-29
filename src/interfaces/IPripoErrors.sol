@@ -40,4 +40,6 @@ interface IPripoErrors {
     error InvalidTerminalState();
     error AllocationLimit();
     error PositionLimit(uint256 maximum);
+    error InvalidAdlCandidates();
+    error IncompleteAdlCandidates();
 }

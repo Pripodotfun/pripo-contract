@@ -4,11 +4,11 @@ Solidity foundation for permissionless perpetual markets with virtual pricing an
 
 The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, liquidation, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
 
-This is the reserve and terminal-capital custody milestone. The vault now tracks prefunded reserves, market admission budgets, terminal deficits, ordered fee repayment, and treasury/opening gates. Liquidations and voluntary full closes still cover debt from market insurance and the capped global backstop, then revert on uncovered debt. Paired ADL and the whole-book settlement engine must be integrated with the new custody primitives before those paths can finish terminal settlement. Factory/adapters, exact remaining risk views, resolver settlement, and the cash-backing deployment gate also remain.
+This milestone integrates paired ADL and atomic whole-market forced settlement with the reserve, terminal deficit and fee-repayment machinery. Markets have a bounded book of 128 positions; terminal losses use profit haircuts and the specified protocol-capital waterfall. Remaining launch gates include integer-fragment ADL liveness, enforceable cash backing under funding lag, and Monad fork gas validation. Factory/adapters, exact remaining risk views and resolver settlement also remain.
 
 ## Development
 
-Requirements: Foundry, Python 3, and Git. Solidity **0.8.30** is pinned in `foundry.toml`; the local build uses the IR pipeline and targets **Cancun**. `MarketTrading`, `MarketLiquidation`, `MarketLens`, `MarketAccounting`, `FundingMath` and `MarkTwap` are linked libraries. Network-specific deployment settings will be verified with the Monad fork tests before deployment.
+Requirements: Foundry, Python 3, and Git. Solidity **0.8.30** is pinned in `foundry.toml`; the local build uses the IR pipeline and targets **Cancun**. `MarketTrading`, `MarketLiquidation`, `MarketAdl`, `MarketSettlement`, `MarketLens`, `MarketAccounting`, `FundingMath` and `MarkTwap` are linked libraries. Network-specific deployment settings will be verified with the Monad fork tests before deployment.
 
 ```sh
 make deps       # install pinned dependency releases
@@ -41,7 +41,7 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 
 ## Current verification scope
 
-The funding harness isolates numerical accounting. The market invariant uses an ERC-1967 vault proxy, an EIP-1167 market clone, and six-decimal mock USDC with actual ERC-20 transfers. It checks custody equality, curve conservation, position/entry-cost/weighted-index totals, initial margin after opens, pending funding, sweeps, and a complete unwind. A third suite checks capital allocation across eight terminal-market stubs: signed cash equality, terminal-only deficits, aggregate admission budgets, repayment ordering and treasury gates. All three run 10,000 sequences of depth 50 under the CI profile. The stubs model the trusted settlement boundary; they do not validate whole-book pricing or haircuts.
+The funding harness isolates numerical accounting. The market invariant uses an ERC-1967 vault proxy, an EIP-1167 market clone, and six-decimal mock USDC with actual ERC-20 transfers. It checks custody equality, curve conservation, position/entry-cost/weighted-index totals, initial margin after opens, pending funding, sweeps, and a complete unwind. A third suite checks capital allocation across eight terminal-market stubs: signed cash equality, terminal-only deficits, aggregate admission budgets, repayment ordering and treasury gates. A fourth suite exercises actual liquidation, paired ADL and terminal transitions under funding lag. All four run 10,000 sequences of depth 50 under the CI profile. Integration tests cover profit haircuts, signed clearing netting, winners withdrawing before debtors, permanent terminal state and full-book gas. Deficit-inclusive accounting equality does not establish full cash backing.
 
 `marketAbi` and `marginVaultAbi` describe the implemented contracts. `plannedMarketAbi` describes the remaining Phase 1 surface and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts. `@pripo/sdk` currently exports ABI constants; transaction preparation and signing are later work.
 

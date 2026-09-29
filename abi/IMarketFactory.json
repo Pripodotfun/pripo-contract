@@ -198,6 +198,11 @@
   },
   {
     "type": "error",
+    "name": "IncompleteAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -231,6 +236,11 @@
   {
     "type": "error",
     "name": "InvalidAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlCandidates",
     "inputs": []
   },
   {

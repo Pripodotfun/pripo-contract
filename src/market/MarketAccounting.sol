@@ -49,6 +49,7 @@ library MarketAccounting {
 
     function previewFunding(S.Data storage s) public view returns (T.FundingState memory f) {
         f = s._funding;
+        if (s._config.status >= T.Status.Settling) return f;
         uint64 current = currentBlock();
         uint64 end = current;
         if (s.externalIndex) {
@@ -63,6 +64,7 @@ library MarketAccounting {
     }
 
     function touch(S.Data storage s) public {
+        if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
         int256 rate = isDegraded(s) ? int256(0) : cachedRate(s);
         s._funding = previewFunding(s);
         // The equality discriminates an enum; oracle age uses an ordered comparison.
