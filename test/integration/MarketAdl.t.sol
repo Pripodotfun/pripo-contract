@@ -69,7 +69,7 @@ contract MarketAdlTest is MarketFixture {
         _assertCash();
     }
 
-    function testRoundedRemainderCannotTriggerWholeBookSettlement() public {
+    function testRoundedRemainderRebalancesAtPositionLimit() public {
         _open(alice, 10e18);
         _open(carol, 10e18);
         for (uint256 i; i < 126; ++i) {
@@ -86,15 +86,65 @@ contract MarketAdlTest is MarketFixture {
         int256 desired = -int256(vault.ledger(address(market)).insurance) + 0.5e18;
         vm.prank(alice);
         market.addMargin(uint256(desired - current));
-        // Sixty-three equal matches leave one base wei, whose rounded quote cannot give positive profit.
-        // More than enough full eligible size remains: this must not become a terminal trigger.
-        bytes32 beforeState = _state();
-        vm.expectRevert(E.IncompleteAdlCandidates.selector);
+        // Sixty-three equal matches leave one base wei. Resize the boundary pair so both slices earn profit.
+        T.AmmState memory beforeAmm = market.ammState();
+        uint256 reserve = vault.protocolReserve();
+        uint256 gasBefore = gasleft();
         market.liquidate(alice, "");
-        assertEq(_state(), beforeState);
-        assertEq(market.positionCount(), 128);
+        emit log_named_uint("128-position book with rounded boundary redistribution gas", gasBefore - gasleft());
+        assertLt(gasBefore - gasleft(), 20_000_000);
+        assertEq(market.position(alice).size, 0);
+        assertEq(market.positionCount(), 65);
+        assertEq(market.ammState().baseReserve, beforeAmm.baseReserve);
+        assertEq(market.ammState().quoteReserve, beforeAmm.quoteReserve);
+        assertEq(vault.protocolReserve(), reserve);
+        assertEq(vault.totalDeficit(), 0);
         (uint8 status,) = market.status();
         assertEq(status, uint8(T.Status.Active));
+        T.Ledger memory l = vault.ledger(address(market));
+        int256 cash = int256(
+            vault.freeBalance(alice) + vault.freeBalance(bob) + vault.freeBalance(carol) + vault.freeBalance(creator)
+                + reserve + l.insurance + l.creatorOwed + l.protocolOwed
+        ) + vault.locked(carol, address(market)) + l.clearing + l.fundingPool;
+        for (uint256 i; i < 126; ++i) {
+            address winner = address(uint160(0x30000 + i));
+            cash += int256(vault.freeBalance(winner)) + vault.locked(winner, address(market));
+        }
+        assertEq(cash, int256(usdc.balanceOf(address(vault)) * 1e12));
+    }
+
+    function testExplicitRoundedBoundaryRebalancesLongTarget() public {
+        _roundedPair(false);
+    }
+
+    function testExplicitRoundedBoundaryRebalancesShortTarget() public {
+        _roundedPair(true);
+    }
+
+    function _roundedPair(bool short) internal {
+        _prepareSplit(short, 10e18 - 1);
+        address[] memory candidates = new address[](2);
+        candidates[0] = bob;
+        candidates[1] = creator;
+        uint256 beforeBob = vault.freeBalance(bob);
+        uint256 beforeCreator = vault.freeBalance(creator);
+        int256 sizeBob = market.position(bob).size;
+        int256 sizeCreator = market.position(creator).size;
+        T.AmmState memory beforeAmm = market.ammState();
+        market.liquidate(alice, "", candidates);
+        assertEq(market.position(alice).size, 0);
+        // Both boundary winners remain open; the final winner receives more than the failed one-base-wei slice.
+        assertTrue(market.position(bob).size != 0);
+        int256 bobClosed = sizeBob - market.position(bob).size;
+        int256 creatorClosed = sizeCreator - market.position(creator).size;
+        assertEq(bobClosed + creatorClosed, short ? int256(10e18) : -int256(10e18));
+        assertGt(short ? creatorClosed : -creatorClosed, 1);
+        assertGt(vault.freeBalance(bob), beforeBob);
+        assertGt(vault.freeBalance(creator), beforeCreator);
+        assertEq(market.ammState().baseReserve, beforeAmm.baseReserve);
+        assertEq(market.ammState().quoteReserve, beforeAmm.quoteReserve);
+        assertEq(vault.totalDeficit(), 0);
+        _assertCash();
     }
 
     function _paired(bool short, bool explicit) internal {

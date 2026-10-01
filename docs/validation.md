@@ -1,6 +1,6 @@
 # Contract validation
 
-The September 29 paired-ADL and forced-settlement stage passes **123 tests** under the full CI profile: nine fuzz properties at 10,000 runs and four invariant suites at 10,000 runs/depth 50, totaling **2,000,000 handler calls with zero reverts**. Validation uses a proxy vault, immutable market clones and six-decimal mock USDC with actual ERC-20 transfers. It covers real paired closes, whole-book funding/PnL/haircuts, signed clearing netting, terminal capital and deficit accounting. The integer-fragment ADL liveness boundary and funding-lag cash-backing proof remain deployment gates; a passing accounting invariant does not resolve either.
+The October 1 ADL redistribution stage passes **133 tests** under the full CI profile: ten fuzz properties at 10,000 runs and four invariant suites at 10,000 runs/depth 50, totaling **2,000,000 handler calls with zero reverts**. The reproduced one-base-wei ADL allocation failure now completes through paired closes. Validation uses a proxy vault, immutable market clones and six-decimal mock USDC with actual ERC-20 transfers. It covers whole-book funding/PnL/haircuts, signed clearing, terminal capital and deficit accounting as well as the new allocation logic. Provably indivisible dust, general allocation liveness and funding-lag cash backing remain deployment gates.
 
 ## Reproduce
 
@@ -24,7 +24,7 @@ On this macOS installation, sandboxed `forge test` crashes in the system proxy s
 | Slither | 0.11.5 | 51 contracts analyzed, 101 detectors; one low timestamp finding, one informational assembly finding and four informational complexity findings after scoped annotations |
 | Aderyn | 0.1.9 | 27 project source files, 63 detectors; four high categories and five low categories, reviewed below |
 
-The size gate passes: Market is 23,442 bytes, MarketTrading 6,763 bytes, MarketLiquidation 6,483 bytes, MarketAdl 12,353 bytes, MarketSettlement 7,107 bytes, MarketAccounting 9,013 bytes, MarketLens 7,810 bytes, MarginVault 17,489 bytes and InsuranceBackstop 2,793 bytes with the pinned compiler and settings. The implementation and every linked module fit within EIP-170's 24,576-byte limit; Market has 1,134 bytes of remaining headroom. ABI freshness checks and a TypeScript import/method-boundary check pass. Runtime ABIs include both liquidation overloads, settlement preflight/info and the vault's coverage/terminal custody methods. Exact remaining risk views and resolver integration remain future work.
+The size gate passes: Market is 23,442 bytes, MarketTrading 6,763 bytes, MarketLiquidation 6,483 bytes, MarketAdl 13,163 bytes, MarketSettlement 7,107 bytes, MarketAccounting 9,013 bytes, MarketLens 7,810 bytes, MarginVault 17,489 bytes and InsuranceBackstop 2,793 bytes with the pinned compiler and settings. The implementation and every linked module fit within EIP-170's 24,576-byte limit; Market has 1,134 bytes of remaining headroom. ABI freshness checks and a TypeScript import/method-boundary check pass. Runtime ABIs include both liquidation overloads, settlement preflight/info and the vault's coverage/terminal custody methods. Exact remaining risk views and resolver integration remain future work.
 
 The Aderyn command explicitly sets `FOUNDRY_EVM_VERSION=cancun` to match the project. This installed version otherwise fails while parsing a `prague` default. Dependency/test path filters use `lib/` and `test/`, including the slash, so they do not accidentally exclude `src/libraries/`.
 
@@ -94,13 +94,13 @@ The original book-stage tests covered the full 256-position limit and rejection 
 
 ## Paired ADL and forced-settlement stage
 
-Six ADL integration tests cover long and short targets, unchanged virtual reserves, exact paired clearing, partial winner collateral release, automatic and explicit candidate selection, multiple ordered candidates, invalid/duplicate/wrong-side rejection, truncated-list rollback and the integer-fragment liveness boundary. The boundary fixture has 128 positions and enough full eligible opposite size, but greedy allocation leaves a one-base-wei remainder without positive paired PnL. It must revert atomically and preserve the live book. This regression demonstrates the remaining limitation; it is not evidence of complete liquidation liveness.
+At the original settlement stage, six ADL integration tests covered long and short targets, unchanged virtual reserves, exact paired clearing, partial winner collateral release, automatic and explicit candidate selection, multiple ordered candidates, invalid/duplicate/wrong-side rejection, truncated-list rollback and the integer-fragment liveness boundary. The 128-position boundary fixture formerly reverted after greedy allocation left one base wei. The redistribution stage below changes that regression to require successful exact pairing.
 
 Six settlement integration tests cover pending funding profits and exact pro-rata haircuts, already-withdrawn winners and a real terminal deficit, cash recapitalization without reopening, long/short and receiver-departure fuzzing, both signs of terminal clearing, and the 300-block terminal TWAP during a degraded 600-block health regime with a broken adapter. Two signed-clearing tests use a guarded test-only settlement entry point to value healthy unmatched exposure; production settlement remains reachable only through liquidation's complete-book eligibility check. Every actual terminal path checks zero open sizes, positions, clearing and funding pool. The old uncovered-liquidation rollback regression now verifies complete terminal handling; voluntary full-close rollback remains intentional.
 
 The new four-actor liquidation invariant starts from a real funding-lag fixture and randomizes liquidation, block advances, margin additions, partial closes, withdrawals, actual reserve contributions and fee allocation. It checks cash/curve conservation, position and funding-weight totals, funding surplus and terminal-only deficit after every call. It passed 500,000 calls with zero reverts. Withdrawal amounts are bounded by actual vault cash: this suite deliberately checks balanced transitions and does not prove all nominal entitlements can be withdrawn simultaneously. Base-wei allocation is covered by the explicit regression above, not hidden by catching handler reverts.
 
-### Gas regression scope
+### Gas regression scope at the settlement stage
 
 | Local Cancun scenario | Gross gas for liquidation | Gate |
 | --- | ---: | ---: |
@@ -109,4 +109,24 @@ The new four-actor liquidation invariant starts from a real funding-lag fixture 
 
 Measurements use `gasleft()` around liquidation and include execution before storage refunds. They exclude fixture creation and deployment. The earlier 256-position terminal case used 34,569,639 gross gas and failed the local budget, prompting the enforced 128-position cap. These measured fixtures provide regression bounds, not an exhaustive proof across every storage/oracle configuration. Validate target-chain execution, worst-case fresh update costs and the full supported state domain on a Monad fork before deployment.
 
-The final full CI campaign completed all 27 suites in about 292 seconds. Formatting, size, production-lint and ABI checks pass. Slither exits successfully at the medium threshold, and Aderyn's reported categories are triaged above. The concrete implementation still needs integer-fragment ADL liveness, enforceable funding-lag cash backing and target-chain gas validation before launch.
+That settlement-stage CI campaign completed all 27 suites in about 292 seconds. Formatting, size, production-lint and ABI checks pass. Slither exits successfully at the medium threshold, and Aderyn's reported categories are triaged above. That stage left integer-fragment ADL liveness, funding-lag cash backing and target-chain gas validation open. The next stage repairs the reproduced greedy failure while retaining the remaining policy and proof gates.
+
+## ADL boundary redistribution stage
+
+The original 128-position, one-base-wei remainder now closes successfully through paired ADL. New integration cases cover explicit lists for both long and short targets, preserving aggregate matched size, score order, reserves and signed cash equality. The earlier winner retains a small open slice instead of being fully closed; the final winner receives a larger profitable slice. Unused protocol reserve and zero deficit are checked in the full-book regression.
+
+Eight rounding/planner tests cover a sufficient executable-slice bound, negative collateral, exact valid slices below that bound, zero-equity matches, whole-match replacement with order preservation, rejection of payouts over remaining debt, unchanged allocations when redistribution fails, and bounded unsuccessful search. The bound property runs 10,000 inputs and asserts strictly positive realized profit, nonnegative slice equity and compatibility with the vault release guard. Unit planner fixtures use synthetic candidates; the full-book and two-sided regressions use actual market/vault accounting.
+
+Redistribution is limited to **512 pair checks per plan**, including repeated unsuccessful candidates. Candidate indices are carried in memory, and unprofitable slices are rejected before allocating match data. An explicit list and its separate automatic completeness check each receive one budget. Consuming that work budget never counts as proof of book exhaustion. The new test limits the search alone to three million gross gas, separately from market enumeration and execution.
+
+| New local scenario | Gross gas | Gate |
+| --- | ---: | ---: |
+| 128-position book with repaired rounded boundary, actual liquidation | 7,763,515 | < 20,000,000 |
+| 512 pair checks followed by remaining candidates, zero-profit fragments | 1,213,394 | < 3,000,000 |
+| Same bounded search, positive profit but insufficient slice equity | 1,785,822 | < 3,000,000 |
+
+The uncapped candidate-pair search initially exceeded its planning budget; the fixed work limit and memory-only search address that measured cost. These unit gas measurements do not constitute a target-chain maximum for every liquidation or oracle update.
+
+**Remaining scope:** the reproduced greedy defect is fixed, but bounded redistribution is not an exhaustive integer-partition solver. Some books have no exact strictly profitable partition at all (for example, two 100-base-wei shorts with entry proceeds 10,001 quote wei and a paired price of 100 WAD cannot fill a target of 101 while both profits remain positive). The policy for provably indivisible dust is unresolved. Existing guards continue to reject an incomplete allocation with enough full eligible size; they do not allow a caller to force settlement. General ADL liveness, funding-lag cash backing and Monad fork validation remain launch gates.
+
+The final redistribution CI campaign completed **28 suites / 133 tests** in about **299 seconds**, including all four 500,000-call invariant campaigns without reverts. Formatting, size, production lint, ABI freshness, Slither and Aderyn gates pass. There are no runtime ABI changes in this stage. Slither retains its six previously triaged results; Aderyn retains four high and five low categories with the same triage. The bound and release checks add no storage fields, token transfers, external callbacks or new coverage sources.

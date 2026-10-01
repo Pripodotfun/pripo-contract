@@ -14,6 +14,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @notice Paired closes at a shared quote per match. The curve is never traded on this path.
 library MarketAdl {
+    uint256 internal constant MAX_REBALANCE_CHECKS = 512;
+
     struct Candidate {
         address user;
         T.Position position;
@@ -29,6 +31,7 @@ library MarketAdl {
         uint256 entry;
         uint256 quote;
         int256 margin;
+        uint256 candidateIndex;
     }
 
     struct Plan {
@@ -39,7 +42,7 @@ library MarketAdl {
         uint256 entry;
         int256 margin;
         uint256 coverage;
-        int256 closedSize;
+        uint256 rebalanceChecks;
     }
 
     /// @dev Returns true when the whole market was settled, false after a successful paired close.
@@ -187,36 +190,37 @@ library MarketAdl {
         uint256 needed = F.abs(closedSize);
         p.entry = Curve.closedEntryCost(loser.entryCost, needed, F.abs(loser.size));
         p.margin = marginShare(s.vault.locked(user, address(this)), needed, F.abs(loser.size));
-        p.closedSize = closedSize;
         p.matches = new Match[](candidates.length);
         uint256 length = automatic ? candidates.length : supplied.length;
         uint256 previous = type(uint256).max;
         uint256 seen = 0;
         for (uint256 i; i < length; ++i) {
             Candidate memory c = Candidate(address(0), T.Position(0, 0, 0, 0), 0, 0, 0, false);
+            uint256 candidateIndex;
             if (automatic) {
-                c = candidates[order[candidates.length - 1 - i]];
+                candidateIndex = order[candidates.length - 1 - i];
+                c = candidates[candidateIndex];
             } else {
                 uint256 index = s._accountIndex[supplied[i]];
                 if (index == 0 || seen & (uint256(1) << (index - 1)) != 0) revert E.InvalidAdlCandidates();
                 seen |= uint256(1) << (index - 1);
-                c = candidates[index - 1];
+                candidateIndex = index - 1;
+                c = candidates[candidateIndex];
                 if (c.user != supplied[i] || !c.eligible || c.score > previous) revert E.InvalidAdlCandidates();
                 previous = c.score;
             }
             if (!c.eligible || p.matched == needed) continue;
             uint256 amount = Math.min(needed - p.matched, F.abs(c.position.size));
-            uint256 entry = Curve.closedEntryCost(c.position.entryCost, amount, F.abs(c.position.size));
-            int256 margin = marginShare(c.margin, amount, F.abs(c.position.size));
-            uint256 value =
-                Math.mulDiv(amount, c.price, F.WAD, c.position.size > 0 ? Math.Rounding.Floor : Math.Rounding.Ceil);
-            int256 pnl = c.position.size > 0 ? F.toInt(value) - F.toInt(entry) : F.toInt(entry) - F.toInt(value);
-            // A rounded fragment must still be profitable and fund its own allocated collateral debt.
-            if (pnl <= 0 || margin + pnl < 0) continue;
-            p.matches[p.count++] =
-                Match(c.user, c.position.size > 0 ? F.toInt(amount) : -F.toInt(amount), entry, value, margin);
+            (Match memory m, bool valid) = _slice(c, amount);
+            if (!valid) {
+                // Earlier matches are full positions. Redistribute a boundary slice before giving up on it.
+                if (_rebalance(p, candidates, candidateIndex, amount)) p.matched = needed;
+                continue;
+            }
+            m.candidateIndex = candidateIndex;
+            p.matches[p.count++] = m;
             p.matched += amount;
-            p.quote += value;
+            p.quote += m.quote;
         }
         if (p.matched == needed) {
             int256 pnl = closedSize > 0 ? F.toInt(p.quote) - F.toInt(p.entry) : F.toInt(p.entry) - F.toInt(p.quote);
@@ -224,6 +228,102 @@ library MarketAdl {
             p.coverage = equity < 0 ? F.abs(equity) : 0;
             if (p.coverage > capacity) revert E.AccountingInvariant();
         }
+    }
+
+    /// @dev A failed greedy slice is necessarily the final partial: full candidates are already eligible.
+    /// Shift only as much size as required from one earlier full match, preserving the supplied score order.
+    /// The conservative minimum guarantees positive profit and nonnegative equity at every size up to full.
+    /// At most 512 pair checks per plan; reaching that budget is never proof of book exhaustion.
+    /// No external calls or storage writes occur here.
+    function _rebalance(Plan memory p, Candidate[] memory candidates, uint256 nextIndex, uint256 remainder)
+        internal
+        pure
+        returns (bool)
+    {
+        Candidate memory next = candidates[nextIndex];
+        uint256 nextMinimum = minimumSlice(next);
+        uint256 nextSize = F.abs(next.position.size);
+        for (uint256 i = p.count; i != 0; --i) {
+            if (p.rebalanceChecks == MAX_REBALANCE_CHECKS) return false;
+            ++p.rebalanceChecks;
+            Match memory previous = p.matches[i - 1];
+            Candidate memory prior = candidates[previous.candidateIndex];
+            uint256 combined = F.abs(previous.size) + remainder;
+            uint256 nextAmount = Math.max(remainder, nextMinimum);
+            if (nextAmount <= nextSize && nextAmount < combined) {
+                // The earlier slice may be valid below its sufficient bound, including with zero full equity.
+                uint256 priorAmount = combined - nextAmount;
+                (uint256 entry, uint256 quote, int256 margin, bool priorValid) = _sliceValues(prior, priorAmount);
+                if (priorValid) {
+                    (Match memory enlarged, bool nextValid) = _slice(next, nextAmount);
+                    if (!nextValid) revert E.AccountingInvariant();
+                    enlarged.candidateIndex = nextIndex;
+                    p.quote = p.quote - previous.quote + quote + enlarged.quote;
+                    p.matches[i - 1] = Match(
+                        prior.user,
+                        prior.position.size > 0 ? F.toInt(priorAmount) : -F.toInt(priorAmount),
+                        entry,
+                        quote,
+                        margin,
+                        previous.candidateIndex
+                    );
+                    p.matches[p.count++] = enlarged;
+                    return true;
+                }
+            }
+            // A candidate may also replace a whole earlier match. Validate the exact combined slice even
+            // below the sufficient bound; that bound is deliberately conservative, not an eligibility rule.
+            if (combined <= nextSize) {
+                (Match memory replacement, bool valid) = _slice(next, combined);
+                if (valid) {
+                    replacement.candidateIndex = nextIndex;
+                    p.quote = p.quote - previous.quote + replacement.quote;
+                    for (uint256 j = i; j < p.count; ++j) {
+                        p.matches[j - 1] = p.matches[j];
+                    }
+                    p.matches[p.count - 1] = replacement;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// @dev With nonnegative collateral, full rounded profit P and size S give partial profit at least
+    /// floor(x*P/S) for a long, or that minus one for a short. Hence x*P/S >= 1 or 2 suffices.
+    /// Negative collateral needs a full close for a guaranteed releasable payout. A smaller exact slice
+    /// can still qualify if its payout is zero or it absorbs all debt; the vault never releases over debt.
+    function minimumSlice(Candidate memory c) internal pure returns (uint256) {
+        uint256 size = F.abs(c.position.size);
+        if (c.margin < 0) return size;
+        (Match memory full,) = _slice(c, size);
+        int256 pnl =
+            c.position.size > 0 ? F.toInt(full.quote) - F.toInt(full.entry) : F.toInt(full.entry) - F.toInt(full.quote);
+        if (pnl <= 0) return size;
+        return Math.min(size, Math.mulDiv(size, c.position.size > 0 ? 1 : 2, F.toUint(pnl), Math.Rounding.Ceil));
+    }
+
+    function _slice(Candidate memory c, uint256 amount) private pure returns (Match memory m, bool valid) {
+        (m.entry, m.quote, m.margin, valid) = _sliceValues(c, amount);
+        m.user = c.user;
+        m.size = c.position.size > 0 ? F.toInt(amount) : -F.toInt(amount);
+    }
+
+    /// @dev Reject unprofitable pairs before computing margin or allocating a Match in the bounded search.
+    function _sliceValues(Candidate memory c, uint256 amount)
+        private
+        pure
+        returns (uint256 entry, uint256 quote, int256 margin, bool valid)
+    {
+        bool long = c.position.size > 0;
+        entry = Curve.closedEntryCost(c.position.entryCost, amount, F.abs(c.position.size));
+        quote = Math.mulDiv(amount, c.price, F.WAD, long ? Math.Rounding.Floor : Math.Rounding.Ceil);
+        if (long ? quote <= entry : entry <= quote) return (entry, quote, 0, false);
+        uint256 profit = long ? quote - entry : entry - quote;
+        margin = marginShare(c.margin, amount, F.abs(c.position.size));
+        valid = margin >= 0 || F.abs(margin) <= profit;
+        // A positive payout cannot leave negative collateral behind: MarginVault.release enforces this.
+        if (valid && c.margin < margin && profit > F.abs(margin)) valid = false;
     }
 
     function marginShare(int256 margin, uint256 amount, uint256 size) internal pure returns (int256) {

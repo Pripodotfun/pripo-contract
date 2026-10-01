@@ -4,7 +4,7 @@ Solidity foundation for permissionless perpetual markets with virtual pricing an
 
 The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, liquidation, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
 
-This milestone integrates paired ADL and atomic whole-market forced settlement with the reserve, terminal deficit and fee-repayment machinery. Markets have a bounded book of 128 positions; terminal losses use profit haircuts and the specified protocol-capital waterfall. Remaining launch gates include integer-fragment ADL liveness, enforceable cash backing under funding lag, and Monad fork gas validation. Factory/adapters, exact remaining risk views and resolver settlement also remain.
+This milestone integrates paired ADL and atomic whole-market forced settlement with the reserve, terminal deficit and fee-repayment machinery. Markets have a bounded book of 128 positions; terminal losses use profit haircuts and the specified protocol-capital waterfall. ADL preflight repairs the reproduced tiny-fragment failure by redistributing matched sizes. Remaining launch gates include indivisible-dust policy and general allocation liveness, enforceable cash backing under funding lag, and Monad fork gas validation. Factory/adapters, exact remaining risk views and resolver settlement also remain.
 
 ## Development
 
