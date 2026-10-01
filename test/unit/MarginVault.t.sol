@@ -74,6 +74,28 @@ contract MarginVaultTest is Test {
         assertEq(vault.ledger(address(this)).insurance, 931e18);
     }
 
+    function testPositiveTradingProfitCanLeaveFundingDebtOnFullClose() public {
+        vault.lock(alice, 100e18);
+        vault.settleFunding(alice, 102e18);
+        assertEq(vault.locked(alice, address(this)), -2e18);
+        vault.settlePnl(alice, 1e18);
+        assertEq(vault.locked(alice, address(this)), -1e18);
+        vm.expectRevert(abi.encodeWithSelector(E.InsufficientMargin.selector, 0, 1));
+        vault.release(alice, 1);
+        assertEq(vault.locked(alice, address(this)), -1e18, "a profitable full close still needs debt recovery");
+    }
+
+    function testPositivePartialEquityCannotReleaseOverRemainingFundingDebt() public {
+        vault.lock(alice, 100e18);
+        vault.settleFunding(alice, 110e18);
+        // Half of a position with 20 USDC full trading profit has 10 profit and -5 allocated margin.
+        // The apparent 5 USDC slice payout would leave -5 collateral on the remaining position.
+        vault.settlePnl(alice, 10e18);
+        assertEq(vault.locked(alice, address(this)), 0);
+        vm.expectRevert(abi.encodeWithSelector(E.InsufficientMargin.selector, 0, 5e18));
+        vault.release(alice, 5e18);
+    }
+
     function testFeesClaimsAndDust() public {
         vm.prank(bob);
         vault.registerReferralCode("BOB");

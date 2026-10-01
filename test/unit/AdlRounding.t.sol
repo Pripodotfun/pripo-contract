@@ -9,6 +9,24 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Test} from "forge-std/Test.sol";
 
 contract AdlRoundingTest is Test {
+    function testExactPositiveShortSliceCanBookOneWeiLoss() public pure {
+        uint256 size = 1e18;
+        uint256 entry = 100.2e18;
+        uint256 price = 100.015e18;
+        uint256 amount = 1;
+        assertGt(entry * F.WAD, price * size, "whole position has strictly positive exact PnL");
+        uint256 fullQuote = Math.mulDiv(size, price, F.WAD, Math.Rounding.Ceil);
+        assertGt(entry, fullQuote, "whole position also has positive rounded PnL");
+
+        uint256 cost = Curve.closedEntryCost(entry, amount, size);
+        uint256 quote = Math.mulDiv(amount, price, F.WAD, Math.Rounding.Ceil);
+        int256 pnl = F.toInt(cost) - F.toInt(quote);
+        assertEq(cost, 100);
+        assertEq(quote, 101);
+        assertEq(pnl, -1, "independent entry and quote rounding can turn a profit into a loss");
+        assertEq(pnl + 1, 0, "one wei cannot turn this booked loss into positive paid profit");
+    }
+
     function testFuzzGuaranteedSliceFundsProfitAndCollateral(
         uint96 sizeSeed,
         uint80 priceSeed,
