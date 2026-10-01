@@ -146,3 +146,35 @@ The funding-policy recommendation is to require nonnegative post-funding collate
 Implementation ordering must reserve or consume planned liquidation coverage before spending insurance on dust; otherwise the same insurance wei can be promised twice. Reserve-funded dust is a new live-market exception to terminal-only reserve spending. Under the existing gate, any draw below `reserveFloor()` blocks opens and resume until refill. One quote wei is `10^-18` USDC in the ledger; one raw six-decimal token unit is `10^12` quote wei.
 
 Validation for this stage: the three targeted regressions and formatting pass. Production contracts and ABIs are unchanged; the previous full CI result above has not been rerun for these test/documentation additions.
+
+## Pending ADL design checks
+
+The subsequent decision accepts nonnegative post-funding collateral for candidates, reverses shared-quote rounding to favour winners, and replaces eligible-book exhaustion with opposite-side size exhaustion or a 1,000-block pending deadline. This supersedes the proposed eligibility and trigger rules in the preceding section. The pending lifecycle is not yet implemented.
+
+### Rounding and the total coverage bound
+
+With shared quote rounded down for short winners and up for long winners, and their allocated entries rounded in their favour, rounded chunk profit is at least exact chunk profit. Since exact eligibility is strictly positive, integer chunk profit is **at least one quote wei**. The zero-profit/top-up path is therefore unreachable under these directions. A 10,000-input property checks the exact rational inequality by cross multiplication for both sides, including partial and full chunks.
+
+The target's old price boundary does not reserve the cost of this favourable rounding. Two regressions demonstrate the resulting budget violation:
+
+- Long target: size 3 base wei, entry 10 quote wei, allocated margin 1 and coverage 1. The boundary is `ceil(8 * WAD / 3)`. Three one-base-wei matches each pay the long 2 quote wei after rounding down, for a total of 6. Required coverage is `10 - 1 - 6 = 3`, exceeding the budget of 1, while all three short winners remain exactly profitable.
+- Short target: size 3, entry 8, allocated margin 1 and coverage 1. The boundary is `floor(10 * WAD / 3)`. Three one-base-wei matches each cost the short 4 quote wei after rounding up, for a total of 12. Required coverage is `12 - 8 - 1 = 3`, again exceeding the budget of 1, with profitable long winners.
+
+This shortfall is paired-fill rounding loss on the target, not a zero-profit payment to a winner. Keeping the new directions requires an explicitly funded rounding allowance within the total committed budget and an integer-aware price calculation. Per-continuation replenishment cannot silently increase the original budget. The shared quote still preserves clearing exactly; accounting conservation alone does not enforce the coverage ceiling.
+
+### Pending custody and lifecycle requirements
+
+- Nonnegative winner collateral and positive rounded PnL make the existing winner release guard compatible with pro-rata nonnegative margin allocations. The pending loser can still have negative collateral. A new vault regression starts at -10 USDC, realizes +12 on a partial pairing and proves that the apparent proportional refund of 7 cannot be released from the resulting total locked balance of 2. Retaining target refunds while pending, and enforcing collateral requirements for any unselected residual exposure at completion, avoids releasing through remaining debt.
+- `liveCoverage()` is a current availability view, not a reservation. Insurance can fund other closes, the backstop can fund other markets, its daily allowance can roll over, and terminal coverage can consume its remaining balance. Pending coverage requires actual vault/controller reservations, excluded from other spending and counted exactly once in the cash identity. Reserve the backstop allowance once, consume only the reserved remainder on continuation, and release or consume reservations on completion and terminal settlement.
+- `{remainingSize, since}` alone cannot track the fixed financial commitment. The implementation also needs the selected entry/margin allocation, committed coverage and cumulative use (or equivalent derived state). Starting penalty is charged once. Continuations never reset `since` or acquire a fresh daily budget. Pending-owner closes, margin removal and use of that position in another pairing must either reconcile the commitment or be rejected. Margin additions need an explicit treatment without silently resetting the loss bound.
+- `Paused` currently continues funding accrual. A fixed initial margin/coverage bound can be eroded between transactions. A pending funding rule is required: for example, checkpoint and freeze market funding until all pending liquidations resolve, or separately reserve and account for additional accrual. A deadline does not execute a transaction or stop funding by itself. Clarify that the paired-continuation bound does not cover a terminal TWAP valuation unless terminal accounting is also changed; the terminal waterfall can currently consume capital beyond live coverage.
+- Negative collateral alone does not currently authorize liquidation. `MarketLens.health` compares total equity, including realizable PnL, with maintenance. Making every funding-indebted candidate liquidatable requires an explicit predicate change in both the view and execution path.
+- ADL pause state must remain independent of the Guardian pause and oracle degradation. `poke`, `remark`, and governor resume currently restore Active when their existing conditions allow it; they must respect all pending positions. Completion of one pending position cannot clear another's pause. An expired pending liquidation needs a permissionless completion/settlement path that does not reset its timer or charge another penalty.
+
+### Caller omissions and timeout semantics
+
+The current runtime already checks the complete canonical book before settling. The existing `testOmittedEligibleCandidateCannotForceSettlementAndRollsBack` regression passes: an empty list rolls back when the automatic plan can finish. The stated empty-list force-settlement exploit is not present in this revision.
+
+The proposed timeout is a new policy tradeoff: a caller can submit an empty list for a genuinely ADL-needing position, enter pending and start the deadline even when a complete list exists. Unless someone completes it before expiry, the timeout permits settlement. This is a bounded opportunity for keeper recovery, not proof that counterparties were unavailable. Transactions are still required to make progress or execute the timeout.
+
+Validation: four new tests pass, including the 10,000-input rounding property, alongside the existing omission-protection integration test. Formatting and diff checks pass. Runtime contracts, ABIs and the protocol spec are unchanged in this compatibility-review stage.

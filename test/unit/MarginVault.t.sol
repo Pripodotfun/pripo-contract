@@ -96,6 +96,18 @@ contract MarginVaultTest is Test {
         vault.release(alice, 5e18);
     }
 
+    function testPartialLoserRefundCannotLeaveRemainingFundingDebt() public {
+        vault.lock(alice, 100e18);
+        vault.settleFunding(alice, 110e18);
+        // A partial ADL at an improved price earns 12 on a portion allocated -5 collateral.
+        // Its apparent refund is 7, but the remaining -5 debt leaves only 2 available in total.
+        vault.settlePnl(alice, 12e18);
+        assertEq(vault.locked(alice, address(this)), 2e18);
+        vm.expectRevert(abi.encodeWithSelector(E.InsufficientMargin.selector, 2e18, 7e18));
+        vault.release(alice, 7e18);
+        assertEq(vault.locked(alice, address(this)), 2e18);
+    }
+
     function testFeesClaimsAndDust() public {
         vm.prank(bob);
         vault.registerReferralCode("BOB");
