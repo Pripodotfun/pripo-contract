@@ -178,3 +178,36 @@ The current runtime already checks the complete canonical book before settling. 
 The proposed timeout is a new policy tradeoff: a caller can submit an empty list for a genuinely ADL-needing position, enter pending and start the deadline even when a complete list exists. Unless someone completes it before expiry, the timeout permits settlement. This is a bounded opportunity for keeper recovery, not proof that counterparties were unavailable. Transactions are still required to make progress or execute the timeout.
 
 Validation: four new tests pass, including the 10,000-input rounding property, alongside the existing omission-protection integration test. Formatting and diff checks pass. Runtime contracts, ABIs and the protocol spec are unchanged in this compatibility-review stage.
+
+## Value-scheduled pending ADL checks
+
+The latest decision retains loser refunds in locked collateral, requires actual per-position coverage reservations, freezes funding while any pending ADL exists, and adds negative post-funding collateral to the liquidation predicate. Terminal settlement again requires a current, complete-book eligible-size check. The deadline only enables permissionless, batched enumeration; elapsed time is not a settlement trigger. Value schedules replace rounded price multiplication. These decisions describe the intended replacement; the production matcher remains unchanged at this review stage.
+
+### Freeze and telescope the selected entry allocation too
+
+At initiation, snapshot original selected size `S0` and selected entry `E0 = floor(positionEntry * S0 / positionSize)`, taking all entry on a full selection. Also snapshot the base paired value `V0`. For cumulative matched size `d`, maintain both prefixes:
+
+```text
+entryPrefix(d) = floor(E0 * d / S0)
+valuePrefix(d) = floor(V0 * d / S0)
+```
+
+Each chunk removes the difference of entry prefixes and pairs the difference of value prefixes. Apply the actual removed entry to the position and signed `entryCostNet`. Neither denominator nor the initial totals are recomputed from the shrinking position. At completion the selected entry removed is exactly `E0`, the base paired value is exactly `V0`, and any unselected exposure retains exactly `originalEntry - E0`.
+
+The existing `Curve.closedEntryCost` cannot simply be reapplied to the remaining position on every continuation. A regression selects 2 of 4 base wei from entry 402 quote wei. The intended selected entry is 201, but two successive one-unit allocations using the shrinking position remove 100 + 100 = 200. A short with scheduled buyback 204 then loses 4 instead of its intended budget of 3. Fixed entry prefixes remove 100 + 101 and restore the exact budget. Full-position completion eventually removes all residual entry under either method; the discrepancy matters when the pending selection is only part of the original position.
+
+### Budget and invariant definitions
+
+- If total reserved coverage is `C0` and rounding reserve is `R`, only `C0 - R` can support paired losses. The paired-loss budget is `B0 = M0 + C0 - R`, with `M0` the signed selected post-penalty collateral. Set `V0 = E0 - B0` for a long and `V0 = E0 + B0` for a short in the nonnegative value domain. Using `M0 + C0` for pairing and also reserving `R` from the same `C0` double commits the allowance. If `C0 < R`, the specified reservation cannot be funded; an additional rule/source is needed. Insufficient allowance is not itself eligible-size exhaustion.
+- Added margin can replace unspent loss-coverage reservation one-for-one, without consuming the rounding reserve or changing `S0`, `E0`, `V0`, matched progress or the original deadline. Excess deposits remain collateral. Restarting the schedule after an addition or returning already-consumed coverage would invalidate the cumulative accounting.
+- Only **base scheduled** chunks sum to `V0`. For a long target, actual value is `max(scheduled, realizableFloor)`; for a short it must be `min(scheduled, realizableCeiling)`. Record relief separately: final actual value is `V0 + relief` for a long and `V0 - relief` for a short. Final trading loss is `B0 - relief` in both cases. Winner top-ups remain separate reservation-to-free entries.
+- Candidate eligibility must use the exact `V0 / S0` ratio and preserve the positive close-alone realizable-profit check. The realizable clamp changes actual values, so profit at the base schedule alone is insufficient. Use full-precision rational comparisons, not a display price rounded to WAD.
+- The schedule's incremental value is a floor or ceiling of the exact chunk value. Winner-favouring entry rounding keeps booked chunk profit nonnegative, and one reserved wei raises a zero to one. The previous stronger invariant `rounded profit >= exact profit` no longer holds: a short chunk with exact profit `7/6` can book and receive `1`, so it receives no zero-profit top-up. Use nonnegative booked profit, positive paid profit and the one-wei top-up bound instead.
+
+### Chunk limits and enumeration
+
+A lifetime cap of 64 chunks conflicts with the existing 128-position book and complete-book-only settlement trigger. A regression uses one 65-unit loser and 65 individually profitable one-unit winners, all within the book bound. After 64 matches, the remaining eligible size still covers the final unit, so neither settlement nor another match is permitted under that cap. Keep the per-call iteration limit separate from the lifetime allowance. With greedy full-candidate matching, opens paused and no candidate splitting except the final match, at most 127 counterparties can be needed from the initial book; reserving 128 quote wei is a conservative alternative to reducing the position limit.
+
+`PositionBook.remove` swaps the last account into the removed index. A persisted numeric cursor into that mutable array can skip an unvisited account even when a different transaction removes the earlier index. Completion needs stable enumeration, such as captured addresses with current position checks. Eligibility totals accumulated across transactions cannot authorize settlement: closes, margin additions and price changes can make them stale. Recheck current eligibility across the complete book in the settlement transaction. For small iteration limits, define progress to include advancing the scan cursor; a call examining only an ineligible account need not reduce remaining size or prove whole-book insufficiency.
+
+Validation: all six tests in `AdlValueScheduleTest` pass. Two properties ran 10,000 inputs each, checking frozen entry/value accounting across chunkings and the scheduled-profit/top-up bound. Four vectors cover the shrinking-entry mismatch, exact-profit invariant change, realizable relief on both sides and the 64-chunk stall. Formatting and diff checks pass. These are accounting/design tests, not an implemented pending state machine or a new full-runtime CI campaign.
