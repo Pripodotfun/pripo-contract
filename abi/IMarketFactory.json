@@ -39,6 +39,62 @@
             "internalType": "uint256"
           }
         ]
+      },
+      {
+        "name": "oracleUpdate",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "createMarket",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.CreateParams",
+        "components": [
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "priceSource",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "feedId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "initialPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "depth",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "seedBond",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
       }
     ],
     "outputs": [

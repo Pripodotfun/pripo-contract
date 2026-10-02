@@ -4,7 +4,7 @@ Solidity foundation for permissionless perpetual markets with virtual pricing an
 
 The repository contains the math foundation, an isolated USDC margin vault, and a market clone runtime for opens, increases, partial/full closes, funding, fees, referrals, operator policies, TWAP health, liquidation, and stale-oracle handling. The vault uses a UUPS proxy with a 48-hour upgrade delay and guardian veto.
 
-Pending ADL is integrated with actual vault reservations, fixed entry/value schedules, funded one-wei rounding payments and a stable book capped at 128 positions. Explicit continuations and a delayed permissionless fallback complete greedy matches while funding is frozen. Only a fresh full-book eligibility scan can authorize forced settlement; terminal losses use profit haircuts and the protocol-capital waterfall. Remaining launch gates include enforceable cash backing under funding lag and Monad fork gas validation. Factory/adapters, exact remaining risk views and resolver settlement also remain.
+Pending ADL is integrated with actual vault reservations, fixed entry/value schedules, funded one-wei rounding payments and a stable book capped at 128 positions. Explicit continuations and a delayed permissionless fallback complete greedy matches while funding is frozen. Only a fresh full-book eligibility scan can authorize forced settlement; terminal losses use profit haircuts and the protocol-capital waterfall. Remaining launch gates include enforceable cash backing under funding lag and Monad fork gas validation. The deterministic factory, Pyth/null adapters and batch fee sweeper are implemented. Exact remaining risk views and resolver settlement remain.
 
 ## Development
 
@@ -26,6 +26,9 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 | Path | Contents |
 | --- | --- |
 | `src/MarginVault.sol` | Token custody, balanced ledgers, reserves/deficits, fee allocation, operators, referrals, upgrade controls |
+| `src/MarketFactory.sol` | Deterministic creation, bonded feeds, delayed adapter/implementation approvals |
+| `src/adapters/` | Pyth Core pull updates and the canonical null source |
+| `src/FeeSweeper.sol` | Bounded deficit repayment, reserve refill and gated treasury claims |
 | `src/InsuranceBackstop.sol` | Global insurance policy and fixed per-market claim windows |
 | `src/market/` | Shared market storage, trading, liquidation, accounting, and quote modules |
 | `src/Market.sol` | Immutable clone implementation for isolated trading |
@@ -45,6 +48,8 @@ The funding harness isolates numerical accounting. The market invariant uses an 
 
 Production pending ADL tests cover both sides, random continuation boundaries, realizable relief, stable cursors under winner closes, multiple reservations, margin replacement, funding freezes and terminal cleanup. The liquidation invariant reconciles each reservation with the vault and checks frozen schedules and funding. Independent model properties retain longer random chunk schedules and arbitrary finite eligibility changes. See [runtime validation](docs/validation.md#pending-adl-runtime-integration) for the tested scope and remaining deployment work.
 
-`marketAbi` and `marginVaultAbi` describe the implemented contracts. `plannedMarketAbi` describes the remaining Phase 1 surface and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts. `@pripo/sdk` currently exports ABI constants; transaction preparation and signing are later work.
+`marketAbi`, `marginVaultAbi`, `marketFactoryAbi`, `pythAdapterAbi`, `nullAdapterAbi` and `feeSweeperAbi` describe implemented contracts. `plannedMarketAbi` describes the remaining Phase 1 surface and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts. `@pripo/sdk` currently exports ABI constants; transaction preparation and signing are later work.
+
+Factory tests cover atomic creation/rollback, fixed launch caps, reserve admission, feed escrow, delayed approvals and callback rejection. Pyth tests use an ABI-compatible provider mock; a live signed-update Monad fork remains a deployment gate.
 
 See [implementation notes](docs/implementation-notes.md), [static-analysis triage](docs/validation.md), and the [protocol specification](Pripo-Perp%20protocol%20spec%20%E2%80%94%20permissionless%20LP-free%20markets%20on%20Monad%20%281%29.md).

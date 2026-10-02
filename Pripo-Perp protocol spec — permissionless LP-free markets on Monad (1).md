@@ -558,11 +558,13 @@ interface IPriceSource {
 }
 ```
 
-**PythAdapter.** Pull model: the trader's transaction carries the signed price update in `update` and forwards the Pyth fee as `msg.value`. The adapter calls `updatePriceFeeds`, then reads `getPriceNoOlderThan(feedId, maxAge)`. If `update` is empty it reads the current on-chain price and lets the market's staleness check decide. This is how fills get sub-second freshness with no keeper in the loop.
+**PythAdapter (implemented).** Pull model: the trader's transaction carries the signed price update in `update` and forwards the Pyth fee as `msg.value`. The adapter calls `updatePriceFeeds`, then reads `getPriceNoOlderThan(feedId, maxAge)`. If `update` is empty it reads the current on-chain price and lets the market's staleness check decide. The runtime accepts `abi.encode(bytes[] signedPythUpdates)`, forwards exactly the provider’s quoted fee, and rejects nonzero fees on empty reads. A trade may carry its own verified update without a separate keeper transaction. Publication time remains authoritative; the adapter does not stamp old data with the current block.
 
-**ChainlinkAdapter.** Push feeds: reads `latestRoundData`, converts `updatedAt` to a block estimate using 300 ms per block. Used where Pyth has no feed. Data Streams support is a follow-up.
+**ChainlinkAdapter (future).** Push feeds: reads `latestRoundData`, converts `updatedAt` to a block estimate using 300 ms per block. Used where Pyth has no feed. Data Streams support is a follow-up.
 
-**NullAdapter.** Returns `(0, block.number, 0, false)`. The market treats `isExternal == false` as oracle-less mode: funding on skew, health on mark TWAP, leverage cap 3x.
+**NullAdapter (implemented).** Supports only feed zero and rejects update bytes/native value. Returns `(0, block.number, 0, false)`. The market treats `isExternal == false` as oracle-less mode: funding on skew, health on mark TWAP, leverage cap 3x.
+
+The Pyth adapter normalizes positive prices to WAD, rounds confidence upward, and rejects zero/negative/sub-wei prices and future timestamps. The milliseconds-per-block estimate and update age are immutable deployment settings (local launch fixtures: 300 ms and 3 seconds). It returns `block.number − ceil(ageSeconds × 1000 / blockTimeMillis)`; an age older than the chain’s block count rejects. This estimate must be checked on the target chain; it is not an exact publication-block proof. Local tests use an ABI-compatible provider mock; signed-update verification is delegated to the actual Pyth contract and still requires live fork validation.
 
 **Staleness and the Degraded state.** Opens require a fresh index: revert with `StaleOracle` if `block.number − updatedBlock > maxOracleAgeBlocks` (default 10, about 3 seconds) or if `confBps > 100`. Closes never require the index. A close is a trade on the curve and the curve does not need the oracle, so a trader can always exit, outage or not. Liquidations do need a reference price, so an outage cannot simply halt them; instead the market degrades rather than stopping:
 
@@ -573,7 +575,9 @@ interface IPriceSource {
 
 **Equity feeds and market hours.** When the underlying market is closed, Pyth marks equity feeds stale, so an equity market enters `Degraded` at the bell with a known reason and exits at the first print. The Phase 2 market-hours engine (Product phases) is this state machine plus the pre-close margin ratchet and gap settlement on re-mark; it is not a separate mechanism.
 
-**Feed allowlist.** The factory holds `allowedFeeds[adapter][feedId] = true`; anyone can add a feed by paying `feedListingBond`, refundable after 30 days if the feed is not slashed for misconfiguration. This keeps market creation permissionless without letting a creator point a market at a nonsense feed.
+**Feed allowlist.** The factory holds `allowedFeeds[adapter][feedId] = true`; anyone can add a feed by paying `feedListingBond`, refundable after 30 days if the feed is not slashed for misconfiguration. Adapter additions require governor scheduling and a one-day delay; Guardian/governor can immediately disable an adapter for future creation. Listing checks the approved adapter’s `isSupported`, so a creator cannot substitute arbitrary adapter code. Feed identity and quote-asset meaning still require review; support alone does not certify a creator’s market symbol.
+
+The factory holds listing escrow separately from the vault. Anyone may trigger a mature refund, always to the original lister. Governor-only slashing records a reason hash, revokes future creation on that feed and transfers the remaining escrow into `slashedBonds`; it cannot claw back a refunded bond. Allocation is a separate permissionless batch so vault limits cannot prevent revocation. The implementation supports an immutable reserve/backstop destination selected at deployment; that policy selection remains open. Reserve allocation follows deficit-first repayment; backstop allocation uses the vault deposit/free-balance path and its deposit cap. Existing markets retain their immutable source and require their normal pause/resolver response.
 
 ## Market factory and creation
 
@@ -598,12 +602,14 @@ function createMarket(CreateParams calldata p) external returns (address market)
 - `depth ≥ depthMin = ceilDiv(oiMultiplier × seedBondWad × 10_000, sideCapBps)`, where `seedBondWad` is the posted USDC bond scaled to 18 decimals. Use the applied integer cap from Margin and liquidation, not a rounded decimal approximation to `φ(λ)`. At 3x, a 2,000-USDC oracle-less bond and a 1,010-bps cap require approximately 198,019.802 USDC of virtual depth (198,020 if quoting whole USDC). At 20x, a 5,000-USDC oracle-fed bond and a 128-bps cap require 7,812,500. For comparison, the ideal continuous caps would give approximately 197,979.590 and 7,798,717.738 respectively. After deriving integer reserves, also verify that `floor(C × initialPrice / WAD)` covers the initial insurance bound; round depth upward further if reserve rounding requires it. Depth is virtual: deeper is always allowed and makes price move less per unit of flow.
 - The bond is locked while the market has OI. When OI is zero and the creator calls `windDown`, the bond returns minus any bad debt it absorbed.
 - Oracle-fed markets require `allowedFeeds[priceSource][feedId]`; the creator cannot override risk parameters. Oracle-less markets always get the oracle-less parameter set.
-- One market per `(priceSource, feedId)` for oracle-fed; unlimited oracle-less markets, but `symbol` must be unique.
-- The factory records `creator`, `createdBlock`, `symbol`, and emits `MarketCreated(market, creator, symbol, isExternal)`.
+- One market per `(priceSource, feedId)` for oracle-fed; unlimited oracle-less markets subject to global admission, but `symbol` must be unique. The runtime uses exact case-sensitive symbol bytes, length 1–64, with no normalization. Oracle-less creation requires the factory’s canonical NullAdapter and feed zero.
+- The factory records original `creator`, `createdBlock`, `symbol`, and emits `MarketCreated(market, creator, symbol, isExternal, depth, seedBond)`. Current creator transfers remain recorded by the vault/market.
 
 **Creator economics.** `creatorOwed` accrues per trade; `claimCreatorFees()` on the market transfers it out. The creator role is transferable (`transferCreator`) so market ownership can itself be sold. Agents can be creators; the agent that spots an S-1 filing and deploys the market first keeps the fee stream.
 
-**Deployment.** `Clones.cloneDeterministic(marketImplementation, salt)` with `salt = keccak256(symbol)`, so a market's address is predictable before it exists. Initialization is a single `initialize(config, ammSeed)` guarded against re-entry and re-initialization.
+**Deployment.** `Clones.cloneDeterministic(marketImplementation, salt)` with `salt = keccak256(symbol)`, so a market's address is predictable before it exists. Creation pulls the approved raw-USDC seed bond, registers the clone, deposits/funds its insurance and calls the existing market initializer atomically under the factory guard. Initialization failure rolls back the clone, bond and registries. Vault reserve admission and deposit caps apply. `createMarket(params, oracleUpdate)` additionally supports a paid external pull update before initialization.
+
+New implementation versions require governor scheduling and a one-day delay, with Guardian/governor cancellation; existing clones never change. `predictAddress` returns the known address for an existing symbol and uses the current implementation for an unused one. Creation with the new factory is implemented locally; live fork/deployment validation and resolver-driven seed-bond return remain outstanding.
 
 ## Resolver
 
@@ -641,7 +647,7 @@ Every fee is accrued into one of three per-market accumulators on the trade path
 
 - `claimCreatorFees()` on a market: only the creator, transfers the remaining `creatorOwed` after any terminal absorption. Unclaimed fees are at risk in that market; paid-out fees are not clawed back. It cannot bypass an in-progress atomic terminal allocation.
 - Protocol allocation consumes per-market `protocolOwed` in batches: terminal deficits first, reserve refill second, treasury last. All on-chain protocol fee sources, including settlement fees and the protocol portion of insurance surplus, follow that priority. Repayment reduces the outstanding deficit without a second user or reserve credit. For multiple terminal deficits, process oldest recorded deficit first, then market address as a deterministic tie-breaker; pay no more than each remaining deficit.
-- `FeeSweeper.sweep(address[] markets)`: anyone may call; a successful treasury transfer requires `totalDeficit == 0` and leaves `protocolReserve ≥ reserveFloor()`. Internal repayment/refill must remain callable when that condition is not yet met, so an underfunded reserve does not prevent recovery. Keeper runs allocation/sweeps hourly; no direct vault claim or insurance-to-treasury path may bypass these gates.
+- `FeeSweeper.sweep(address[] markets)` (implemented): anyone may call with 1–32 distinct registered markets; a successful treasury transfer requires `totalDeficit == 0` and leaves `protocolReserve ≥ reserveFloor()`. Internal repayment/refill must remain callable when that condition is not yet met, so an underfunded reserve does not prevent recovery. The helper allocates the full batch before any claim and preserves partial repayment/refill with zero payout if the gate remains closed. `allocate(markets, maxEntries)` permits 1–32 deficit-queue entries per market without token transfers; keepers choose smaller batches for gas and retry unprocessed balances. Keeper runs allocation/sweeps hourly; no direct vault claim or insurance-to-treasury path may bypass these gates.
 - `InsuranceBackstop.topUp(market)`: moves any market insurance sub-fund above `2 × oiCap / oiMultiplier` into the global backstop, so healthy markets fund the backstop that protects new ones.
 
 **Funding is not a trading fee.** It flows between traders through the side indexes. Receipt-cap excess, receiver-index division remainder and settlement rounding accrue as funding surplus and are swept to that market's insurance through the Funding rules. No funding surplus is credited directly to protocol or creator fees.
@@ -833,6 +839,7 @@ interface IMarket {
 
 interface IMarketFactory {
     function createMarket(CreateParams calldata p) external returns (address market);
+    function createMarket(CreateParams calldata p, bytes calldata oracleUpdate) external payable returns (address market);
     function predictAddress(string calldata symbol) external view returns (address);
     function markets(uint256 i) external view returns (address);
     function marketCount() external view returns (uint256);

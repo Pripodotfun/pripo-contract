@@ -8,6 +8,10 @@ interface IMarketFactory is IPripoErrors {
         address indexed market, address indexed creator, string symbol, bool isExternal, uint256 depth, uint256 seedBond
     );
     function createMarket(T.CreateParams calldata p) external returns (address market);
+    function createMarket(T.CreateParams calldata p, bytes calldata oracleUpdate)
+        external
+        payable
+        returns (address market);
     function predictAddress(string calldata symbol) external view returns (address);
     function markets(uint256 i) external view returns (address);
     function marketCount() external view returns (uint256);
