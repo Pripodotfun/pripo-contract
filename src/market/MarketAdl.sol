@@ -120,6 +120,7 @@ library MarketAdl {
         result = new Candidate[](s._accounts.length);
         for (uint256 i; i < result.length; ++i) {
             address account = s._accounts[i];
+            if (account == address(0)) continue;
             T.Position memory pos = s._positions[account];
             if (account == user || (pos.size > 0) == (closedSize > 0)) continue;
             T.Fill memory alone = Curve.quoteExit(twap, pos.size);

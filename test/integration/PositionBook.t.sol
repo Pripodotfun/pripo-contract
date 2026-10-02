@@ -9,7 +9,7 @@ contract PositionBookTest is MarketFixture {
         _setup(false);
     }
 
-    function testOpenIncreasePartialCloseSwapRemovalAndReopen() public {
+    function testOpenIncreasePartialCloseStableRemovalAndFreeListReuse() public {
         _open(alice, 1e18);
         _open(bob, -1e18);
         _open(carol, 1e18);
@@ -19,12 +19,13 @@ contract PositionBookTest is MarketFixture {
         assertEq(market.positionCount(), 3);
         _close(bob, 1e18);
         address[] memory users = market.positionAccounts(0, 256);
-        assertEq(users.length, 2);
+        assertEq(users.length, 3);
         assertEq(users[0], alice);
-        assertEq(users[1], carol);
+        assertEq(users[1], address(0));
+        assertEq(users[2], carol);
         _close(carol, 1e18);
         _open(bob, 1e18);
-        users = market.positionAccounts(1, 1);
+        users = market.positionAccounts(2, 1);
         assertEq(users.length, 1);
         assertEq(users[0], bob);
         assertEq(market.positionAccounts(type(uint256).max, 256).length, 0);
@@ -64,7 +65,8 @@ contract PositionBookTest is MarketFixture {
         vm.roll(block.number + 3_000_000);
         market.liquidate(alice, "");
         assertEq(market.positionCount(), 1);
-        assertEq(market.positionAccounts(0, 1)[0], bob);
+        assertEq(market.positionAccounts(0, 1)[0], address(0));
+        assertEq(market.positionAccounts(1, 1)[0], bob);
         _assertCash();
     }
 }

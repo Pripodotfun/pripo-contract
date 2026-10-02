@@ -28,6 +28,8 @@ library MarketState {
         uint256 settlementPrice;
         uint256 settlementHaircut;
         uint256 settlementProfits;
+        uint256 _positionCount;
+        uint256[] _freeSlots;
     }
 
     struct OpenQuote {

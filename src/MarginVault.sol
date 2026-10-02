@@ -60,6 +60,10 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     mapping(address => uint256) public deficitCreatedAt;
     Heap.Uint256Heap private _deficitQueue;
     mapping(address => bool) public marketAdmitted;
+    // Append-only pending coverage. The total is a per-market control aggregate, not extra cash.
+    mapping(address => mapping(address => T.AdlReservation)) private _adlReservations;
+    mapping(address => uint256) public adlReservedTotal;
+    mapping(address => uint256) public adlReservationCount;
 
     event RegistrarSet(address indexed registrar, bool allowed);
     event UpgradeScheduled(address indexed implementation, bytes32 dataHash, uint256 readyAt);
@@ -198,7 +202,10 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         onlyMarket
         returns (uint256 uncovered)
     {
-        if (terminalFinalized[msg.sender] || debtors.length > MAX_TERMINAL_ACCOUNTS) {
+        if (
+            terminalFinalized[msg.sender] || debtors.length > MAX_TERMINAL_ACCOUNTS
+                || adlReservationCount[msg.sender] != 0
+        ) {
             revert InvalidTerminalState();
         }
         IMarketCore market = IMarketCore(msg.sender);
@@ -385,6 +392,118 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     function liveCoverage(address market) external view returns (uint256 insurance, uint256 backstop) {
         insurance = _ledgers[market].insurance;
         if (address(backstopController) != address(0)) backstop = backstopController.capacity(market);
+    }
+
+    function adlReservation(address market, address user) external view returns (T.AdlReservation memory) {
+        return _adlReservations[market][user];
+    }
+
+    function adlReserved(address market, address user) external view returns (uint256) {
+        T.AdlReservation storage r = _adlReservations[market][user];
+        return r.lossCoverage + r.allowanceFromCoverage + r.allowanceFromReserve;
+    }
+
+    /// @notice Move live coverage into an isolated reservation and fund its lifetime dust allowance once.
+    /// @dev The trusted market supplies its validated book cap. The controller consumes the live window here,
+    ///      never on a continuation. Returned backstop coverage becomes local insurance; the window is not reset.
+    // The bound controller only reads market/vault state before updating its window. No tokens are transferred.
+    // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
+    function reserveAdl(address user, uint256 roundingTarget)
+        external
+        nonReentrant
+        onlyMarket
+        returns (uint256 coverage, uint256 roundingFromCoverage, uint256 roundingFromReserve)
+    {
+        if (user == address(0) || roundingTarget == 0 || terminalFinalized[msg.sender]) {
+            revert InvalidConfiguration();
+        }
+        T.AdlReservation storage r = _adlReservations[msg.sender][user];
+        if (r.active) revert AdlAlreadyPending();
+        coverage = _ledgers[msg.sender].insurance;
+        _ledgers[msg.sender].insurance = 0;
+        if (address(backstopController) != address(0) && backstopBalance != 0) {
+            uint256 amount = backstopController.consume(msg.sender, backstopBalance);
+            if (amount > backstopBalance) revert AccountingInvariant();
+            backstopBalance -= amount;
+            coverage += amount;
+        }
+        roundingFromCoverage = Math.min(coverage, roundingTarget);
+        roundingFromReserve = Math.min(protocolReserve, roundingTarget - roundingFromCoverage);
+        if (roundingFromReserve != 0) {
+            uint256 previous = protocolReserve;
+            protocolReserve -= roundingFromReserve;
+            emit ProtocolReserveChanged(previous, protocolReserve, 3);
+        }
+        r.lossCoverage = coverage - roundingFromCoverage;
+        r.allowanceFromCoverage = roundingFromCoverage;
+        r.allowanceFromReserve = roundingFromReserve;
+        r.active = true;
+        ++adlReservationCount[msg.sender];
+        adlReservedTotal[msg.sender] += coverage + roundingFromReserve;
+        emit AdlReserved(msg.sender, user, coverage, roundingFromReserve);
+    }
+
+    /// @notice Credit only this pending loser's locked collateral from its loss-coverage partition.
+    function consumeAdlCoverage(address user, uint256 amount) external onlyMarket {
+        T.AdlReservation storage r = _adlReservations[msg.sender][user];
+        if (!r.active) revert NoPendingAdl();
+        if (amount > r.lossCoverage) revert AccountingInvariant();
+        r.lossCoverage -= amount;
+        r.consumedCoverage += amount;
+        adlReservedTotal[msg.sender] -= amount;
+        locked[user][msg.sender] += F.toInt(amount);
+        emit AdlCoverageConsumed(msg.sender, user, amount);
+    }
+
+    /// @notice Reverse provisional coverage made unnecessary by later realizable relief. No loser refund occurs.
+    function restoreAdlCoverage(address user, uint256 amount) external onlyMarket {
+        T.AdlReservation storage r = _adlReservations[msg.sender][user];
+        if (!r.active) revert NoPendingAdl();
+        if (amount > r.consumedCoverage) revert AccountingInvariant();
+        r.consumedCoverage -= amount;
+        r.lossCoverage += amount;
+        adlReservedTotal[msg.sender] += amount;
+        locked[user][msg.sender] -= F.toInt(amount);
+        emit AdlCoverageRestored(msg.sender, user, amount);
+    }
+
+    /// @notice Return unspent loss coverage replaced by a margin addition. Rounding partitions stay reserved.
+    function returnAdlCoverage(address user, uint256 amount) external onlyMarket {
+        T.AdlReservation storage r = _adlReservations[msg.sender][user];
+        if (!r.active) revert NoPendingAdl();
+        if (amount > r.lossCoverage) revert AccountingInvariant();
+        r.lossCoverage -= amount;
+        adlReservedTotal[msg.sender] -= amount;
+        _ledgers[msg.sender].insurance += amount;
+        emit AdlCoverageReturned(msg.sender, user, amount);
+    }
+
+    /// @notice Pay one quote wei outside paired PnL. Exhaustion returns false without touching loss coverage.
+    function payAdlRounding(address user, address winner) external onlyMarket returns (bool paid) {
+        if (winner == address(0) || winner == user) revert InvalidAddress();
+        T.AdlReservation storage r = _adlReservations[msg.sender][user];
+        if (!r.active) revert NoPendingAdl();
+        if (r.allowanceFromCoverage != 0) --r.allowanceFromCoverage;
+        else if (r.allowanceFromReserve != 0) --r.allowanceFromReserve;
+        else return false;
+        --adlReservedTotal[msg.sender];
+        ++freeBalance[winner];
+        emit AdlRoundingPaid(msg.sender, user, winner);
+        return true;
+    }
+
+    /// @notice Return unused local/backstop coverage to insurance and unused reserve allowance to reserve.
+    function releaseAdlReservation(address user) external onlyMarket returns (uint256 returned) {
+        T.AdlReservation memory r = _adlReservations[msg.sender][user];
+        if (!r.active) revert NoPendingAdl();
+        uint256 insurance = r.lossCoverage + r.allowanceFromCoverage;
+        returned = insurance + r.allowanceFromReserve;
+        delete _adlReservations[msg.sender][user];
+        --adlReservationCount[msg.sender];
+        adlReservedTotal[msg.sender] -= returned;
+        _ledgers[msg.sender].insurance += insurance;
+        _addReserve(r.allowanceFromReserve, 4);
+        emit AdlReservationReleased(msg.sender, user, insurance, r.allowanceFromReserve);
     }
 
     /// @notice Fund the planned loss of a closed portion without consuming the remaining portion's collateral.

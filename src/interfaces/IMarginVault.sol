@@ -32,6 +32,12 @@ interface IMarginVault is IPripoErrors {
     event ProtocolFeesClaimed(address indexed market, uint256 amount);
     event ProtocolCapitalFunded(address indexed contributor, uint256 usdc);
     event TerminalClearingNetted(address indexed market, int256 clearing, uint256 isolatedDebt);
+    event AdlReserved(address indexed market, address indexed user, uint256 coverage, uint256 allowanceFromReserve);
+    event AdlCoverageConsumed(address indexed market, address indexed user, uint256 amount);
+    event AdlCoverageRestored(address indexed market, address indexed user, uint256 amount);
+    event AdlCoverageReturned(address indexed market, address indexed user, uint256 amount);
+    event AdlRoundingPaid(address indexed market, address indexed user, address indexed winner);
+    event AdlReservationReleased(address indexed market, address indexed user, uint256 insurance, uint256 reserve);
 
     function deposit(uint256 usdc) external;
     function withdraw(uint256 usdc) external;
@@ -56,6 +62,17 @@ interface IMarginVault is IPripoErrors {
     function moveInsuranceToBackstop(address market, uint256 amount) external;
     function coverBadDebt(address user) external returns (uint256 insurance, uint256 backstop, uint256 remaining);
     function liveCoverage(address market) external view returns (uint256 insurance, uint256 backstop);
+    function adlReservation(address market, address user) external view returns (T.AdlReservation memory);
+    function adlReserved(address market, address user) external view returns (uint256);
+    function adlReservedTotal(address market) external view returns (uint256);
+    function reserveAdl(address user, uint256 roundingTarget)
+        external
+        returns (uint256 coverage, uint256 roundingFromCoverage, uint256 roundingFromReserve);
+    function consumeAdlCoverage(address user, uint256 amount) external;
+    function restoreAdlCoverage(address user, uint256 amount) external;
+    function returnAdlCoverage(address user, uint256 amount) external;
+    function payAdlRounding(address user, address winner) external returns (bool paid);
+    function releaseAdlReservation(address user) external returns (uint256 returned);
     function coverLiquidationLoss(address user, uint256 amount)
         external
         returns (uint256 insurance, uint256 backstop, uint256 remaining);

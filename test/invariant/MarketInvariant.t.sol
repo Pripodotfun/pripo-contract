@@ -225,14 +225,19 @@ contract MarketInvariantTest is StdInvariant, MarketFixture {
         assertEq(longs, market.longSize());
         assertEq(shorts, market.shortSize());
         address[] memory book = market.positionAccounts(0, 256);
-        assertEq(book.length, positionCount);
+        assertGe(book.length, positionCount);
+        assertLe(book.length, market.MAX_POSITIONS());
         assertEq(market.positionCount(), positionCount);
+        uint256 liveCount;
         for (uint256 i; i < book.length; ++i) {
+            if (book[i] == address(0)) continue;
+            ++liveCount;
             assertTrue(market.position(book[i]).size != 0);
             for (uint256 j; j < i; ++j) {
                 assertTrue(book[j] != book[i]);
             }
         }
+        assertEq(liveCount, positionCount);
         assertEq(f.longWeighted, longWeighted);
         assertEq(f.shortWeighted, shortWeighted);
         Funding.surplus(f, l.fundingPool, longs, shorts);

@@ -11,6 +11,7 @@ import {MarkTwap} from "../libraries/MarkTwap.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
 import {MarketState as S} from "./MarketState.sol";
+import {PositionBook as Book} from "./PositionBook.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -34,7 +35,7 @@ library MarketSettlement {
     // slither-disable-next-line calls-loop
     function plan(S.Data storage s) internal view returns (Plan memory p) {
         if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
-        p.users = s._accounts;
+        p.users = Book.live(s);
         p.pnls = new int256[](p.users.length);
         p.profits = new uint256[](p.users.length);
         T.SettlementQuote memory q = p.quote;
@@ -105,6 +106,8 @@ library MarketSettlement {
             delete s._accountIndex[user];
         }
         delete s._accounts;
+        delete s._freeSlots;
+        s._positionCount = 0;
         uint256 surplus;
         // The vault applies the transfer; the duplicate resulting pool is deliberately discarded.
         // slither-disable-next-line unused-return

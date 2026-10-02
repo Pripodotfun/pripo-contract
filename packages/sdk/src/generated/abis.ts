@@ -1757,6 +1757,22 @@ export const marketAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -1810,6 +1826,11 @@ export const marketAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -1887,6 +1908,11 @@ export const marketAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -3511,6 +3537,22 @@ export const marketCoreAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -3564,6 +3606,11 @@ export const marketCoreAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -3636,6 +3683,11 @@ export const marketCoreAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -5302,6 +5354,22 @@ export const plannedMarketAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -5355,6 +5423,11 @@ export const plannedMarketAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -5427,6 +5500,11 @@ export const plannedMarketAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -5807,6 +5885,22 @@ export const marketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -5860,6 +5954,11 @@ export const marketFactoryAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -5932,6 +6031,11 @@ export const marketFactoryAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -6195,6 +6299,119 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "adlReservation",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.AdlReservation",
+        "components": [
+          {
+            "name": "lossCoverage",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "consumedCoverage",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromCoverage",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "adlReservationCount",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "adlReserved",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "adlReservedTotal",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "admitMarket",
     "inputs": [
       {
@@ -6434,6 +6651,24 @@ export const marginVaultAbi = [
     "type": "function",
     "name": "claimReferral",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "consumeAdlCoverage",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -6979,6 +7214,30 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "payAdlRounding",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "paid",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "pendingImplementation",
     "inputs": [],
     "outputs": [
@@ -7199,6 +7458,25 @@ export const marginVaultAbi = [
   },
   {
     "type": "function",
+    "name": "releaseAdlReservation",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "returned",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "requireOpenAllowed",
     "inputs": [
       {
@@ -7209,6 +7487,40 @@ export const marginVaultAbi = [
     ],
     "outputs": [],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "reserveAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "roundingTarget",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "coverage",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "roundingFromCoverage",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "roundingFromReserve",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -7241,6 +7553,42 @@ export const marginVaultAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "restoreAdlCoverage",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "returnAdlCoverage",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -7569,6 +7917,81 @@ export const marginVaultAbi = [
   },
   {
     "type": "event",
+    "name": "AdlCoverageConsumed",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlCoverageRestored",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlCoverageReturned",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "AdlProfitTransferred",
     "inputs": [
       {
@@ -7594,6 +8017,93 @@ export const marginVaultAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlReservationReleased",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserve",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlReserved",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "coverage",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "allowanceFromReserve",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlRoundingPaid",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -8232,6 +8742,22 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -8310,6 +8836,11 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidAdlIterations",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidBps",
     "inputs": [
       {
@@ -8383,6 +8914,11 @@ export const marginVaultAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -8629,6 +9165,100 @@ export const marginVaultAbi = [
 export const marginVaultInterfaceAbi = [
   {
     "type": "function",
+    "name": "adlReservation",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.AdlReservation",
+        "components": [
+          {
+            "name": "lossCoverage",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "consumedCoverage",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromCoverage",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "adlReserved",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "adlReservedTotal",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "admitMarket",
     "inputs": [
       {
@@ -8835,6 +9465,24 @@ export const marginVaultInterfaceAbi = [
     "type": "function",
     "name": "claimReferral",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "consumeAdlCoverage",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -9234,6 +9882,30 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "payAdlRounding",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "paid",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "protocolReserve",
     "inputs": [],
     "outputs": [
@@ -9334,6 +10006,25 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "releaseAdlReservation",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "returned",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "requireOpenAllowed",
     "inputs": [
       {
@@ -9347,6 +10038,40 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "function",
+    "name": "reserveAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "roundingTarget",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "coverage",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "roundingFromCoverage",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "roundingFromReserve",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "reserveFloor",
     "inputs": [],
     "outputs": [
@@ -9357,6 +10082,42 @@ export const marginVaultInterfaceAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "restoreAdlCoverage",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "returnAdlCoverage",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -9547,6 +10308,81 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "event",
+    "name": "AdlCoverageConsumed",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlCoverageRestored",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlCoverageReturned",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "AdlProfitTransferred",
     "inputs": [
       {
@@ -9572,6 +10408,93 @@ export const marginVaultInterfaceAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlReservationReleased",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "insurance",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reserve",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlReserved",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "coverage",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "allowanceFromReserve",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlRoundingPaid",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -10116,6 +11039,22 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -10169,6 +11108,11 @@ export const marginVaultInterfaceAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -10241,6 +11185,11 @@ export const marginVaultInterfaceAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -10900,6 +11849,22 @@ export const resolverAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -10953,6 +11918,11 @@ export const resolverAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -11025,6 +11995,11 @@ export const resolverAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
@@ -11284,6 +12259,22 @@ export const pripoErrorsAbi = [
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -11337,6 +12328,11 @@ export const pripoErrorsAbi = [
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -11409,6 +12405,11 @@ export const pripoErrorsAbi = [
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {

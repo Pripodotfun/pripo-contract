@@ -78,6 +78,15 @@ library PripoTypes {
         uint256 skewPool;
     }
 
+    /// @notice Actual cash reserved by a pending liquidation; each partition has one spending purpose.
+    struct AdlReservation {
+        uint256 lossCoverage;
+        uint256 consumedCoverage;
+        uint256 allowanceFromCoverage;
+        uint256 allowanceFromReserve;
+        bool active;
+    }
+
     struct OperatorPolicy {
         uint64 expiry;
         uint128 maxNotionalPerTx;

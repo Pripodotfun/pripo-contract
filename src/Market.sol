@@ -56,10 +56,10 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     }
 
     function positionCount() external view returns (uint256) {
-        return S.load()._accounts.length;
+        return S.load()._positionCount;
     }
 
-    /// @notice Read a bounded page; pin the block when reading multiple pages because removals swap the last account.
+    /// @notice Read stable slots, including zero-address holes. Pin the block across multiple pages.
     function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory) {
         return Book.page(S.load(), offset, limit);
     }

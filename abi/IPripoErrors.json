@@ -6,6 +6,22 @@
   },
   {
     "type": "error",
+    "name": "AdlAlreadyPending",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AdlFallbackNotReady",
+    "inputs": [
+      {
+        "name": "readyBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AllocationLimit",
     "inputs": []
   },
@@ -59,6 +75,11 @@
   {
     "type": "error",
     "name": "InvalidAdlCandidates",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAdlIterations",
     "inputs": []
   },
   {
@@ -131,6 +152,11 @@
   {
     "type": "error",
     "name": "MathOverflow",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingAdl",
     "inputs": []
   },
   {
