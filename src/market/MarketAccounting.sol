@@ -56,7 +56,7 @@ library MarketAccounting {
             uint64 cutoff = SafeCast.toUint64(uint256(s._indexBlock) + s._config.degradeAfterBlocks + 1);
             if (end > cutoff) end = cutoff;
         }
-        if (end > f.lastBlock && s._config.status != T.Status.Degraded) {
+        if (end > f.lastBlock && s._config.status != T.Status.Degraded && s.pendingAdlCount == 0) {
             uint256 referencePrice = s.externalIndex ? s._index : s._twap.consult(300, current);
             f = Funding.accrue(f, s.longSize, s.shortSize, cachedRate(s), referencePrice, end, s._config.receiveCapX);
         }
@@ -65,7 +65,7 @@ library MarketAccounting {
 
     function touch(S.Data storage s) public {
         if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
-        int256 rate = isDegraded(s) ? int256(0) : cachedRate(s);
+        int256 rate = isDegraded(s) || s.pendingAdlCount != 0 ? int256(0) : cachedRate(s);
         s._funding = previewFunding(s);
         // The equality discriminates an enum; oracle age uses an ordered comparison.
         // slither-disable-next-line incorrect-equality
@@ -120,7 +120,7 @@ library MarketAccounting {
         s.vault.settlePnl(user, q.pnl);
     }
 
-    /// @dev Until ADL/terminal settlement integration, no market transition may leave an uncovered deficit.
+    /// @dev Voluntary full closes require complete live coverage; forced liquidation has its separate ADL/terminal path.
     // The market holds its guard; the bound backstop controller makes only static reads before updating its budget.
     // slither-disable-next-line reentrancy-events
     function coverDebt(S.Data storage s, address user) internal returns (uint256 debt) {
@@ -229,7 +229,8 @@ library MarketAccounting {
                 || c.impactMarginBps != F.BPS || c.skewCoeff != 0 || c.takerFeeBps != 8 || c.creatorShareBps != 3000
                 || c.insuranceShareBps != 3000 || c.referralShareBps != 1000 || c.receiveCapX != 10
                 || c.liqPenaltyBps != 150 || c.maxOracleAgeBlocks == 0 || c.degradeAfterBlocks <= c.maxOracleAgeBlocks
-                || c.degradedTwapBlocks != 600
+                || c.degradedTwapBlocks != 600 || c.adlPendingWindow == 0 || c.maxPositionsPerMarket < 2
+                || c.maxPositionsPerMarket > Book.MAX_POSITIONS
                 || c.fundingCapPerBlock > (s.externalIndex ? uint256(0.001e18) / 12_000 : uint256(0.005e18) / 12_000)
                 || (s.externalIndex && c.priceSource.code.length == 0)
                 || (c.secondarySource != address(0) && c.secondarySource.code.length == 0)

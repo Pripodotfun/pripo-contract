@@ -4,9 +4,9 @@ pragma solidity 0.8.30;
 import {IPripoErrors as E} from "../../src/interfaces/IPripoErrors.sol";
 import {FundingMath as Funding} from "../../src/libraries/FundingMath.sol";
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
-import {MarketFixture} from "../helpers/MarketFixture.sol";
+import {AdlFixture} from "../helpers/AdlFixture.sol";
 
-contract MarketAdlTest is MarketFixture {
+contract MarketAdlTest is AdlFixture {
     function setUp() public {
         _setup(false);
     }
@@ -23,12 +23,9 @@ contract MarketAdlTest is MarketFixture {
         _paired(false, true);
     }
 
-    function testOmittedEligibleCandidateCannotForceSettlementAndRollsBack() public {
+    function testOmittedEligibleCandidateLeavesPendingAndInvalidListsRollBack() public {
         _prepare(false);
         bytes32 beforeState = _state();
-        vm.expectRevert(E.IncompleteAdlCandidates.selector);
-        market.liquidate(alice, "", new address[](0));
-        assertEq(_state(), beforeState);
         address[] memory invalid = new address[](1);
         invalid[0] = alice;
         vm.expectRevert(E.InvalidAdlCandidates.selector);
@@ -40,6 +37,13 @@ contract MarketAdlTest is MarketFixture {
         vm.expectRevert(E.InvalidAdlCandidates.selector);
         market.liquidate(alice, "", duplicates);
         assertEq(_state(), beforeState);
+        market.liquidate(alice, "", new address[](0));
+        assertTrue(market.pendingAdl(alice).active);
+        assertEq(market.pendingAdl(alice).matchedSize, 0);
+        assertEq(market.pendingAdlCount(), 1);
+        (uint8 status,) = market.status();
+        assertEq(status, uint8(T.Status.Paused));
+        _assertCash();
     }
 
     function testMultipleCandidatesOrderingAndTruncatedList() public {
@@ -53,14 +57,13 @@ contract MarketAdlTest is MarketFixture {
         assertEq(_state(), beforeState);
         candidates = new address[](1);
         candidates[0] = bob;
-        vm.expectRevert(E.IncompleteAdlCandidates.selector);
-        market.liquidate(alice, "", candidates);
-        assertEq(_state(), beforeState);
-        candidates = new address[](2);
-        candidates[0] = bob;
-        candidates[1] = creator;
         T.AmmState memory beforeAmm = market.ammState();
         market.liquidate(alice, "", candidates);
+        assertEq(market.pendingAdl(alice).matchedSize, 8e18);
+        assertEq(market.position(bob).size, 0);
+        _assertCash();
+        candidates[0] = creator;
+        market.continueAdl(alice, candidates);
         assertEq(market.position(alice).size, 0);
         assertEq(market.position(bob).size, 0);
         assertEq(market.position(creator).size, -10e18);
@@ -69,7 +72,7 @@ contract MarketAdlTest is MarketFixture {
         _assertCash();
     }
 
-    function testRoundedRemainderRebalancesAtPositionLimit() public {
+    function testRoundedRemainderMatchesGreedilyAtPositionLimit() public {
         _open(alice, 10e18);
         _open(carol, 10e18);
         for (uint256 i; i < 126; ++i) {
@@ -86,15 +89,15 @@ contract MarketAdlTest is MarketFixture {
         int256 desired = -int256(vault.ledger(address(market)).insurance) + 0.5e18;
         vm.prank(alice);
         market.addMargin(uint256(desired - current));
-        // Sixty-three equal matches leave one base wei. Resize the boundary pair so both slices earn profit.
+        // Sixty-three full matches leave one base wei; the final match is paid through winner rounding/top-up.
         T.AmmState memory beforeAmm = market.ammState();
         uint256 reserve = vault.protocolReserve();
         uint256 gasBefore = gasleft();
         market.liquidate(alice, "");
-        emit log_named_uint("128-position book with rounded boundary redistribution gas", gasBefore - gasleft());
+        emit log_named_uint("128-position book with greedy dust boundary gas", gasBefore - gasleft());
         assertLt(gasBefore - gasleft(), 20_000_000);
         assertEq(market.position(alice).size, 0);
-        assertEq(market.positionCount(), 65);
+        assertEq(market.positionCount(), 64);
         assertEq(market.ammState().baseReserve, beforeAmm.baseReserve);
         assertEq(market.ammState().quoteReserve, beforeAmm.quoteReserve);
         assertEq(vault.protocolReserve(), reserve);
@@ -113,11 +116,11 @@ contract MarketAdlTest is MarketFixture {
         assertEq(cash, int256(usdc.balanceOf(address(vault)) * 1e12));
     }
 
-    function testExplicitRoundedBoundaryRebalancesLongTarget() public {
+    function testExplicitRoundedBoundaryMatchesLongTarget() public {
         _roundedPair(false);
     }
 
-    function testExplicitRoundedBoundaryRebalancesShortTarget() public {
+    function testExplicitRoundedBoundaryMatchesShortTarget() public {
         _roundedPair(true);
     }
 
@@ -133,12 +136,12 @@ contract MarketAdlTest is MarketFixture {
         T.AmmState memory beforeAmm = market.ammState();
         market.liquidate(alice, "", candidates);
         assertEq(market.position(alice).size, 0);
-        // Both boundary winners remain open; the final winner receives more than the failed one-base-wei slice.
-        assertTrue(market.position(bob).size != 0);
+        // Greedy consumes the first winner exactly; the final winner takes one base wei.
+        assertEq(market.position(bob).size, 0);
         int256 bobClosed = sizeBob - market.position(bob).size;
         int256 creatorClosed = sizeCreator - market.position(creator).size;
         assertEq(bobClosed + creatorClosed, short ? int256(10e18) : -int256(10e18));
-        assertGt(short ? creatorClosed : -creatorClosed, 1);
+        assertEq(short ? creatorClosed : -creatorClosed, 1);
         assertGt(vault.freeBalance(bob), beforeBob);
         assertGt(vault.freeBalance(creator), beforeCreator);
         assertEq(market.ammState().baseReserve, beforeAmm.baseReserve);
@@ -178,33 +181,6 @@ contract MarketAdlTest is MarketFixture {
         _assertCash();
         T.FundingState memory funding = market.fundingState();
         Funding.surplus(funding, vault.ledger(address(market)).fundingPool, market.longSize(), market.shortSize());
-    }
-
-    function _prepare(bool short) internal {
-        _prepareSplit(short, 20e18);
-    }
-
-    function _prepareSplit(bool short, uint256 bobSize) internal {
-        int256 side = short ? -int256(1) : int256(1);
-        _open(alice, side * 10e18);
-        _open(carol, side * 10e18);
-        _open(bob, -side * int256(bobSize));
-        if (bobSize != 20e18) _open(creator, -side * int256(20e18 - bobSize));
-        _open(carol, side * 1e18);
-        vm.roll(block.number + 30_000_000);
-        _close(carol, uint256(2e18) / 11);
-        vm.roll(block.number + 300);
-        (,,, int256 owed) = market.quoteClose(alice, 1e18);
-        int256 current = vault.locked(alice, address(market)) - owed;
-        uint256 capacity = vault.ledger(address(market)).insurance;
-        int256 desired = -int256(capacity) + 0.5e18;
-        assertLt(current, desired);
-        vm.prank(alice);
-        market.addMargin(uint256(desired - current));
-        (, bool unhealthy) = market.health(alice);
-        assertTrue(unhealthy);
-        (,, int256 pnl,) = market.quoteClose(alice, 1e18);
-        assertGt(uint256(-vault.locked(alice, address(market)) - pnl), capacity);
     }
 
     function _state() internal view returns (bytes32) {

@@ -13,8 +13,10 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {MarketAccounting as Engine} from "./market/MarketAccounting.sol";
+import {MarketAdl as Adl} from "./market/MarketAdl.sol";
 import {MarketLens as Lens} from "./market/MarketLens.sol";
 import {MarketLiquidation as Liquidation} from "./market/MarketLiquidation.sol";
+import {MarketMargin as Margin} from "./market/MarketMargin.sol";
 import {MarketSettlement as Settlement} from "./market/MarketSettlement.sol";
 import {MarketState as S} from "./market/MarketState.sol";
 import {MarketTrading as Trading} from "./market/MarketTrading.sol";
@@ -178,36 +180,31 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     }
 
     function addMargin(uint256 amount) external nonReentrant {
-        S.Data storage s = S.load();
-        if (amount == 0) revert ZeroAmount();
-        if (s._positions[msg.sender].size == 0) revert NoPosition();
-        Engine.touch(s);
-        // Settlement effects are required; only close events need the returned debit.
-        // slither-disable-next-line unused-return
-        Engine.settleFunding(s, msg.sender);
-        s.vault.lock(msg.sender, amount);
-        emit MarginChanged(address(this), msg.sender, F.toInt(amount));
+        Margin.addMargin(S.load(), amount);
     }
 
     function removeMargin(uint256 amount) external nonReentrant {
-        S.Data storage s = S.load();
-        if (amount == 0) revert ZeroAmount();
-        T.Position memory p = s._positions[msg.sender];
-        if (p.size == 0) revert NoPosition();
-        Engine.touch(s);
-        // Settlement effects are required; only close events need the returned debit.
-        // slither-disable-next-line unused-return
-        Engine.settleFunding(s, msg.sender);
-        uint256 required = Engine.initialMargin(s, p.size, p.entryCost);
-        int256 remaining = s.vault.locked(msg.sender, address(this)) - F.toInt(amount);
-        if (remaining < F.toInt(required)) {
-            revert InsufficientMargin(remaining > 0 ? F.toUint(remaining) : 0, required);
-        }
-        int256 equity = remaining + Engine.referencePnl(s, p);
-        uint256 minimum = Math.ceilDiv(p.entryCost, s._config.maxLeverageX);
-        if (equity < F.toInt(minimum)) revert InsufficientMargin(equity > 0 ? F.toUint(equity) : 0, minimum);
-        s.vault.release(msg.sender, amount);
-        emit MarginChanged(address(this), msg.sender, -F.toInt(amount));
+        Margin.removeMargin(S.load(), amount);
+    }
+
+    function continueAdl(address user, address[] calldata candidates) external nonReentrant {
+        Adl.continuePending(S.load(), user, candidates);
+    }
+
+    function completeAdl(address user, uint256 maxIterations) external nonReentrant {
+        Adl.complete(S.load(), user, maxIterations);
+    }
+
+    function pendingAdl(address user) external view returns (T.AdlPending memory) {
+        return S.load()._pendingAdl[user];
+    }
+
+    function pendingAdlCount() external view returns (uint256) {
+        return S.load().pendingAdlCount;
+    }
+
+    function adlEligibleSize(address user) external view returns (uint256) {
+        return Adl.eligibleSize(S.load(), user);
     }
 
     // Guarded adapter reads happen after an internally consistent funding/TWAP checkpoint.
@@ -223,7 +220,7 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
             if (Engine.fresh(s, o)) {
                 s._index = o.price;
                 s._indexBlock = o.updatedBlock;
-                if (!s.guardianPaused) Engine.setStatus(s, T.Status.Active);
+                if (!s.guardianPaused && s.pendingAdlCount == 0) Engine.setStatus(s, T.Status.Active);
             }
         }
     }
@@ -314,7 +311,7 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     function fundingRatePerBlock() public view returns (int256) {
         S.Data storage s = S.load();
         if (s._config.status >= T.Status.Settling) return 0;
-        if (Engine.isDegraded(s)) return 0;
+        if (Engine.isDegraded(s) || s.pendingAdlCount != 0) return 0;
         return Engine.cachedRate(s);
     }
 
@@ -332,7 +329,7 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         S.Data storage s = S.load();
         Engine.touch(s);
         Engine.refreshPrice(s, update, value);
-        if (!s.guardianPaused) Engine.setStatus(s, T.Status.Active);
+        if (!s.guardianPaused && s.pendingAdlCount == 0) Engine.setStatus(s, T.Status.Active);
     }
 
     function pauseOpens() external nonReentrant {
@@ -349,7 +346,9 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         s.vault.requireOpenAllowed(address(this));
         Engine.touch(s);
         s.guardianPaused = false;
-        Engine.setStatus(s, Engine.isDegraded(s) ? T.Status.Degraded : T.Status.Active);
+        Engine.setStatus(
+            s, s.pendingAdlCount != 0 ? T.Status.Paused : Engine.isDegraded(s) ? T.Status.Degraded : T.Status.Active
+        );
     }
 
     function claimCreatorFees() external nonReentrant {

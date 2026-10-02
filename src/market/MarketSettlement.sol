@@ -47,6 +47,10 @@ library MarketSettlement {
         T.FundingState memory funding = Engine.previewFunding(s);
         for (uint256 i; i < p.users.length; ++i) {
             T.Position memory pos = s._positions[p.users[i]];
+            if (pos.adlPending) {
+                T.AdlReservation memory r = s.vault.adlReservation(address(this), p.users[i]);
+                ledger.insurance += r.lossCoverage + r.allowanceFromCoverage;
+            }
             int256 margin = s.vault.locked(p.users[i], address(this));
             int256 owed;
             // The returned snapshot is not needed in this read-only whole-book simulation.
@@ -82,11 +86,24 @@ library MarketSettlement {
     // The market guard spans the whole transition. The vault's custody methods do not transfer tokens or callback.
     // At most 128 accounts; all loop calls target the fixed vault. Full-book gas is regression tested.
     // slither-disable-next-line reentrancy-events,reentrancy-no-eth,calls-loop
-    function execute(S.Data storage s, address liquidatedUser) public {
+    function execute(S.Data storage s, address) public {
+        // Release every pending commitment before terminal valuation. Other markets' reservations remain isolated.
+        // Funding was touched while frozen by the caller, so clearing the count cannot accrue the frozen interval.
+        for (uint256 i; i < s._accounts.length; ++i) {
+            address user = s._accounts[i];
+            if (s._pendingAdl[user].active) {
+                // slither-disable-next-line unused-return
+                s.vault.releaseAdlReservation(user);
+                delete s._pendingAdl[user];
+                s._positions[user].adlPending = false;
+            }
+        }
+        s.pendingAdlCount = 0;
         Plan memory p = plan(s);
         T.SettlementQuote memory q = p.quote;
+        uint8 fundedThrough = _fundedThrough(s, q);
         Engine.setStatus(s, T.Status.Settling);
-        emit IMarketCore.ForcedSettlement(address(this), liquidatedUser, q.price);
+        emit IMarketCore.ForcedSettlement(address(this), q.price, q.capitalRequired + q.haircut, fundedThrough);
         uint256 allocated = 0;
         uint256 cumulative = 0;
         for (uint256 i; i < p.users.length; ++i) {
@@ -134,5 +151,17 @@ library MarketSettlement {
         uint16 bps =
             q.profits == 0 ? 0 : SafeCast.toUint16(Math.mulDiv(q.haircut, F.BPS, q.profits, Math.Rounding.Ceil));
         emit IMarketCore.MarketSettled(address(this), q.price, bps);
+    }
+
+    function _fundedThrough(S.Data storage s, T.SettlementQuote memory q) private view returns (uint8) {
+        uint256 gap = q.capitalRequired;
+        if (gap == 0) return q.haircut == 0 ? 0 : 1;
+        T.Ledger memory l = s.vault.ledger(address(this));
+        uint256 available = l.creatorOwed + l.protocolOwed;
+        if (gap <= available) return 2;
+        available += s.vault.backstopBalance();
+        if (gap <= available) return 3;
+        available += s.vault.protocolReserve();
+        return gap <= available ? 4 : 5;
     }
 }

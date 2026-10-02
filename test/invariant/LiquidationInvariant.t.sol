@@ -17,6 +17,18 @@ contract LiquidationHandler is Test {
     MockUSDC private usdc;
     address[4] private actors;
     uint256 public liquidations;
+    mapping(address => bytes32) public scheduleHash;
+
+    modifier frozenFunding() {
+        uint256 pendingBefore = market.pendingAdlCount();
+        T.FundingState memory before = market.fundingState();
+        _;
+        if (pendingBefore != 0) {
+            T.FundingState memory afterCall = market.fundingState();
+            assertEq(afterCall.longIndex, before.longIndex);
+            assertEq(afterCall.shortIndex, before.shortIndex);
+        }
+    }
 
     constructor(Market m, MarginVault v, MockUSDC token, address[4] memory users) {
         market = m;
@@ -26,22 +38,38 @@ contract LiquidationHandler is Test {
         token.approve(address(vault), type(uint256).max);
     }
 
-    function advance(uint32 seed) external {
+    function advance(uint32 seed) external frozenFunding {
         vm.roll(block.number + bound(seed, 0, 15_000_000));
     }
 
-    function liquidate(uint8 actor) external {
+    function liquidate(uint8 actor) external frozenFunding {
         address user = actors[actor % 4];
         if (market.position(user).size == 0) return;
         (, bool unhealthy) = market.health(user);
         if (!unhealthy) return;
-        // Integer fragments in this campaign stay above the base-wei boundary; unexpected rejection fails the run.
+        // Explicit omissions exercise reservations and continuations. Unexpected rejection fails the run.
         vm.prank(actors[(uint256(actor) + 1) % 4]);
-        market.liquidate(user, "");
+        if (actor & 4 == 0) market.liquidate(user, "", new address[](0));
+        else market.liquidate(user, "");
+        T.AdlPending memory pending = market.pendingAdl(user);
+        if (pending.active) {
+            scheduleHash[user] = keccak256(
+                abi.encode(
+                    pending.S0,
+                    pending.E0,
+                    pending.V0,
+                    pending.M0,
+                    pending.budget,
+                    pending.since,
+                    pending.allowanceFromC,
+                    pending.allowanceFromReserve
+                )
+            );
+        }
         ++liquidations;
     }
 
-    function margin(uint8 actor, uint80 seed) external {
+    function margin(uint8 actor, uint80 seed) external frozenFunding {
         address user = actors[actor % 4];
         if (market.position(user).size == 0) return;
         uint256 free = vault.freeBalance(user);
@@ -51,12 +79,22 @@ contract LiquidationHandler is Test {
         market.addMargin(amount);
     }
 
-    function partialClose(uint8 actor) external {
+    function partialClose(uint8 actor) external frozenFunding {
         address user = actors[actor % 4];
-        int256 size = market.position(user).size;
-        if (F.abs(size) < 2) return;
+        T.Position memory position = market.position(user);
+        int256 size = position.size;
+        if (F.abs(size) < 2 || position.adlPending) return;
         vm.prank(user);
         market.close(0.5e18, size > 0 ? 0 : type(uint256).max, "");
+    }
+
+    function complete(uint8 actor, uint8 iterations) external frozenFunding {
+        address user = actors[actor % 4];
+        T.AdlPending memory pending = market.pendingAdl(user);
+        if (!pending.active) return;
+        uint256 ready = uint256(pending.since) + market.config().adlPendingWindow;
+        if (block.number < ready) vm.roll(ready);
+        market.completeAdl(user, bound(iterations, 1, 64));
     }
 
     function withdraw(uint8 actor, uint64 seed) external {
@@ -101,7 +139,7 @@ contract LiquidationInvariantTest is StdInvariant, MarketFixture {
         vm.prank(alice);
         market.addMargin(uint256(desired - current));
         handler = new LiquidationHandler(market, vault, usdc, actors);
-        bytes4[] memory selectors = new bytes4[](7);
+        bytes4[] memory selectors = new bytes4[](8);
         selectors[0] = handler.advance.selector;
         selectors[1] = handler.liquidate.selector;
         selectors[2] = handler.margin.selector;
@@ -109,6 +147,7 @@ contract LiquidationInvariantTest is StdInvariant, MarketFixture {
         selectors[4] = handler.withdraw.selector;
         selectors[5] = handler.fund.selector;
         selectors[6] = handler.allocate.selector;
+        selectors[7] = handler.complete.selector;
         targetSelector(FuzzSelector(address(handler), selectors));
         targetContract(address(handler));
     }
@@ -122,8 +161,48 @@ contract LiquidationInvariantTest is StdInvariant, MarketFixture {
         uint256 longs;
         uint256 shorts;
         uint256 count;
+        uint256 pendingCount;
+        uint256 reservations;
         for (uint256 i; i < actors.length; ++i) {
             T.Position memory p = market.position(actors[i]);
+            T.AdlPending memory pending = market.pendingAdl(actors[i]);
+            T.AdlReservation memory r = vault.adlReservation(address(market), actors[i]);
+            uint256 reserved = r.lossCoverage + r.allowanceFromCoverage + r.allowanceFromReserve;
+            reservations += reserved;
+            assertEq(vault.adlReserved(address(market), actors[i]), reserved);
+            assertEq(p.adlPending, pending.active);
+            assertEq(r.active, pending.active);
+            if (pending.active) {
+                ++pendingCount;
+                assertEq(
+                    keccak256(
+                        abi.encode(
+                            pending.S0,
+                            pending.E0,
+                            pending.V0,
+                            pending.M0,
+                            pending.budget,
+                            pending.since,
+                            pending.allowanceFromC,
+                            pending.allowanceFromReserve
+                        )
+                    ),
+                    handler.scheduleHash(actors[i])
+                );
+                assertLe(pending.allowanceConsumed, pending.chunksMatched);
+                assertLe(pending.chunksMatched, market.config().maxPositionsPerMarket);
+                assertEq(r.consumedCoverage, pending.consumedC);
+                assertEq(
+                    r.lossCoverage + pending.consumedC + pending.replacedC, pending.reservedC - pending.allowanceFromC
+                );
+                assertEq(
+                    r.allowanceFromCoverage + r.allowanceFromReserve + pending.allowanceConsumed,
+                    pending.allowanceFromC + pending.allowanceFromReserve
+                );
+                assertEq(p.entryCost, pending.E0 - pending.E0 * pending.matchedSize / pending.S0);
+            } else {
+                assertEq(reserved, 0);
+            }
             if (p.size == 0) {
                 assertEq(vault.locked(actors[i], address(market)), 0);
                 continue;
@@ -139,6 +218,10 @@ contract LiquidationInvariantTest is StdInvariant, MarketFixture {
                 shortWeighted += F.signedProduct(F.abs(p.size), p.lastFundingIndex);
             }
         }
+        assertEq(market.pendingAdlCount(), pendingCount);
+        assertEq(vault.adlReservationCount(address(market)), pendingCount);
+        assertEq(vault.adlReservedTotal(address(market)), reservations);
+        if (pendingCount != 0) assertEq(market.fundingRatePerBlock(), 0);
         assertEq(market.ammState().entryCostNet, entries);
         assertEq(market.longSize(), longs);
         assertEq(market.shortSize(), shorts);

@@ -79,7 +79,15 @@ contract AdlGasTest is MarketFixture {
         uint256 gasBefore = gasleft();
         market.liquidate(alice, "");
         uint256 used = gasBefore - gasleft();
-        emit log_named_uint("128-position book with 125 paired winners gas", used);
+        emit log_named_uint("128-position book first 64 ranked matches gas", used);
+        assertLt(used, 20_000_000);
+        assertTrue(market.pendingAdl(alice).active);
+        assertEq(market.pendingAdl(alice).chunksMatched, 64);
+        vm.roll(block.number + market.config().adlPendingWindow);
+        gasBefore = gasleft();
+        market.completeAdl(alice, 64);
+        used = gasBefore - gasleft();
+        emit log_named_uint("128-position book remaining fallback matches gas", used);
         assertLt(used, 20_000_000);
         (uint8 status,) = market.status();
         assertEq(status, uint8(T.Status.Active));

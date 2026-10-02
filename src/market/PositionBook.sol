@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
 import {MarketState as S} from "./MarketState.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @notice Bounded lifetime slots. Closing an account leaves a hole and never moves another account.
 library PositionBook {
@@ -11,7 +12,8 @@ library PositionBook {
 
     function add(S.Data storage s, address user) internal {
         if (s._accountIndex[user] != 0) revert E.AccountingInvariant();
-        if (s._positionCount >= MAX_POSITIONS) revert E.PositionLimit(MAX_POSITIONS);
+        uint256 cap = s._config.maxPositionsPerMarket;
+        if (s._positionCount >= cap) revert E.PositionLimit(cap);
         uint256 slot;
         if (s._freeSlots.length == 0) {
             slot = s._accounts.length;
@@ -22,6 +24,7 @@ library PositionBook {
             s._accounts[slot] = user;
         }
         s._accountIndex[user] = slot + 1;
+        s._positions[user].slot = SafeCast.toUint32(slot);
         ++s._positionCount;
     }
 
@@ -37,7 +40,7 @@ library PositionBook {
     /// @dev Compact snapshot for atomic whole-book operations; order is ascending stable slot.
     function live(S.Data storage s) internal view returns (address[] memory users) {
         users = new address[](s._positionCount);
-        uint256 count;
+        uint256 count = 0;
         for (uint256 i; i < s._accounts.length; ++i) {
             if (s._accounts[i] != address(0)) users[count++] = s._accounts[i];
         }

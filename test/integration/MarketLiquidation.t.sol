@@ -63,7 +63,7 @@ contract MarketLiquidationTest is MarketFixture {
         _finish();
     }
 
-    function testUncoveredLiquidationSettlesWholeBookWithoutUsingLiveWindow() public {
+    function testTerminalSettlementReconcilesCommittedLiveWindowOnce() public {
         _indebted(10_000_000);
         vm.prank(carol);
         market.liquidate(alice, "");
@@ -73,8 +73,10 @@ contract MarketLiquidationTest is MarketFixture {
         assertEq(market.position(alice).size, 0);
         assertEq(market.position(bob).size, 0);
         (, bool initialized,, uint256 used) = backstop.windows(address(market));
-        assertFalse(initialized);
-        assertEq(used, 0);
+        assertTrue(initialized);
+        assertEq(used, 1_000e18);
+        assertEq(vault.adlReservedTotal(address(market)), 0);
+        assertEq(vault.adlReservationCount(address(market)), 0);
         _assertCash();
     }
 

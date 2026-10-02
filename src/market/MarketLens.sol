@@ -39,6 +39,7 @@ library MarketLens {
     }
 
     function quoteClose(S.Data storage s, address user, uint256 fraction) public view returns (S.CloseQuote memory q) {
+        if (s._pendingAdl[user].active) revert E.AdlAlreadyPending();
         T.Position memory p = s._positions[user];
         // Zero is the exact empty-position sentinel.
         // slither-disable-next-line incorrect-equality
@@ -59,11 +60,14 @@ library MarketLens {
         // Zero is the exact empty-position sentinel.
         // slither-disable-next-line incorrect-equality
         if (p.size == 0) return (type(int256).max, false);
-        int256 equity = s.vault.locked(user, address(this)) + Engine.referencePnl(s, p) - Engine.fundingOwed(s, p);
-        uint256 magnitude = Math.mulDiv(F.abs(equity), F.WAD, p.entryCost);
+        int256 collateral = s.vault.locked(user, address(this)) - Engine.fundingOwed(s, p);
+        int256 equity = collateral + Engine.referencePnl(s, p);
+        uint256 magnitude =
+            p.entryCost == 0 ? uint256(type(int256).max) : Math.mulDiv(F.abs(equity), F.WAD, p.entryCost);
         healthWad = equity < 0 ? -F.toInt(magnitude) : F.toInt(magnitude);
         uint256 mmr = Engine.isDegraded(s) ? 1500 : s._config.mmrBps;
-        liquidatable = equity < F.toInt(Math.mulDiv(p.entryCost, mmr, F.BPS, Math.Rounding.Ceil));
+        liquidatable = !p.adlPending
+            && (collateral < 0 || equity < F.toInt(Math.mulDiv(p.entryCost, mmr, F.BPS, Math.Rounding.Ceil)));
     }
 
     function realizablePnl(S.Data storage s, address user) public view returns (int256, int256) {

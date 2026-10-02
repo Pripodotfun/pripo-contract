@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IMarketCore} from "../interfaces/IMarketCore.sol";
 import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
+import {AdlMath as A} from "../libraries/AdlMath.sol";
 import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
 import {LiquidationMath as L} from "../libraries/LiquidationMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
@@ -25,6 +26,7 @@ library MarketLiquidation {
         bool automatic
     ) public {
         if (s._positions[user].size == 0) revert E.NoPosition();
+        if (s._pendingAdl[user].active) revert E.AdlAlreadyPending();
         Engine.touch(s);
         bool degraded = Engine.isDegraded(s);
         if (s.externalIndex && !degraded) {
@@ -48,28 +50,41 @@ library MarketLiquidation {
         }
         uint256 penalty =
             s.vault.chargeLiquidationPenalty(user, msg.sender, L.penalty(q.fill.quoteAmount, s._config.liqPenaltyBps));
-        int256 equity = s.vault.locked(user, address(this)) + q.pnl;
+        int256 allocatedMargin =
+            A.marginShare(s.vault.locked(user, address(this)), F.abs(q.closedSize), F.abs(originalSize));
+        int256 equity = allocatedMargin + q.pnl;
         (uint256 insurance, uint256 backstop) = s.vault.liveCoverage(address(this));
         if (equity < 0 && F.abs(equity) > insurance + backstop) {
-            (bool terminal, uint256 quote, uint256 covered) = Adl.resolve(s, user, q.closedSize, candidates, automatic);
-            uint256 pairedAverage = terminal
+            Adl.Result memory result = Adl.start(s, user, q.closedSize, candidates, automatic);
+            uint256 pairedAverage = result.terminal
                 ? s.settlementPrice
-                : Math.mulDiv(
-                    quote, F.WAD, F.abs(q.closedSize), q.closedSize < 0 ? Math.Rounding.Ceil : Math.Rounding.Floor
-                );
+                : result.closedSize == 0
+                    ? 0
+                    : Math.mulDiv(
+                        result.quote,
+                        F.WAD,
+                        F.abs(result.closedSize),
+                        result.closedSize < 0 ? Math.Rounding.Ceil : Math.Rounding.Floor
+                    );
             emit IMarketCore.Liquidated(
                 address(this),
                 user,
                 msg.sender,
-                terminal ? originalSize : q.closedSize,
+                result.terminal ? originalSize : result.closedSize,
                 pairedAverage,
                 penalty,
-                F.toInt(terminal ? s.vault.deficit(address(this)) : covered)
+                F.toInt(result.terminal ? s.vault.deficit(address(this)) : result.covered)
             );
             return;
         }
         Engine.applyClose(s, user, q);
-        uint256 debt = Engine.coverDebt(s, user);
+        uint256 debt = equity < 0 ? F.abs(equity) : 0;
+        if (debt != 0) {
+            (uint256 local, uint256 global, uint256 remaining) = s.vault.coverLiquidationLoss(user, debt);
+            if (remaining != 0) revert E.AccountingInvariant();
+            if (local != 0) emit IMarketCore.BadDebt(address(this), user, local, 0);
+            if (global != 0) emit IMarketCore.BadDebt(address(this), user, global, 1);
+        }
         if (s._positions[user].size == 0) {
             s.vault.release(user, F.toUint(s.vault.locked(user, address(this))));
             delete s._positions[user];
@@ -87,7 +102,9 @@ library MarketLiquidation {
         p.entryCost -= q.closedEntry;
         uint256 nominal = L.penalty(q.fill.quoteAmount, s._config.liqPenaltyBps);
         uint256 charged = collateral > 0 ? Math.min(nominal, F.toUint(collateral)) : 0;
-        int256 equity = collateral + q.pnl - F.toInt(charged) + Engine.referencePnl(s, p);
-        return equity < F.toInt(Math.mulDiv(p.entryCost, s._config.mmrBps, F.BPS, Math.Rounding.Ceil));
+        int256 remainingCollateral = collateral + q.pnl - F.toInt(charged);
+        int256 equity = remainingCollateral + Engine.referencePnl(s, p);
+        return remainingCollateral < 0
+            || equity < F.toInt(Math.mulDiv(p.entryCost, s._config.mmrBps, F.BPS, Math.Rounding.Ceil));
     }
 }

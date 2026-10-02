@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {AdlMath as A} from "../../src/libraries/AdlMath.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-/// @notice Test-only model of pending accounting; it does not execute the production market or vault.
+/// @notice Pending accounting model using production schedule math; it does not execute market or vault transitions.
 contract AdlScheduleHarness {
     struct Snapshot {
         uint256 size;
@@ -54,13 +55,12 @@ contract AdlScheduleHarness {
         for (uint256 i; i < chunks.length; ++i) {
             Chunk calldata c = chunks[i];
             require(c.size != 0 && done + c.size <= s.size);
-            uint256 nextValue = Math.mulDiv(s.value, done + c.size, s.size);
-            uint256 value = nextValue - scheduledValue;
+            uint256 value = A.chunk(s.value, s.size, done, done + c.size);
             uint256 actual = s.longTarget ? Math.max(value, c.realizableValue) : Math.min(value, c.realizableValue);
             relief += s.longTarget ? actual - value : value - actual;
             actualValue += actual;
-            scheduledValue = nextValue;
-            entryRemoved = Math.mulDiv(s.entry, done + c.size, s.size);
+            scheduledValue += value;
+            entryRemoved += A.chunk(s.entry, s.size, done, done + c.size);
             done += c.size;
             paid[i] = c.bookedProfit;
             if (c.bookedProfit == 0) {

@@ -32,6 +32,8 @@ library PripoTypes {
         uint64 skewCoeff;
         Status status;
         uint64 statusSince;
+        uint32 adlPendingWindow;
+        uint16 maxPositionsPerMarket;
     }
 
     struct AmmState {
@@ -67,6 +69,31 @@ library PripoTypes {
         uint256 margin;
         uint256 entryCost;
         int256 lastFundingIndex;
+        uint32 slot;
+        bool adlPending;
+    }
+
+    /// @notice Immutable schedules plus cumulative accounting for one selected liquidation portion.
+    struct AdlPending {
+        uint256 S0;
+        uint256 E0;
+        int256 V0; // A negative short boundary has no eligible long; a full scan proves insufficiency.
+        int256 M0;
+        int256 budget;
+        uint256 matchedSize;
+        uint256 reservedC;
+        uint256 allowanceFromC;
+        uint256 allowanceFromReserve;
+        uint256 consumedC; // Net provisional coverage credited to locked collateral.
+        uint256 replacedC;
+        uint256 addedMargin;
+        uint256 relief;
+        uint256 allowanceConsumed;
+        uint256 chunksMatched;
+        uint64 since;
+        uint32 cursor;
+        bool isLong;
+        bool active;
     }
 
     struct Ledger {

@@ -127,6 +127,8 @@ abstract contract MarketFixture is Test {
         c.maxOracleAgeBlocks = 10;
         c.degradeAfterBlocks = 100;
         c.degradedTwapBlocks = 600;
+        c.adlPendingWindow = 1_000;
+        c.maxPositionsPerMarket = 128;
         c.fundingCapPerBlock = uint64((externalIndex ? uint256(0.001e18) : uint256(0.005e18)) / 12_000);
     }
 
@@ -150,16 +152,23 @@ abstract contract MarketFixture is Test {
     }
 
     function _assertCash() internal view {
+        _assertCashWith(new address[](0));
+    }
+
+    function _assertCashWith(address[] memory extras) internal view {
         T.Ledger memory l = vault.ledger(address(market));
         int256 sum = int256(
             vault.freeBalance(alice) + vault.freeBalance(bob) + vault.freeBalance(carol) + vault.freeBalance(creator)
-                + vault.backstopBalance() + vault.protocolReserve()
+                + vault.backstopBalance() + vault.protocolReserve() + vault.adlReservedTotal(address(market))
         );
         sum += vault.locked(alice, address(market)) + vault.locked(bob, address(market))
         + vault.locked(carol, address(market)) + vault.locked(creator, address(market));
         sum += int256(l.insurance + l.protocolOwed + l.creatorOwed + l.skewPool + vault.referralOwed(creator));
         sum += l.clearing + l.fundingPool;
         sum -= int256(vault.totalDeficit());
+        for (uint256 i; i < extras.length; ++i) {
+            sum += int256(vault.freeBalance(extras[i])) + vault.locked(extras[i], address(market));
+        }
         assertEq(sum, int256(usdc.balanceOf(address(vault)) * 1e12), "cash equality");
         T.AmmState memory a = market.ammState();
         assertEq(l.clearing, int256(a.quoteReserve) - int256(a.curveBase) - a.entryCostNet, "curve conservation");

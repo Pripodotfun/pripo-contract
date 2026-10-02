@@ -455,7 +455,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         emit AdlCoverageConsumed(msg.sender, user, amount);
     }
 
-    /// @notice Reverse provisional coverage made unnecessary by later realizable relief. No loser refund occurs.
+    /// @notice Reverse provisional coverage made unnecessary by relief or replacement. No loser refund occurs.
     function restoreAdlCoverage(address user, uint256 amount) external onlyMarket {
         T.AdlReservation storage r = _adlReservations[msg.sender][user];
         if (!r.active) revert NoPendingAdl();
@@ -507,7 +507,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     }
 
     /// @notice Fund the planned loss of a closed portion without consuming the remaining portion's collateral.
-    /// @dev Trusted market code proves the amount from the paired fill and allocated margin. Uses live claim caps.
+    /// @dev Trusted market code proves the amount from the selected curve fill and allocated margin. Uses live claim caps.
     // The guarded, governor-bound controller only performs static vault/market reads before consuming its budget.
     // slither-disable-next-line reentrancy-no-eth,reentrancy-benign
     function coverLiquidationLoss(address user, uint256 amount)

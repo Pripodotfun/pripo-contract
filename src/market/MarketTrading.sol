@@ -27,7 +27,7 @@ library MarketTrading {
         // slither-disable-next-line incorrect-equality
         bool wasActive = s._config.status == T.Status.Active;
         Engine.touch(s);
-        if (!wasActive || s.guardianPaused) revert E.MarketNotActive();
+        if (!wasActive || s.guardianPaused || s.pendingAdlCount != 0) revert E.MarketNotActive();
         Engine.refreshPrice(s, update, value);
         // A fresh observation prevents a transition caused solely by an expired cache.
         // slither-disable-next-line incorrect-equality
@@ -57,6 +57,7 @@ library MarketTrading {
     function close(S.Data storage s, address user, uint256 fraction, uint256 limitPrice, bytes32[] memory proof)
         public
     {
+        if (s._pendingAdl[user].active) revert E.AdlAlreadyPending();
         Engine.touch(s);
         int256 fundingOwed = Engine.settleFunding(s, user);
         S.CloseQuote memory q = Lens.quoteClose(s, user, fraction);

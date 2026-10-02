@@ -92,8 +92,8 @@ struct MarketConfig {
     uint16  impactMarginBps;    // scales the impact minimum of initial margin, default 10000
     uint32  maxOracleAgeBlocks; // opens only, default 10
     uint32  degradeAfterBlocks; // default 100
-    uint32  adlPendingWindow;   // target pending implementation: default 1,000 blocks
-    uint16  maxPositionsPerMarket; // target config: 128 at launch; also lifetime rounding target
+    uint32  adlPendingWindow;   // default 1,000 blocks
+    uint16  maxPositionsPerMarket; // 128 at launch; also lifetime rounding target
     uint32  degradedTwapBlocks; // default 600
     uint64  fundingCapPerBlock; // WAD-scaled cap on |f| per block
     uint64  skewCoeff;          // WAD-scaled c for the Phase 2 skew premium; 0 at launch
@@ -134,8 +134,8 @@ struct Position {
     uint256 margin;             // positive part of signed locked collateral; debt exposed separately
     uint256 entryCost;          // exact quote paid (long) or received (short) at open; reduced pro-rata on partial close
     int256  lastFundingIndex;   // snapshot of the index for this position's side
-    uint32  slot;               // target: stable lifetime slot, reused from a free list
-    bool    adlPending;         // target: pending commitment, see the ADL section
+    uint32  slot;               // stable lifetime slot, reused from a free list
+    bool    adlPending;         // pending commitment, see the ADL section
 }
 
 struct Ledger {
@@ -164,7 +164,7 @@ mapping(address market => uint256) deficit;          // protocol obligation; min
 uint256 totalDeficit;                                // sum of market deficits; exceptional/batched writes only
 uint256 backstop;
 uint256 protocolReserve;                             // protocol-owned USDC retained in the vault, WAD
-mapping(address market => mapping(address user => uint256)) adlReserved; // target: loss coverage and rounding allowance
+mapping(address market => mapping(address user => uint256)) adlReserved; // loss coverage and rounding allowance (exposed by a computed vault view)
 mapping(address market => uint256) protocolOwed;
 mapping(address market => uint256) creatorOwed;
 mapping(address referrer => uint256) referralOwed;
@@ -359,9 +359,9 @@ The stored parameter is `sideCapBps = floor(10_000 × φ(λ))`, and `C = floor(s
 
 `pnl_ref` is the realizable PnL defined in Solvency and the vault ledger, evaluated at the reserves implied by the mark TWAP (300 blocks in `Active`, 600 in `Degraded`). For oracle-fed markets `pnl_ref = min(realizable, indexPnL)` where `indexPnL = size × index − entryCost` for a long and `entryProceeds − |size| × index` for a short; for oracle-less and `Degraded` markets it is realizable alone. Valuation at spot mark is never used for health. Covered curve liquidations execute at actual reserves, so exit impact lands on the liquidated trader; ADL instead pairs equal opposite sizes off the curve as specified below.
 
-**Liquidatable** when `health < mmrBps / 10_000`, or when post-funding collateral is below zero regardless of unrealized PnL. The latter predicate must be added to both the view and execution path; the standard capped penalty applies. Defaults: 2.5% for oracle-fed (20x), 15% for oracle-less (3x).
+**Liquidatable** when `health < mmrBps / 10_000`, or when post-funding collateral is below zero regardless of unrealized PnL. Both the view and execution path apply the latter predicate; the standard capped penalty applies. Defaults: 2.5% for oracle-fed (20x), 15% for oracle-less (3x).
 
-**Liquidation flow** (`liquidate(user, oracleUpdate, adlCandidates)`, anyone may call). After funding settlement: the size to close is 50% if the position is above the partial threshold, else 100%; `pen = ceil(liqPenaltyBps × notional / 10_000)`, capped to available positive margin and taken from margin first and split 40% keeper, 60% market insurance; `X = loss_curve + pen − margin`, the projected shortfall of closing that size on the curve; `C = insurance[market] + the backstop's remaining daily allowance for it`. The penalty uses the selected curve quote and is charged once from positive post-funding collateral before PnL. Preflight promotes a normal partial to full when its projected remainder would remain unhealthy; Degraded retains the partial limit unless terminal settlement is required. Three cases; lack of capital alone does not reject terminal settlement:
+**Liquidation flow** (`liquidate(user, oracleUpdate, adlCandidates)`, anyone may call). After funding settlement: the size to close is 50% if the position is above the partial threshold, else 100%; `pen = ceil(liqPenaltyBps × notional / 10_000)`, capped to available positive margin and taken from margin first and split 40% keeper, 60% market insurance; `M = selected share of signed post-penalty collateral` (positive shares round down, negative shares round up in magnitude); `X = loss_curve − M`, the selected curve shortfall; `C = insurance[market] + the backstop's remaining daily allowance for it`. The penalty uses the selected curve quote and is charged once from positive post-funding collateral before PnL. Preflight and covered execution use that selected collateral share, leaving unselected funding debt locked. Preflight promotes a normal partial to full when its projected remainder would remain unhealthy; Degraded retains the partial limit unless terminal settlement is required. Three cases; lack of capital alone does not reject terminal settlement:
 
 1. `X ≤ 0`: close on the curve at the actual fill. No bad debt. Remaining margin stays in the position (partial) or returns to the vault (full).
 2. `0 < X ≤ C`: close on the curve; `X` is debited from insurance, then backstop; `BadDebt` is emitted.
@@ -373,7 +373,7 @@ The curve does not move on the ADL path: `longSize` and `shortSize` fall by the 
 
 **Bounded book.** `maxPositionsPerMarket` is 128 at launch and also determines the lifetime rounding target. First opens allocate a stable slot; increases and partial closes retain it; full closes free it for reuse through a free list. A persisted fallback cursor scans slots, including holes, without swap-and-pop. At capacity, new accounts cannot open; existing accounts may increase only if every opens gate permits it. Opens and increases are blocked while pending, so a freed slot cannot be reused during that pending lifetime. `positionCount()` counts live positions; slot pagination and fallback must preserve these semantics even when earlier winners close.
 
-The current runtime still uses a compact book and `positionAccounts(offset, limit)` with maximum page size 256. Its local gross-gas regressions measured approximately 15.6 million for 128-position forced settlement and 11.4 million for a book pairing 125 winners. These are pre-pending measurements. Repeat full-path gas checks after stable slots, reservations and continuation integration, then measure on a target Monad fork including oracle updates. The local 20-million budget is not a network limit.
+The runtime uses stable slots; `positionAccounts(offset, limit)` returns holes and accepts at most 256 slots per page. Local gross-gas regressions cover terminal settlement with 128 positions and pairing across 125 winners in bounded calls, each constrained below 20 million gas. Measure the integrated paths on a target Monad fork including oracle updates before deployment. The local budget is not a network limit.
 
 **OI caps** constrain each side in two units: quote notional must not exceed `(insuranceBalance + backstopAllocation) × oiMultiplier`, and base size must not exceed `C = floor(sideCapBps × B0 / 10_000)`. The quote notional of each side uses the current mark, including the post-trade mark when validating an open. Apply both checks independently; do not compare a quote amount directly with a base size. Launch notional caps apply in addition. The factory's depth minimum supports the initial insurance bound at the seed price; later price changes can change which bound binds. Opens that breach either bound revert; closes and liquidations remain available.
 
@@ -401,7 +401,7 @@ Winners are paid before losers close, so the vault names that gap explicitly ins
 
 `vaultCashWad == Σ free + Σ locked + Σ clearing + Σ insurance + backstop + protocolReserve + Σ adlReserved + Σ owed + Σ skewPool + Σ fundingPool − Σ deficit`
 
-`vaultCashWad = USDC.balanceOf(vault) × 10^12`. All balances are quote WAD and the sum uses signed arithmetic. `owed` includes protocol, creator and referral balances exactly once; reserve allocations are removed from `protocolOwed` before being credited to `protocolReserve`. `deficit` is zero until terminal funding step 6 in Phase 1. `totalDeficit` is a control aggregate, not another term in this identity. `adlReserved` includes both reserved loss coverage and funded rounding allowance exactly once; their per-position counters are not extra cash accounts. Reservation debits its named insurance/backstop/reserve sources. Consumption, replacement and return debit the reservation and credit the corresponding destination. This term is required with pending runtime integration; it is zero in the current runtime. Pending protocol promises and future fees are not cash. Phase 2 profit claims will require their own accounting entries; this Phase 1 identity must not silently omit them when that ledger is introduced.
+`vaultCashWad = USDC.balanceOf(vault) × 10^12`. All balances are quote WAD and the sum uses signed arithmetic. `owed` includes protocol, creator and referral balances exactly once; reserve allocations are removed from `protocolOwed` before being credited to `protocolReserve`. `deficit` is zero until terminal funding step 6 in Phase 1. `totalDeficit` is a control aggregate, not another term in this identity. `adlReserved` includes both reserved loss coverage and funded rounding allowance exactly once; their per-position counters are not extra cash accounts. Reservation debits its named insurance/backstop/reserve sources. Consumption, replacement and return debit the reservation and credit the corresponding destination. The integrated runtime includes this reservation term once; both the individual partitions and market aggregate reconcile with actual vault custody. Pending protocol promises and future fees are not cash. Phase 2 profit claims will require their own accounting entries; this Phase 1 identity must not silently omit them when that ledger is introduced.
 
 This is a double-entry identity, separate from economic solvency and the stronger requirement that user entitlements be fully funded. Watchers and invariant handlers recompute it; no per-trade global cash sum is written. Direct token donations are separately observable unallocated excess cash until explicitly assigned.
 
@@ -419,7 +419,7 @@ This is a double-entry identity, separate from economic solvency and the stronge
 
 **Solvency condition.** No bad debt can arise from the curve while every open position's realizable loss is at most its margin. Impact-aware initial margin (Margin and liquidation) enforces that at open for the worst reserves the caps allow; health at realizable value enforces it thereafter; when it fails, bad debt is recognized at liquidation.
 
-**Bad debt, auto-deleverage and forced settlement.** Two decisions, and the rules that follow from them. This section specifies the accepted replacement for the current matcher. Fixed schedules, allowance accounting and fallback progress have test-only model coverage; pending reservations, stable runtime slots, funding freeze and continuation entry points are not yet integrated into the production contracts. `docs/validation.md` records the implementation and test scope. The requirements below govern the pending runtime integration.
+**Bad debt, auto-deleverage and forced settlement.** Two decisions, and the rules that follow from them. The production runtime implements fixed schedules, protected reservations, stable slots, frozen funding and permissionless continuations. `docs/validation.md` distinguishes production integration/invariant tests from the independent model properties and remaining deployment gates.
 
 **Decision 1: ADL pairs off the curve, on a value schedule, never at a price.** Closing a winner on the curve pays its full curve profit and deepens the hole. ADL instead pairs the liquidated position's size against eligible opposite-side positions with no reserve movement: `B`, `Q` and `longSize − shortSize` are unchanged, `E` changes by the signed paired entry allocations, and the clearing identity holds because a long and a short closing at any common value change `entryCostNet` by exactly what they change `clearing` (`Δclearing = c_L − P_S = −ΔE`). Coverage is not paid to the liquidated trader; it is spent improving the winners' outcome. There is no rounded price anywhere in the pairing.
 
@@ -443,35 +443,38 @@ Nothing is released to the loser until the pending resolves; its `close` and `re
 ```solidity
 struct AdlPending {
     uint256 S0;            // selected size, fixed at the first call
-    uint256 E0;            // selected entry cost (long) or proceeds (short), fixed
-    uint256 V0;            // total scheduled value, fixed: E0 − B for a long loser, E0 + B for a short loser
+    uint256 E0;            // selected entry cost or proceeds, fixed
+    int256  V0;            // E0 − budget (long) or E0 + budget (short), fixed
     int256  M0;            // selected signed collateral after the once-only penalty
-    int256  budget;        // original paired-loss budget B; fixed across margin additions
+    int256  budget;        // original paired-loss budget; fixed across margin additions
     uint256 matchedSize;   // progress, d
-    uint256 reservedC;     // original C, including the part earmarked for rounding
-    uint256 allowanceFromC; // original rC, not available for paired losses
-    uint256 allowanceFromReserve; // original additional reserve transfer
-    uint256 replacedC;     // unspent loss coverage returned after added margin
-    uint256 consumedC;     // paired-loss coverage spent so far; excludes top-ups
-    uint256 relief;        // value returned toward the loser by candidate floors or ceilings
-    uint256 allowance;     // rounding wei remaining
-    uint64  since;         // first-call block; deadline = since + adlPendingWindow, never reset
+    uint256 reservedC;     // original C, including its rounding allocation
+    uint256 allowanceFromC; // original rC, unavailable for paired losses
+    uint256 allowanceFromReserve; // original supplemental reserve transfer
+    uint256 consumedC;     // net provisional loss coverage credited to locked
+    uint256 replacedC;     // unspent coverage returned after added margin
+    uint256 addedMargin;   // collateral added while pending
+    uint256 relief;        // cumulative realizable floor/ceiling relief
+    uint256 allowanceConsumed; // one quote wei per zero-profit top-up
+    uint256 chunksMatched;
+    uint64  since;         // deadline = since + adlPendingWindow, never reset
     uint32  cursor;        // stable-slot scan position for completeAdl
-    bool    penaltyCharged;
+    bool    isLong;
+    bool    active;        // initiation charged the penalty; continuations cannot charge it
 }
 ```
 
-The struct describes the required accounting state, not a finalized storage layout or exported ABI. The vault reservation and its loss-coverage/allowance partitions must reconcile after every move.
+This is the exported runtime state. Remaining loss coverage and the two allowance partitions live in the vault reservation and reconcile after every move. `V0` is signed because a deeply insolvent short can require a negative buyback value: no long is eligible at that ratio, and a fresh complete-book scan proves insufficiency before any pairing. Executable value schedules are nonnegative.
 
 **Value and entry schedules.** With `d` the cumulative matched size, `E(d) = floor(E0 × d / S0)` and `V(d) = floor(V0 × d / S0)`. A chunk from `d_before` to `d_after` carries entry `E(d_after) − E(d_before)` and value `V(d_after) − V(d_before)`; the chunk entry comes off both the position and `entryCostNet`. Denominators never change across continuations, so the sums telescope to exactly `E0` and `V0` for any chunking and the loser's booked loss before realizable relief is exactly `B` to the wei at completion. The ADL path bypasses the partial-close helper, whose shrinking denominator would break the budget (selecting 2 of 4 units from entry 402 must remove 201, not 200). `p_adl = V0 / S0` exists for eligibility and display only.
 
 **Relief.** Take the candidate's full remaining close-alone quote at TWAP reserves, `qReal`, and remaining size `w`. For a chunk of size `s`, a short winner's buyback floor is `floor(qReal × s / w)` and a long winner's proceeds ceiling is `ceil(qReal × s / w)`. For a long loser use `chunkValue = max(scheduled, buybackFloor)`; for a short loser use `chunkValue = min(scheduled, proceedsCeiling)`. Both sides book that same actual chunk value. These are pro-rata bounds from the full-position quote, not a new curve quote for the chunk alone.
 
-Accumulate the nonnegative difference as `relief`. At completion actual paired values sum to `V0 + relief` (long loser) or `V0 − relief` (short loser), and the loser's signed booked loss is `B − relief`. Relief reduces coverage consumed; unused coverage returns on resolution. The realizable bound limits winner payouts to the pro-rata close-alone value, subject to the stated entry/value rounding and separate one-wei top-up.
+Accumulate the nonnegative difference as `relief`. At completion actual paired values sum to `V0 + relief` (long loser) or `V0 − relief` (short loser), and the loser's signed booked loss is `B − relief`. At each prefix, net provisional coverage consumed is `max(floor(pairedCoverage × d / S0) − relief − replacedC, 0)`. New relief or replacement may reduce that prefix, restoring previously credited coverage from locked to reservation. No interim loser refund is created. On resolution, unused loss coverage and coverage-funded allowance return to local insurance; unused reserve-funded allowance returns to protocol reserve. The realizable bound limits winner payouts to the pro-rata close-alone value, subject to the stated entry/value rounding and separate one-wei top-up.
 
 **Rounding.** Winners' pro-rata allocations round in the winner's favour (short winners' proceeds up, long winners' cost down); the loser's side is exact by the schedule. Every chunk's booked profit is therefore `≥ 0`. If a chunk's paid profit would be 0, one wei is paid from the allowance; if the allowance is exhausted the chunk closes at zero paid profit and emits `AdlZeroProfit`, which is unreachable while the reserve floor holds. Reserve-funded allowance does not reduce `C` again. Guarantees: booked profit `≥ 0`, and paid profit `≥ 1` wei on every chunk unless `AdlZeroProfit` is emitted. Top-ups are reservation-to-free transfers outside paired PnL and clearing; allowance consumption is at most one quote wei per match. Chunk profit does not track exact profit (a chunk with exact profit 7/6 may pay 1 wei); that is not a bug.
 
-**Eligibility and order.** A candidate is eligible if it is open, on the opposite side, has post-funding collateral `≥ 0`, positive trading profit at the exact schedule ratio, and positive close-alone realizable profit. A winner that funding has pushed below zero is liquidatable, not a counterparty. Compare the whole position with the exact rational schedule: short proceeds `× S0 > V0 × candidateSize`, mirrored for a long. Use full-precision comparisons, never a rounded WAD display price. For positive post-funding collateral, the score is `floor(realizablePnl × entryCost × WAD / collateral²)`; eligible zero-collateral candidates receive the maximum score. The explicit list must contain unique eligible candidates in nonincreasing score order and cannot exceed the book cap; it need not prove global top-k. Automatic ranking uses numeric address to break equal scores. Match greedily, chunk `= min(remaining, candidate remaining)`, with no redistribution or search. Winner entry shares round up for shorts and down for longs, nonnegative collateral shares round down, and a full close takes all residuals. Apply actual entry reductions to signed `entryCostNet`. Opens are paused while any ADL is pending, so each candidate is consumed at most once over the pending's lifetime and chunks never exceed positions, which is why `R` is sized to the book.
+**Eligibility and order.** A candidate is eligible if it is open, on the opposite side, has post-funding collateral `≥ 0`, positive trading profit at the exact schedule ratio, and positive close-alone realizable profit. A winner that funding has pushed below zero is liquidatable, not a counterparty. Compare the whole position with the exact rational schedule: short proceeds `× S0 > V0 × candidateSize`, mirrored for a long. Use full-precision comparisons, never a rounded WAD display price. For positive post-funding collateral, the score is `min(uint256.max, floor(realizablePnl × entryCost × WAD / collateral²))`; eligible zero-collateral candidates receive the maximum score. The explicit list must contain unique eligible candidates in nonincreasing score order and cannot exceed the book cap; it need not prove global top-k. Automatic ranking uses numeric address to break equal scores. Match greedily, chunk `= min(remaining, candidate remaining)`, with no redistribution or search. Winner entry shares round up for shorts and down for longs, nonnegative collateral shares round down, and a full close takes all residuals. Apply actual entry reductions to signed `entryCostNet`. Opens are paused while any ADL is pending, so each candidate is consumed at most once over the pending's lifetime and chunks never exceed positions, which is why `R` is sized to the book.
 
 **Continuation, funding and fallback.** Insufficiency of a valid caller list alone neither settles nor reverts: match what it covers and leave the remainder pending unless a fresh full-book scan independently proves terminal insufficiency. Invalid, duplicate or misordered candidates still fail validation. The market pauses opens (closes, other liquidations and `addMargin` continue) and funding is checkpointed and frozen at rate zero until the last pending resolves, so the budget's margin cannot be eroded between calls. Refresh the accrual checkpoint while frozen; do not charge catch-up funding when the last pending resolves. The pending count/pause reason is independent of Guardian pause and oracle degradation: `poke`, `remark`, resume and completion of one pending cannot enable opens or funding while another pending remains. Restore activity only when all applicable gates allow it. Anyone continues with `continueAdl(user, candidates)`. After `adlPendingWindow` (default 1,000 blocks) anyone may call `completeAdl(user, maxIterations)` (1–64 iterations per call; keeper default 64), which scans the book from the persisted cursor over stable position slots (a slot is assigned for a position's lifetime and reused from a free list; no swap-and-pop) and matches eligible positions in slot order. Every bounded call makes progress: a chunk matched, the cursor advanced past a slot, or insufficiency proven by a full scan; a cursor that reaches the end restarts at slot 0 with a fresh pass.
 
@@ -526,7 +529,7 @@ Protocol fee allocation runs **terminal deficit repayment → reserve refill →
 
 **What never changes.** Existing free balances and withdrawn funds are never clawed back. ADL and profit haircuts act on open positions and, once introduced, unpaid profit claims. Unclaimed creator/protocol fees and the named protocol reserve are explicitly subordinated capital. Actual deficit repayment must be observable in balances and events; a deadline or promise is not repayment.
 
-**ADL invariants to verify in the integrated suite:** a pairing leaves `baseReserve`, `quoteReserve` and `longSize − shortSize` unchanged and the conservation identity intact; at any prefix `d`, actual paired values sum to `V(d) ± relief`, reaching `V0 ± relief` at completion under any chunking and continuation boundary; the loser's booked loss at completion equals `B − relief` exactly; `adlReserved` is never spent by another liquidation and unused coverage returns on resolution; the funding index is unchanged on a market with a pending ADL; allowance consumed `≤` chunks matched `≤` positions; booked profit `≥ 0` and paid profit `≥ 1` wei on every chunk unless `AdlZeroProfit`; no forced settlement without fresh-scan insufficiency; `completeAdl` makes progress on every call, and repeated calls terminate after finite external book/eligibility mutations; in Phase 1, `deficit > 0` implies `Settled`.
+**ADL invariants checked by the integrated and model suites:** a pairing leaves `baseReserve`, `quoteReserve` and `longSize − shortSize` unchanged and the conservation identity intact; at any prefix `d`, actual paired values sum to `V(d) ± relief`, reaching `V0 ± relief` at completion under any chunking and continuation boundary; the loser's booked loss at completion equals `B − relief` exactly; `adlReserved` is never spent by another liquidation and unused coverage returns on resolution; the funding index is unchanged on a market with a pending ADL; allowance consumed `≤` chunks matched `≤` positions; booked profit `≥ 0` and paid profit `≥ 1` wei on every chunk unless `AdlZeroProfit`; no forced settlement without fresh-scan insufficiency; `completeAdl` makes progress on every call, and repeated calls terminate after finite external book/eligibility mutations; in Phase 1, `deficit > 0` implies `Settled`.
 
 Current model tests cover random chunking/continuation boundaries, funded allowance consumption and fallback scans through finite partial/full winner closes and eligibility changes. They do not prove live vault custody, funding freeze, free-list reuse or termination under an unbounded stream of external mutations. Those need runtime integration tests.
 
@@ -721,7 +724,7 @@ function referrerOf(address user) external view returns (address);
 // chargeFee credits referralOwed only as part of a balanced fee debit
 function claimReferral() external;
 
-// Implemented reserve/terminal-custody surface; whole-book market settlement is still an integration milestone.
+// Implemented reserve/terminal-custody surface, integrated with whole-book market settlement.
 function protocolReserve() external view returns (uint256); // quote WAD
 function reserveFloor() external view returns (uint256);    // quote WAD
 function totalDeficit() external view returns (uint256);    // quote WAD
@@ -734,6 +737,15 @@ function claimProtocolFees(address market) external returns (uint256 paidWad); /
 function admitMarket(uint256 oiCap, uint64 fundingCapPerBlock) external; // trusted market's validated ceiling; once
 function requireOpenAllowed(address market) external view; // admission, zero aggregate deficit and funded reserve floor
 function finalizeSettlement(address[] calldata debtors) external returns (uint256 uncovered); // trusted settled market only
+function adlReservation(address market, address user) external view returns (AdlReservation memory);
+function adlReserved(address market, address user) external view returns (uint256);
+function adlReservedTotal(address market) external view returns (uint256);
+function reserveAdl(address user, uint256 roundingTarget) external returns (uint256 coverage, uint256 roundingFromCoverage, uint256 roundingFromReserve);
+function consumeAdlCoverage(address user, uint256 amount) external;
+function restoreAdlCoverage(address user, uint256 amount) external;
+function returnAdlCoverage(address user, uint256 amount) external;
+function payAdlRounding(address user, address winner) external returns (bool paid);
+function releaseAdlReservation(address user) external returns (uint256 returned);
 
 // phase 2 surface, reserved in the design
 function enableCrossMargin(bool on) external;
@@ -744,7 +756,7 @@ Vault settlement methods write isolated user collateral and the corresponding pe
 
 **Current custody limits.** Fee allocation accepts 1–32 queue entries per call, including cleared entries awaiting pruning after targeted recapitalization. Unprocessed fees remain in `protocolOwed`; internal allocation can succeed below the reserve floor. Real-token contributions repay before reserving and process at most 32 queue entries; excess that would skip an outstanding deficit reverts the entire contribution. Keepers split funding or repay/prune the backlog first, using fee allocations or WAD free-balance contributions for sub-token dust. Capital contributions bypass the user deposit cap. Treasury claims and all owner/operator opens require zero aggregate deficit and a funded reserve floor; existing exits remain subject to their normal checks.
 
-`finalizeSettlement` accepts at most 256 debtor addresses and requires an already `Settled` market with zero aggregate long/short sizes. The market book is capped at 128 positions. Current terminal execution computes the complete book, funding, PnL and haircut, zeros exposure, then calls the vault atomically to net clearing/debts and consume terminal capital. Pending ADL integration must reconcile all reservations before that finalization without changing the locked-collateral release guard.
+`finalizeSettlement` accepts at most 256 debtor addresses and requires an already `Settled` market with zero aggregate long/short sizes. The market book is capped at 128 positions. Current terminal execution computes the complete book, funding, PnL and haircut, zeros exposure, then calls the vault atomically to net clearing/debts and consume terminal capital. Terminal execution reconciles all of this market’s pending reservations before finalization; the vault rejects even an empty unreleased reservation. The locked-collateral release guard is unchanged.
 
 **Operator flow.** A user registers an agent's key once with `setOperator`. The agent then calls `market.openFor(user, size, maxPrice, oracleUpdate)`; the market calls `vault.checkAndConsume`, which verifies the caller is the registered operator, the policy has not expired, the market is in `marketsRoot` (or root is zero), `notional ≤ maxNotionalPerTx`, and `usedNotional + notional ≤ maxTotalNotional`. Any failure reverts before state changes.
 
@@ -758,7 +770,7 @@ The proof-carrying `openFor` and `closeFor` overloads append `bytes32[] marketPr
 
 ## Contract interfaces
 
-These are the target interfaces for SDK, MCP server, indexer and front-end generation. Pending ADL additions and changed events below are not in the current runtime ABI; export them after implementation. Existing runtime ABIs remain the integration reference until then. Agents simulate mutating calls with `eth_call` before sending.
+These are the target interfaces for SDK, MCP server, indexer and front-end generation. Pending ADL methods, state and events are implemented and exported. The concrete `marketAbi` and `marginVaultAbi` are the implemented integration surface; the broader planned interface still includes future risk views and resolver methods. Agents simulate mutating calls with `eth_call` before sending.
 
 ```solidity
 interface IMarket {
@@ -782,8 +794,8 @@ interface IMarket {
     function removeMargin(uint256 amount) external;
     function liquidate(address user, bytes calldata oracleUpdate) external payable; // automatic complete-book ranking
     function liquidate(address user, bytes calldata oracleUpdate, address[] calldata adlCandidates) external payable; // candidates: opposite side, sorted by ADL score; verified on-chain
-    function continueAdl(address user, address[] calldata adlCandidates) external; // target: permissionless pending continuation
-    function completeAdl(address user, uint256 maxIterations) external; // target: after adlPendingWindow; 1–64 slot iterations
+    function continueAdl(address user, address[] calldata adlCandidates) external; // permissionless pending continuation
+    function completeAdl(address user, uint256 maxIterations) external; // after adlPendingWindow; 1–64 slot iterations
     function poke() external;
     function sweepFundingSurplus() external; // reserve pending funding before moving surplus to market insurance
 
@@ -800,8 +812,11 @@ interface IMarket {
     function fundingRatePerBlock() external view returns (int256);
     function openInterest() external view returns (uint256 longNotional, uint256 shortNotional, uint256 oiCap);
     function position(address user) external view returns (Position memory);
-    function positionCount() external view returns (uint256);
-    function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory); // limit <= 256; book <= 128
+    function pendingAdl(address user) external view returns (AdlPending memory);
+    function pendingAdlCount() external view returns (uint256);
+    function adlEligibleSize(address user) external view returns (uint256);
+    function positionCount() external view returns (uint256); // live positions
+    function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory); // stable slots with zero-address holes; limit <= 256; book <= 128
     function settlementQuote() external view returns (SettlementQuote memory); // hypothetical, before keeper penalty/update
     function settlementInfo() external view returns (uint256 price, uint256 haircut, uint256 profits);
     function config() external view returns (MarketConfig memory);
@@ -846,17 +861,18 @@ event Liquidated(address indexed market, address indexed user, address indexed l
 event FundingAccrued(address indexed market, int256 ratePerBlock, int256 longIndex, int256 shortIndex, uint64 blockNumber);
 event FundingSurplusSwept(address indexed market, uint256 amount);
 event StatusChanged(address indexed market, uint8 from, uint8 to, uint64 blockNumber);
-event BadDebt(address indexed market, address indexed user, uint256 amount, uint8 coveredBy); // implemented coverage: 0 insurance, 1 capped backstop; terminal sources use TerminalCoverage
+event BadDebt(address indexed market, address indexed user, uint256 amount, uint8 coveredBy); // 0 insurance, 1 capped backstop, 2 reserved ADL coverage; restoration uses AdlCoverageRestored
 event TerminalCoverage(address indexed market, uint8 source, uint256 amount); // 0 insurance, 1 loss collateral, 2 profit haircut, 3 creator fees, 4 protocol fees, 5 backstop, 6 reserve, 7 deficit
 event DeficitChanged(address indexed market, uint256 previous, uint256 current, uint8 reason); // 0 terminal booking, 1 protocol-fee repayment, 2 recapitalization
-event ProtocolReserveChanged(uint256 previous, uint256 current, uint8 reason); // 0 funded contribution, 1 fee refill, 2 terminal coverage
-event ForcedSettlement(address indexed market, uint256 twapPrice, uint256 shortfall, uint8 fundedThrough); // 1 haircut, 2 market accruals, 3 backstop, 4 reserve, 5 deficit
+event ProtocolReserveChanged(uint256 previous, uint256 current, uint8 reason); // 0 contribution, 1 fee refill, 2 terminal coverage, 3 ADL allowance, 4 unused allowance return
+event ForcedSettlement(address indexed market, uint256 twapPrice, uint256 shortfall, uint8 fundedThrough); // 0 local balances, 1 haircut, 2 market accruals, 3 backstop, 4 reserve, 5 deficit
 event SettlementHaircut(address indexed market, uint256 profits, uint256 haircut); // exact WAD amounts; MarketSettled carries summary bps
 event TerminalClearingNetted(address indexed market, int256 clearing, uint256 isolatedDebt);
 event AutoDeleveraged(address indexed market, address indexed winner, address indexed loser, int256 sizeClosed, uint256 chunkValue, uint256 chunkEntry);
 event AdlPending(address indexed market, address indexed user, uint256 remainingSize, uint256 reservedC, uint64 deadline);
 event AdlCompleted(address indexed market, address indexed user, uint256 relief, uint256 coverageReturned);
 event AdlZeroProfit(address indexed market, address indexed winner, int256 sizeClosed);
+event AdlInsufficient(address indexed market, address indexed user, uint256 eligibleSize, uint256 requiredSize);
 event FeesAccrued(address indexed market, uint256 protocol, uint256 creator, uint256 insurance);
 event CreatorFeesClaimed(address indexed market, address indexed creator, uint256 amount);
 event SettlementProposed(address indexed market, address indexed proposer, uint256 price, uint64 windowEnd);

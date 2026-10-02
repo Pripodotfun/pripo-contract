@@ -13,10 +13,23 @@ interface IMarketCore is IPripoErrors {
     function positionAccounts(uint256 offset, uint256 limit) external view returns (address[] memory);
     function settlementQuote() external view returns (T.SettlementQuote memory);
     function settlementInfo() external view returns (uint256 price, uint256 haircut, uint256 profits);
-    event ForcedSettlement(address indexed market, address indexed liquidatedUser, uint256 price);
+    event ForcedSettlement(address indexed market, uint256 twapPrice, uint256 shortfall, uint8 fundedThrough);
     event SettlementHaircut(address indexed market, uint256 profits, uint256 haircut);
     event MarketSettled(address indexed market, uint256 price, uint16 haircutBps);
-    event AutoDeleveraged(address indexed market, address indexed user, int256 sizeClosed, uint256 price);
+    event AutoDeleveraged(
+        address indexed market,
+        address indexed winner,
+        address indexed loser,
+        int256 sizeClosed,
+        uint256 chunkValue,
+        uint256 chunkEntry
+    );
+    event AdlPending(
+        address indexed market, address indexed user, uint256 remainingSize, uint256 reservedC, uint64 deadline
+    );
+    event AdlCompleted(address indexed market, address indexed user, uint256 relief, uint256 coverageReturned);
+    event AdlZeroProfit(address indexed market, address indexed winner, int256 sizeClosed);
+    event AdlInsufficient(address indexed market, address indexed user, uint256 eligibleSize, uint256 requiredSize);
     event PositionOpened(
         address indexed market,
         address indexed user,
@@ -79,6 +92,11 @@ interface IMarketCore is IPripoErrors {
     function addMargin(uint256 amount) external;
     function liquidate(address user, bytes calldata oracleUpdate) external payable;
     function liquidate(address user, bytes calldata oracleUpdate, address[] calldata adlCandidates) external payable;
+    function continueAdl(address user, address[] calldata adlCandidates) external;
+    function completeAdl(address user, uint256 maxIterations) external;
+    function pendingAdl(address user) external view returns (T.AdlPending memory);
+    function pendingAdlCount() external view returns (uint256);
+    function adlEligibleSize(address user) external view returns (uint256);
     function removeMargin(uint256 amount) external;
     function poke() external;
     function sweepFundingSurplus() external;

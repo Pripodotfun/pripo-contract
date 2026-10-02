@@ -60,6 +60,25 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "adlEligibleSize",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "ammState",
     "inputs": [],
     "outputs": [
@@ -196,6 +215,24 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "completeAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxIterations",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "config",
     "inputs": [],
     "outputs": [
@@ -303,11 +340,39 @@ export const marketAbi = [
             "name": "statusSince",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "adlPendingWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxPositionsPerMarket",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "continueAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "candidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -609,6 +674,16 @@ export const marketAbi = [
             "name": "statusSince",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "adlPendingWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxPositionsPerMarket",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       },
@@ -809,6 +884,135 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "pendingAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.AdlPending",
+        "components": [
+          {
+            "name": "S0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "E0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "V0",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "M0",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "budget",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "matchedSize",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "reservedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "consumedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "replacedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "addedMargin",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "relief",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceConsumed",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "chunksMatched",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "since",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "cursor",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "isLong",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingAdlCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "poke",
     "inputs": [],
     "outputs": [],
@@ -849,6 +1053,16 @@ export const marketAbi = [
             "name": "lastFundingIndex",
             "type": "int256",
             "internalType": "int256"
+          },
+          {
+            "name": "slot",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "adlPending",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -1262,7 +1476,7 @@ export const marketAbi = [
   },
   {
     "type": "event",
-    "name": "AutoDeleveraged",
+    "name": "AdlCompleted",
     "inputs": [
       {
         "name": "market",
@@ -1277,13 +1491,149 @@ export const marketAbi = [
         "internalType": "address"
       },
       {
+        "name": "relief",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageReturned",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlInsufficient",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "eligibleSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "requiredSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlPending",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "remainingSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reservedC",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlZeroProfit",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sizeClosed",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AutoDeleveraged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "loser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "sizeClosed",
         "type": "int256",
         "indexed": false,
         "internalType": "int256"
       },
       {
-        "name": "price",
+        "name": "chunkValue",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "chunkEntry",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1408,16 +1758,22 @@ export const marketAbi = [
         "internalType": "address"
       },
       {
-        "name": "liquidatedUser",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "price",
+        "name": "twapPrice",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "shortfall",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundedThrough",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -1783,11 +2139,6 @@ export const marketAbi = [
   },
   {
     "type": "error",
-    "name": "IncompleteAdlCandidates",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -2145,6 +2496,25 @@ export const marketCoreAbi = [
   },
   {
     "type": "function",
+    "name": "adlEligibleSize",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claimCreatorFees",
     "inputs": [],
     "outputs": [],
@@ -2233,6 +2603,24 @@ export const marketCoreAbi = [
     ],
     "outputs": [],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "completeAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxIterations",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -2343,11 +2731,39 @@ export const marketCoreAbi = [
             "name": "statusSince",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "adlPendingWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxPositionsPerMarket",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "continueAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "adlCandidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -2628,6 +3044,135 @@ export const marketCoreAbi = [
   },
   {
     "type": "function",
+    "name": "pendingAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.AdlPending",
+        "components": [
+          {
+            "name": "S0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "E0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "V0",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "M0",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "budget",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "matchedSize",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "reservedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "consumedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "replacedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "addedMargin",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "relief",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceConsumed",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "chunksMatched",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "since",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "cursor",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "isLong",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingAdlCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "poke",
     "inputs": [],
     "outputs": [],
@@ -2668,6 +3213,16 @@ export const marketCoreAbi = [
             "name": "lastFundingIndex",
             "type": "int256",
             "internalType": "int256"
+          },
+          {
+            "name": "slot",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "adlPending",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -3055,7 +3610,7 @@ export const marketCoreAbi = [
   },
   {
     "type": "event",
-    "name": "AutoDeleveraged",
+    "name": "AdlCompleted",
     "inputs": [
       {
         "name": "market",
@@ -3070,13 +3625,149 @@ export const marketCoreAbi = [
         "internalType": "address"
       },
       {
+        "name": "relief",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageReturned",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlInsufficient",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "eligibleSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "requiredSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlPending",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "remainingSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reservedC",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlZeroProfit",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sizeClosed",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AutoDeleveraged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "loser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "sizeClosed",
         "type": "int256",
         "indexed": false,
         "internalType": "int256"
       },
       {
-        "name": "price",
+        "name": "chunkValue",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "chunkEntry",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -3201,16 +3892,22 @@ export const marketCoreAbi = [
         "internalType": "address"
       },
       {
-        "name": "liquidatedUser",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "price",
+        "name": "twapPrice",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "shortfall",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundedThrough",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -3563,11 +4260,6 @@ export const marketCoreAbi = [
   },
   {
     "type": "error",
-    "name": "IncompleteAdlCandidates",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -3894,6 +4586,25 @@ export const plannedMarketAbi = [
   },
   {
     "type": "function",
+    "name": "adlEligibleSize",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claimCreatorFees",
     "inputs": [],
     "outputs": [],
@@ -3982,6 +4693,24 @@ export const plannedMarketAbi = [
     ],
     "outputs": [],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "completeAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxIterations",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -4092,11 +4821,39 @@ export const plannedMarketAbi = [
             "name": "statusSince",
             "type": "uint64",
             "internalType": "uint64"
+          },
+          {
+            "name": "adlPendingWindow",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxPositionsPerMarket",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "continueAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "adlCandidates",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -4438,6 +5195,135 @@ export const plannedMarketAbi = [
   },
   {
     "type": "function",
+    "name": "pendingAdl",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.AdlPending",
+        "components": [
+          {
+            "name": "S0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "E0",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "V0",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "M0",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "budget",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "matchedSize",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "reservedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceFromReserve",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "consumedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "replacedC",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "addedMargin",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "relief",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "allowanceConsumed",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "chunksMatched",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "since",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "cursor",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "isLong",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pendingAdlCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "poke",
     "inputs": [],
     "outputs": [],
@@ -4478,6 +5364,16 @@ export const plannedMarketAbi = [
             "name": "lastFundingIndex",
             "type": "int256",
             "internalType": "int256"
+          },
+          {
+            "name": "slot",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "adlPending",
+            "type": "bool",
+            "internalType": "bool"
           }
         ]
       }
@@ -4872,7 +5768,7 @@ export const plannedMarketAbi = [
   },
   {
     "type": "event",
-    "name": "AutoDeleveraged",
+    "name": "AdlCompleted",
     "inputs": [
       {
         "name": "market",
@@ -4887,13 +5783,149 @@ export const plannedMarketAbi = [
         "internalType": "address"
       },
       {
+        "name": "relief",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageReturned",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlInsufficient",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "eligibleSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "requiredSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlPending",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "remainingSize",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reservedC",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AdlZeroProfit",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sizeClosed",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AutoDeleveraged",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "winner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "loser",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "sizeClosed",
         "type": "int256",
         "indexed": false,
         "internalType": "int256"
       },
       {
-        "name": "price",
+        "name": "chunkValue",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "chunkEntry",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -5018,16 +6050,22 @@ export const plannedMarketAbi = [
         "internalType": "address"
       },
       {
-        "name": "liquidatedUser",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "price",
+        "name": "twapPrice",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "shortfall",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fundedThrough",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false
@@ -5376,11 +6414,6 @@ export const plannedMarketAbi = [
   {
     "type": "error",
     "name": "DepositCapExceeded",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "IncompleteAdlCandidates",
     "inputs": []
   },
   {
@@ -5907,11 +6940,6 @@ export const marketFactoryAbi = [
   {
     "type": "error",
     "name": "DepositCapExceeded",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "IncompleteAdlCandidates",
     "inputs": []
   },
   {
@@ -8789,11 +9817,6 @@ export const marginVaultAbi = [
   },
   {
     "type": "error",
-    "name": "IncompleteAdlCandidates",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -11065,11 +12088,6 @@ export const marginVaultInterfaceAbi = [
   },
   {
     "type": "error",
-    "name": "IncompleteAdlCandidates",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -11875,11 +12893,6 @@ export const resolverAbi = [
   },
   {
     "type": "error",
-    "name": "IncompleteAdlCandidates",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "InsufficientInsurance",
     "inputs": [
       {
@@ -12281,11 +13294,6 @@ export const pripoErrorsAbi = [
   {
     "type": "error",
     "name": "DepositCapExceeded",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "IncompleteAdlCandidates",
     "inputs": []
   },
   {

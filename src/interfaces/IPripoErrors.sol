@@ -41,7 +41,6 @@ interface IPripoErrors {
     error AllocationLimit();
     error PositionLimit(uint256 maximum);
     error InvalidAdlCandidates();
-    error IncompleteAdlCandidates();
     error AdlAlreadyPending();
     error NoPendingAdl();
     error AdlFallbackNotReady(uint256 readyBlock);

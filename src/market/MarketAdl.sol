@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IMarketCore} from "../interfaces/IMarketCore.sol";
 import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
+import {AdlMath as A} from "../libraries/AdlMath.sol";
 import {CurveMath as Curve} from "../libraries/CurveMath.sol";
 import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
@@ -11,140 +12,289 @@ import {MarketSettlement as Settlement} from "./MarketSettlement.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {PositionBook as Book} from "./PositionBook.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-/// @notice Paired closes at a shared quote per match. The curve is never traded on this path.
+/// @notice Reserved, value-scheduled pairing. Every caller holds the market's reentrancy guard.
 library MarketAdl {
-    uint256 internal constant MAX_REBALANCE_CHECKS = 512;
+    uint256 internal constant MAX_ITERATIONS = 64;
 
     struct Candidate {
         address user;
         T.Position position;
-        int256 margin;
+        uint256 margin;
         uint256 score;
-        uint256 price;
+        uint256 realQuote;
         bool eligible;
     }
 
-    struct Match {
-        address user;
-        int256 size;
-        uint256 entry;
+    struct Result {
+        bool terminal;
+        int256 closedSize;
         uint256 quote;
-        int256 margin;
-        uint256 candidateIndex;
+        uint256 covered;
     }
 
-    struct Plan {
-        Match[] matches;
-        uint256 count;
-        uint256 matched;
-        uint256 quote;
-        uint256 entry;
-        int256 margin;
-        uint256 coverage;
-        uint256 rebalanceChecks;
-    }
-
-    /// @dev Returns true when the whole market was settled, false after a successful paired close.
-    // Market guard covers all linked execution and vault writes; the bound coverage controller has no callbacks.
-    // At most 128 matches; calls target only the fixed vault. Full-book execution has a gas regression test.
-    // slither-disable-next-line reentrancy-events,reentrancy-no-eth,calls-loop
-    function resolve(S.Data storage s, address user, int256 closedSize, address[] memory supplied, bool automatic)
+    /// @dev Funding and the single keeper penalty are checkpointed by the liquidation dispatcher before this call.
+    // The market guard spans reservation and execution; the fixed vault only calls the bound backstop controller.
+    // slither-disable-next-line reentrancy-events
+    function start(S.Data storage s, address user, int256 closedSize, address[] memory supplied, bool automatic)
         public
-        returns (bool terminal, uint256 quoteAmount, uint256 covered)
+        returns (Result memory)
     {
-        (uint256 insurance, uint256 backstop) = s.vault.liveCoverage(address(this));
-        uint256 capacity = insurance + backstop;
-        Candidate[] memory candidates = _candidates(s, user, closedSize, capacity);
-        uint256[] memory order = _order(candidates);
-        Plan memory p = _plan(s, user, closedSize, capacity, candidates, order, supplied, automatic);
-        if (p.matched != F.abs(closedSize)) {
-            // Caller omissions cannot force terminal settlement: inspect the entire canonical book first.
-            if (!automatic) {
-                Plan memory complete = _plan(s, user, closedSize, capacity, candidates, order, new address[](0), true);
-                if (complete.matched == F.abs(closedSize)) revert E.IncompleteAdlCandidates();
-            }
-            // A rounded last fragment is a candidate-allocation problem, not proof that the book is exhausted.
-            // Preserve the market if full eligible positions could supply the selected size in another allocation.
-            uint256 eligibleSize = 0;
-            for (uint256 i; i < candidates.length; ++i) {
-                if (candidates[i].eligible) eligibleSize += F.abs(candidates[i].position.size);
-            }
-            if (eligibleSize >= F.abs(closedSize)) revert E.IncompleteAdlCandidates();
-            Settlement.execute(s, user);
-            return (true, 0, 0);
-        }
-        for (uint256 i; i < p.count; ++i) {
-            Match memory m = p.matches[i];
-            // Settle the candidate to the same checkpoint used by the plan before removing its weighted size.
-            // slither-disable-next-line unused-return
-            Engine.settleFunding(s, m.user);
-            int256 winnerPnl = m.size > 0 ? F.toInt(m.quote) - F.toInt(m.entry) : F.toInt(m.entry) - F.toInt(m.quote);
-            _closePairLeg(s, m.user, m.size, m.entry, winnerPnl);
-            uint256 payout = F.toUint(m.margin + winnerPnl);
-            if (payout != 0) s.vault.release(m.user, payout);
-            uint256 price = Math.mulDiv(m.quote, F.WAD, F.abs(m.size));
-            emit IMarketCore.AutoDeleveraged(address(this), m.user, m.size, price);
-        }
-        int256 pnl = closedSize > 0 ? F.toInt(p.quote) - F.toInt(p.entry) : F.toInt(p.entry) - F.toInt(p.quote);
-        _closePairLeg(s, user, closedSize, p.entry, pnl);
-        if (p.coverage != 0) {
-            (uint256 local, uint256 global, uint256 remaining) = s.vault.coverLiquidationLoss(user, p.coverage);
-            if (remaining != 0) revert E.AccountingInvariant();
-            if (local != 0) emit IMarketCore.BadDebt(address(this), user, local, 0);
-            if (global != 0) emit IMarketCore.BadDebt(address(this), user, global, 1);
-        }
-        uint256 residual = F.toUint(p.margin + pnl + F.toInt(p.coverage));
-        if (residual != 0) s.vault.release(user, residual);
-        if (s.vault.ledger(address(this)).clearing != Curve.clearing(s._amm)) revert E.AccountingInvariant();
-        return (false, p.quote, p.coverage);
+        T.AdlPending storage p = s._pendingAdl[user];
+        if (p.active) revert E.AdlAlreadyPending();
+        T.Position storage position = s._positions[user];
+        p.S0 = F.abs(closedSize);
+        p.E0 = Curve.closedEntryCost(position.entryCost, p.S0, F.abs(position.size));
+        p.M0 = A.marginShare(s.vault.locked(user, address(this)), p.S0, F.abs(position.size));
+        (p.reservedC, p.allowanceFromC, p.allowanceFromReserve) =
+            s.vault.reserveAdl(user, s._config.maxPositionsPerMarket);
+        p.budget = p.M0 + F.toInt(p.reservedC - p.allowanceFromC);
+        p.isLong = closedSize > 0;
+        p.V0 = p.isLong ? F.toInt(p.E0) - p.budget : F.toInt(p.E0) + p.budget;
+        // An uncovered long cannot require a negative sale value; such a position has enough curve coverage.
+        if (p.isLong && p.V0 < 0) revert E.AccountingInvariant();
+        p.since = Engine.currentBlock();
+        p.active = true;
+        position.adlPending = true;
+        ++s.pendingAdlCount;
+        Engine.setStatus(s, T.Status.Paused);
+        return _run(s, user, supplied, automatic, 0);
     }
 
-    // Static collateral reads of the fixed vault, bounded by the position limit.
+    function continuePending(S.Data storage s, address user, address[] memory supplied) public {
+        if (!s._pendingAdl[user].active) revert E.NoPendingAdl();
+        Engine.touch(s);
+        _run(s, user, supplied, false, 0);
+    }
+
+    function complete(S.Data storage s, address user, uint256 maxIterations) public {
+        T.AdlPending storage p = s._pendingAdl[user];
+        if (!p.active) revert E.NoPendingAdl();
+        if (maxIterations == 0 || maxIterations > MAX_ITERATIONS) revert E.InvalidAdlIterations();
+        uint256 ready = uint256(p.since) + s._config.adlPendingWindow;
+        if (block.number < ready) revert E.AdlFallbackNotReady(ready);
+        Engine.touch(s);
+        _run(s, user, new address[](0), false, maxIterations);
+    }
+
+    /// @notice Added collateral replaces only the loss coverage that remains in this position's reservation.
+    function replaceCoverage(S.Data storage s, address user, uint256 amount) public {
+        T.AdlPending storage p = s._pendingAdl[user];
+        if (!p.active) return;
+        uint256 replaced = Math.min(amount, s.vault.adlReservation(address(this), user).lossCoverage);
+        p.addedMargin += amount;
+        p.replacedC += replaced;
+        if (replaced != 0) s.vault.returnAdlCoverage(user, replaced);
+    }
+
+    function eligibleSize(S.Data storage s, address user) public view returns (uint256 eligible) {
+        if (!s._pendingAdl[user].active) revert E.NoPendingAdl();
+        (, eligible) = _book(s, s._pendingAdl[user]);
+    }
+
+    // At most 128 fixed-vault reads in preflight, 64 matches/slot visits in execution. No user call targets.
+    // slither-disable-next-line calls-loop,reentrancy-events,reentrancy-no-eth
+    function _run(S.Data storage s, address user, address[] memory supplied, bool automatic, uint256 iterations)
+        private
+        returns (Result memory result)
+    {
+        T.AdlPending storage p = s._pendingAdl[user];
+        (Candidate[] memory candidates, uint256 eligible) = _book(s, p);
+        if (!automatic && iterations == 0) _validateList(s, supplied, candidates);
+        uint256 needed = p.S0 - p.matchedSize;
+        // This fresh, complete scan is the only production caller of terminal execution.
+        if (eligible < needed) {
+            emit IMarketCore.AdlInsufficient(address(this), user, eligible, needed);
+            result.terminal = true;
+            result.closedSize = s._positions[user].size;
+            Settlement.execute(s, user);
+            return result;
+        }
+        uint256 beforeSize = p.matchedSize;
+        uint256 beforeValue = _actualValue(p);
+        uint256 beforeCoverage = p.consumedC;
+        if (iterations != 0) {
+            for (uint256 i; i < iterations && p.matchedSize < p.S0; ++i) {
+                uint256 cursor = p.cursor;
+                if (cursor == candidates.length) cursor = 0;
+                p.cursor = SafeCast.toUint32(cursor + 1);
+                if (candidates[cursor].eligible) _match(s, user, candidates[cursor]);
+            }
+        } else {
+            uint256[] memory order = automatic ? _order(candidates) : new uint256[](0);
+            uint256 length = automatic ? candidates.length : supplied.length;
+            uint256 matched = 0;
+            for (uint256 i; i < length && p.matchedSize < p.S0 && matched < MAX_ITERATIONS; ++i) {
+                uint256 index = automatic ? order[length - 1 - i] : s._accountIndex[supplied[i]] - 1;
+                if (!candidates[index].eligible) continue;
+                _match(s, user, candidates[index]);
+                ++matched;
+            }
+        }
+        result.closedSize = p.isLong ? F.toInt(p.matchedSize - beforeSize) : -F.toInt(p.matchedSize - beforeSize);
+        result.quote = _actualValue(p) - beforeValue;
+        result.covered = p.consumedC > beforeCoverage ? p.consumedC - beforeCoverage : 0;
+        if (p.matchedSize == p.S0) {
+            _finish(s, user);
+        } else {
+            emit IMarketCore.AdlPending(
+                address(this),
+                user,
+                p.S0 - p.matchedSize,
+                s.vault.adlReserved(address(this), user),
+                SafeCast.toUint64(uint256(p.since) + s._config.adlPendingWindow)
+            );
+        }
+        if (s.vault.ledger(address(this)).clearing != Curve.clearing(s._amm)) revert E.AccountingInvariant();
+    }
+
+    function _actualValue(T.AdlPending storage p) private view returns (uint256) {
+        uint256 value = p.V0 < 0 ? 0 : Math.mulDiv(F.toUint(p.V0), p.matchedSize, p.S0);
+        return p.isLong ? value + p.relief : value - p.relief;
+    }
+
+    // Static reads of the fixed vault; slot count is bounded by the validated market cap.
     // slither-disable-next-line calls-loop
-    function _candidates(S.Data storage s, address user, int256 closedSize, uint256 capacity)
+    function _book(S.Data storage s, T.AdlPending storage p)
         private
         view
-        returns (Candidate[] memory result)
+        returns (Candidate[] memory candidates, uint256 eligible)
     {
-        T.Position memory loser = s._positions[user];
-        uint256 amount = F.abs(closedSize);
-        uint256 entry = Curve.closedEntryCost(loser.entryCost, amount, F.abs(loser.size));
-        int256 margin = marginShare(s.vault.locked(user, address(this)), amount, F.abs(loser.size));
-        int256 budget =
-            closedSize > 0 ? F.toInt(entry) - margin - F.toInt(capacity) : F.toInt(entry) + margin + F.toInt(capacity);
-        uint256 boundary = budget > 0
-            ? Math.mulDiv(F.toUint(budget), F.WAD, amount, closedSize > 0 ? Math.Rounding.Ceil : Math.Rounding.Floor)
-            : 0;
+        candidates = new Candidate[](s._accounts.length);
+        if (p.V0 < 0) return (candidates, 0);
         T.AmmState memory twap = Engine.twapReserves(s);
-        result = new Candidate[](s._accounts.length);
-        for (uint256 i; i < result.length; ++i) {
-            address account = s._accounts[i];
-            if (account == address(0)) continue;
-            T.Position memory pos = s._positions[account];
-            if (account == user || (pos.size > 0) == (closedSize > 0)) continue;
-            T.Fill memory alone = Curve.quoteExit(twap, pos.size);
-            int256 realPnl = pos.size > 0
-                ? F.toInt(alone.quoteAmount) - F.toInt(pos.entryCost)
-                : F.toInt(pos.entryCost) - F.toInt(alone.quoteAmount);
-            if (realPnl <= 0) continue;
-            int256 collateral = s.vault.locked(account, address(this)) - Engine.fundingOwed(s, pos);
-            uint256 score = collateral <= 0
-                ? type(uint256).max
-                : Math.mulDiv(F.toUint(realPnl), pos.entryCost * F.WAD, F.toUint(collateral)) / F.toUint(collateral);
-            // Full-position close-alone average bounds each candidate's per-unit return. Winner receives round down
-            // (long), pays round up (short); all counterparties use the same exact quote for each match.
-            uint256 price = closedSize > 0 ? Math.max(boundary, alone.avgPrice) : Math.min(boundary, alone.avgPrice);
-            uint256 value =
-                Math.mulDiv(F.abs(pos.size), price, F.WAD, pos.size > 0 ? Math.Rounding.Floor : Math.Rounding.Ceil);
-            int256 pnl =
-                pos.size > 0 ? F.toInt(value) - F.toInt(pos.entryCost) : F.toInt(pos.entryCost) - F.toInt(value);
-            bool eligible = pnl > 0 && collateral + pnl >= 0 && (closedSize > 0 || budget >= 0);
-            result[i] = Candidate(account, pos, collateral, score, price, eligible);
+        for (uint256 i; i < candidates.length; ++i) {
+            address user = s._accounts[i];
+            T.Position memory pos = s._positions[user];
+            if (user == address(0) || pos.size == 0 || pos.adlPending || (pos.size > 0) == p.isLong) continue;
+            uint256 size = F.abs(pos.size);
+            if (!A.positiveAtRatio(pos.entryCost, size, F.toUint(p.V0), p.S0, pos.size > 0)) continue;
+            int256 margin = s.vault.locked(user, address(this)) - Engine.fundingOwed(s, pos);
+            if (margin < 0) continue;
+            if (pos.size < 0 && size >= twap.baseReserve) continue;
+            uint256 quote = pos.size > 0
+                ? twap.quoteReserve - Math.ceilDiv(twap.k, twap.baseReserve + size)
+                : Math.ceilDiv(twap.k, twap.baseReserve - size) - twap.quoteReserve;
+            if (pos.size > 0 ? quote <= pos.entryCost : quote >= pos.entryCost) continue;
+            uint256 profit = pos.size > 0 ? quote - pos.entryCost : pos.entryCost - quote;
+            candidates[i] = Candidate({
+                user: user,
+                position: pos,
+                margin: F.toUint(margin),
+                score: A.score(profit, pos.entryCost, F.toUint(margin)),
+                realQuote: quote,
+                eligible: true
+            });
+            eligible += size;
         }
     }
 
-    /// @dev Heap-sort indices in O(n log n), keeping candidate structs in their original book slots.
+    function _validateList(S.Data storage s, address[] memory supplied, Candidate[] memory candidates) private view {
+        if (supplied.length > s._config.maxPositionsPerMarket) revert E.InvalidAdlCandidates();
+        uint256 previous = type(uint256).max;
+        uint256 seen = 0;
+        for (uint256 i; i < supplied.length; ++i) {
+            uint256 index = s._accountIndex[supplied[i]];
+            if (index == 0 || (seen & (uint256(1) << (index - 1))) != 0) revert E.InvalidAdlCandidates();
+            Candidate memory c = candidates[index - 1];
+            if (!c.eligible || c.user != supplied[i] || c.score > previous) revert E.InvalidAdlCandidates();
+            seen |= uint256(1) << (index - 1);
+            previous = c.score;
+        }
+    }
+
+    // Both legs, coverage and top-up are one guarded transition through the fixed vault, at most 64 times per call.
+    // slither-disable-next-line reentrancy-events,reentrancy-no-eth,calls-loop
+    function _match(S.Data storage s, address user, Candidate memory c) private {
+        T.AdlPending storage p = s._pendingAdl[user];
+        uint256 size = F.abs(c.position.size);
+        uint256 amount = Math.min(p.S0 - p.matchedSize, size);
+        uint256 afterSize = p.matchedSize + amount;
+        uint256 entry = A.chunk(p.E0, p.S0, p.matchedSize, afterSize);
+        uint256 scheduled = A.chunk(F.toUint(p.V0), p.S0, p.matchedSize, afterSize);
+        uint256 real = Math.mulDiv(c.realQuote, amount, size, p.isLong ? Math.Rounding.Floor : Math.Rounding.Ceil);
+        uint256 quote = p.isLong ? Math.max(scheduled, real) : Math.min(scheduled, real);
+        p.relief += p.isLong ? quote - scheduled : scheduled - quote;
+        p.matchedSize = afterSize;
+        ++p.chunksMatched;
+        if (p.chunksMatched > s._config.maxPositionsPerMarket) revert E.AccountingInvariant();
+        uint256 winnerEntry = A.winnerEntry(c.position.entryCost, amount, size, c.position.size > 0);
+        int256 profit =
+            c.position.size > 0 ? F.toInt(quote) - F.toInt(winnerEntry) : F.toInt(winnerEntry) - F.toInt(quote);
+        if (profit < 0) revert E.AccountingInvariant();
+        int256 winnerSize = c.position.size > 0 ? F.toInt(amount) : -F.toInt(amount);
+        // slither-disable-next-line unused-return
+        Engine.settleFunding(s, c.user);
+        _closeLeg(s, c.user, winnerSize, winnerEntry, profit);
+        _closeLeg(
+            s, user, -winnerSize, entry, p.isLong ? F.toInt(quote) - F.toInt(entry) : F.toInt(entry) - F.toInt(quote)
+        );
+        _coverage(s, user);
+        uint256 payout = Math.mulDiv(c.margin, amount, size) + F.toUint(profit);
+        if (payout != 0) s.vault.release(c.user, payout);
+        if (profit == 0) {
+            if (s.vault.payAdlRounding(user, c.user)) ++p.allowanceConsumed;
+            else emit IMarketCore.AdlZeroProfit(address(this), c.user, winnerSize);
+        }
+        emit IMarketCore.AutoDeleveraged(address(this), c.user, user, winnerSize, quote, winnerEntry);
+    }
+
+    /// @dev Prefix coverage is provisional. Relief/replacement may restore it; only completion releases loser cash.
+    // At most 64 matches; these fixed-vault ledger moves transfer no tokens and the market guard remains held.
+    // slither-disable-next-line calls-loop,reentrancy-events
+    function _coverage(S.Data storage s, address user) private {
+        T.AdlPending storage p = s._pendingAdl[user];
+        uint256 prefix = Math.mulDiv(p.reservedC - p.allowanceFromC, p.matchedSize, p.S0);
+        uint256 relief = p.relief + p.replacedC;
+        uint256 needed = prefix > relief ? prefix - relief : 0;
+        if (needed > p.consumedC) {
+            uint256 amount = needed - p.consumedC;
+            s.vault.consumeAdlCoverage(user, amount);
+            emit IMarketCore.BadDebt(address(this), user, amount, 2);
+        }
+        if (needed < p.consumedC) s.vault.restoreAdlCoverage(user, p.consumedC - needed);
+        p.consumedC = needed;
+    }
+
+    // The enclosing market guard covers the fixed vault's ledger-only releases and emitted completion event.
+    // slither-disable-next-line reentrancy-events
+    function _finish(S.Data storage s, address user) private {
+        T.AdlPending memory p = s._pendingAdl[user];
+        int256 residual = p.M0 + F.toInt(p.addedMargin) - p.budget + F.toInt(p.relief + p.consumedC);
+        if (residual < 0) revert E.AccountingInvariant();
+        // Preserve the existing release guard even when the unselected portion has funding debt.
+        if (residual != 0 && s.vault.locked(user, address(this)) >= residual) {
+            s.vault.release(user, F.toUint(residual));
+        }
+        uint256 returned = s.vault.releaseAdlReservation(user);
+        delete s._pendingAdl[user];
+        s._positions[user].adlPending = false;
+        --s.pendingAdlCount;
+        if (s.pendingAdlCount == 0) {
+            Engine.setStatus(
+                s, s.guardianPaused ? T.Status.Paused : Engine.isDegraded(s) ? T.Status.Degraded : T.Status.Active
+            );
+        }
+        emit IMarketCore.AdlCompleted(address(this), user, p.relief, returned);
+    }
+
+    // Two ledger-only legs per match, at most 64 matches; no user-controlled call target or token transfer.
+    // slither-disable-next-line calls-loop
+    function _closeLeg(S.Data storage s, address user, int256 size, uint256 entry, int256 pnl) private {
+        T.Position storage pos = s._positions[user];
+        int256 remaining = pos.size - size;
+        Engine.resize(s, pos.size, remaining);
+        pos.size = remaining;
+        pos.entryCost -= entry;
+        s._amm.entryCostNet -= size > 0 ? F.toInt(entry) : -F.toInt(entry);
+        s.vault.settlePnl(user, pnl);
+        if (remaining == 0) {
+            Book.remove(s, user);
+            delete s._positions[user];
+        }
+    }
+
     function _order(Candidate[] memory candidates) private pure returns (uint256[] memory order) {
         uint256 length = candidates.length;
         order = new uint256[](length);
@@ -171,182 +321,8 @@ library MarketAdl {
     }
 
     function _before(Candidate memory a, Candidate memory b) private pure returns (bool) {
-        if (a.user == address(0)) return false;
-        if (b.user == address(0)) return true;
+        if (!a.eligible) return false;
+        if (!b.eligible) return true;
         return a.score > b.score || (a.score == b.score && a.user < b.user);
-    }
-
-    function _plan(
-        S.Data storage s,
-        address user,
-        int256 closedSize,
-        uint256 capacity,
-        Candidate[] memory candidates,
-        uint256[] memory order,
-        address[] memory supplied,
-        bool automatic
-    ) private view returns (Plan memory p) {
-        if (supplied.length > Book.MAX_POSITIONS) revert E.InvalidAdlCandidates();
-        T.Position memory loser = s._positions[user];
-        uint256 needed = F.abs(closedSize);
-        p.entry = Curve.closedEntryCost(loser.entryCost, needed, F.abs(loser.size));
-        p.margin = marginShare(s.vault.locked(user, address(this)), needed, F.abs(loser.size));
-        p.matches = new Match[](candidates.length);
-        uint256 length = automatic ? candidates.length : supplied.length;
-        uint256 previous = type(uint256).max;
-        uint256 seen = 0;
-        for (uint256 i; i < length; ++i) {
-            Candidate memory c = Candidate(address(0), T.Position(0, 0, 0, 0), 0, 0, 0, false);
-            uint256 candidateIndex;
-            if (automatic) {
-                candidateIndex = order[candidates.length - 1 - i];
-                c = candidates[candidateIndex];
-            } else {
-                uint256 index = s._accountIndex[supplied[i]];
-                if (index == 0 || seen & (uint256(1) << (index - 1)) != 0) revert E.InvalidAdlCandidates();
-                seen |= uint256(1) << (index - 1);
-                candidateIndex = index - 1;
-                c = candidates[candidateIndex];
-                if (c.user != supplied[i] || !c.eligible || c.score > previous) revert E.InvalidAdlCandidates();
-                previous = c.score;
-            }
-            if (!c.eligible || p.matched == needed) continue;
-            uint256 amount = Math.min(needed - p.matched, F.abs(c.position.size));
-            (Match memory m, bool valid) = _slice(c, amount);
-            if (!valid) {
-                // Earlier matches are full positions. Redistribute a boundary slice before giving up on it.
-                if (_rebalance(p, candidates, candidateIndex, amount)) p.matched = needed;
-                continue;
-            }
-            m.candidateIndex = candidateIndex;
-            p.matches[p.count++] = m;
-            p.matched += amount;
-            p.quote += m.quote;
-        }
-        if (p.matched == needed) {
-            int256 pnl = closedSize > 0 ? F.toInt(p.quote) - F.toInt(p.entry) : F.toInt(p.entry) - F.toInt(p.quote);
-            int256 equity = p.margin + pnl;
-            p.coverage = equity < 0 ? F.abs(equity) : 0;
-            if (p.coverage > capacity) revert E.AccountingInvariant();
-        }
-    }
-
-    /// @dev A failed greedy slice is necessarily the final partial: full candidates are already eligible.
-    /// Shift only as much size as required from one earlier full match, preserving the supplied score order.
-    /// The conservative minimum guarantees positive profit and nonnegative equity at every size up to full.
-    /// At most 512 pair checks per plan; reaching that budget is never proof of book exhaustion.
-    /// No external calls or storage writes occur here.
-    function _rebalance(Plan memory p, Candidate[] memory candidates, uint256 nextIndex, uint256 remainder)
-        internal
-        pure
-        returns (bool)
-    {
-        Candidate memory next = candidates[nextIndex];
-        uint256 nextMinimum = minimumSlice(next);
-        uint256 nextSize = F.abs(next.position.size);
-        for (uint256 i = p.count; i != 0; --i) {
-            if (p.rebalanceChecks == MAX_REBALANCE_CHECKS) return false;
-            ++p.rebalanceChecks;
-            Match memory previous = p.matches[i - 1];
-            Candidate memory prior = candidates[previous.candidateIndex];
-            uint256 combined = F.abs(previous.size) + remainder;
-            uint256 nextAmount = Math.max(remainder, nextMinimum);
-            if (nextAmount <= nextSize && nextAmount < combined) {
-                // The earlier slice may be valid below its sufficient bound, including with zero full equity.
-                uint256 priorAmount = combined - nextAmount;
-                (uint256 entry, uint256 quote, int256 margin, bool priorValid) = _sliceValues(prior, priorAmount);
-                if (priorValid) {
-                    (Match memory enlarged, bool nextValid) = _slice(next, nextAmount);
-                    if (!nextValid) revert E.AccountingInvariant();
-                    enlarged.candidateIndex = nextIndex;
-                    p.quote = p.quote - previous.quote + quote + enlarged.quote;
-                    p.matches[i - 1] = Match(
-                        prior.user,
-                        prior.position.size > 0 ? F.toInt(priorAmount) : -F.toInt(priorAmount),
-                        entry,
-                        quote,
-                        margin,
-                        previous.candidateIndex
-                    );
-                    p.matches[p.count++] = enlarged;
-                    return true;
-                }
-            }
-            // A candidate may also replace a whole earlier match. Validate the exact combined slice even
-            // below the sufficient bound; that bound is deliberately conservative, not an eligibility rule.
-            if (combined <= nextSize) {
-                (Match memory replacement, bool valid) = _slice(next, combined);
-                if (valid) {
-                    replacement.candidateIndex = nextIndex;
-                    p.quote = p.quote - previous.quote + replacement.quote;
-                    for (uint256 j = i; j < p.count; ++j) {
-                        p.matches[j - 1] = p.matches[j];
-                    }
-                    p.matches[p.count - 1] = replacement;
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /// @dev With nonnegative collateral, full rounded profit P and size S give partial profit at least
-    /// floor(x*P/S) for a long, or that minus one for a short. Hence x*P/S >= 1 or 2 suffices.
-    /// Negative collateral needs a full close for a guaranteed releasable payout. A smaller exact slice
-    /// can still qualify if its payout is zero or it absorbs all debt; the vault never releases over debt.
-    function minimumSlice(Candidate memory c) internal pure returns (uint256) {
-        uint256 size = F.abs(c.position.size);
-        if (c.margin < 0) return size;
-        (Match memory full,) = _slice(c, size);
-        int256 pnl =
-            c.position.size > 0 ? F.toInt(full.quote) - F.toInt(full.entry) : F.toInt(full.entry) - F.toInt(full.quote);
-        if (pnl <= 0) return size;
-        return Math.min(size, Math.mulDiv(size, c.position.size > 0 ? 1 : 2, F.toUint(pnl), Math.Rounding.Ceil));
-    }
-
-    function _slice(Candidate memory c, uint256 amount) private pure returns (Match memory m, bool valid) {
-        (m.entry, m.quote, m.margin, valid) = _sliceValues(c, amount);
-        m.user = c.user;
-        m.size = c.position.size > 0 ? F.toInt(amount) : -F.toInt(amount);
-    }
-
-    /// @dev Reject unprofitable pairs before computing margin or allocating a Match in the bounded search.
-    function _sliceValues(Candidate memory c, uint256 amount)
-        private
-        pure
-        returns (uint256 entry, uint256 quote, int256 margin, bool valid)
-    {
-        bool long = c.position.size > 0;
-        entry = Curve.closedEntryCost(c.position.entryCost, amount, F.abs(c.position.size));
-        quote = Math.mulDiv(amount, c.price, F.WAD, long ? Math.Rounding.Floor : Math.Rounding.Ceil);
-        if (long ? quote <= entry : entry <= quote) return (entry, quote, 0, false);
-        uint256 profit = long ? quote - entry : entry - quote;
-        margin = marginShare(c.margin, amount, F.abs(c.position.size));
-        valid = margin >= 0 || F.abs(margin) <= profit;
-        // A positive payout cannot leave negative collateral behind: MarginVault.release enforces this.
-        if (valid && c.margin < margin && profit > F.abs(margin)) valid = false;
-    }
-
-    function marginShare(int256 margin, uint256 amount, uint256 size) internal pure returns (int256) {
-        if (amount == size) return margin;
-        uint256 magnitude =
-            Math.mulDiv(F.abs(margin), amount, size, margin < 0 ? Math.Rounding.Ceil : Math.Rounding.Floor);
-        return margin < 0 ? -F.toInt(magnitude) : F.toInt(magnitude);
-    }
-
-    // Called at most once per candidate, under the market guard; the fixed vault only updates balanced ledgers.
-    // slither-disable-next-line calls-loop
-    function _closePairLeg(S.Data storage s, address user, int256 closedSize, uint256 entry, int256 pnl) private {
-        T.Position storage pos = s._positions[user];
-        int256 remaining = pos.size - closedSize;
-        Engine.resize(s, pos.size, remaining);
-        pos.size = remaining;
-        pos.entryCost -= entry;
-        s._amm.entryCostNet -= closedSize > 0 ? F.toInt(entry) : -F.toInt(entry);
-        s.vault.settlePnl(user, pnl);
-        if (remaining == 0) {
-            Book.remove(s, user);
-            delete s._positions[user];
-        }
     }
 }

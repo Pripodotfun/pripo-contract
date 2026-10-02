@@ -30,6 +30,8 @@ library MarketState {
         uint256 settlementProfits;
         uint256 _positionCount;
         uint256[] _freeSlots;
+        mapping(address => T.AdlPending) _pendingAdl;
+        uint256 pendingAdlCount;
     }
 
     struct OpenQuote {
