@@ -233,3 +233,13 @@ Fallback fuzzing allows up to `cap` external mutations per trace, including repe
 Scope: these contracts model the accepted design. They do not implement or invoke production pending ADL, stable-slot allocation/free-list reuse, price-derived eligibility, vault reservations, funding freezes or token transfers. The existing runtime still uses the earlier ADL matcher and swap-and-pop book. Port these assertions to the actual pending runtime when it is integrated; model success is not evidence that the production paths already implement the new decisions.
 
 Verification command: `forge test --match-contract AdlPendingPropertiesTest --fuzz-runs 10000`. All seven tests pass: three properties at 10,000 inputs each and four deterministic regressions. Formatting and diff checks pass. No production contracts or ABIs changed, and no new full-runtime CI campaign is claimed.
+
+## ADL spec reconciliation
+
+The consolidated ADL specification now records fixed entry/value schedules, actual coverage reservations, funded rounding allowance, frozen funding, stable slots and permissionless continuations. Settlement requires a fresh complete-book insufficiency proof; the pending window only enables fallback enumeration. Its state, interfaces, parameters and required invariants are marked as the runtime integration target.
+
+The source split is explicit throughout: `rC = min(C, R)`, `rReserve = min(reserve, R - rC)`, allowance `rC + rReserve`, and paired-loss budget `M + C - rC`. The rewrite's unconditional `M + C - R` would deduct reserve-funded allowance from the loser's budget. The spec also records signed selected collateral, coverage replaced by added margin, pro-rata realizable bounds, zero-collateral ranking and the `AdlZeroProfit` exception.
+
+Reconciliation retained the established signed collateral, six-decimal token scaling, funding-rounding identity, status discriminants, terminal capital waterfall and cash-backing deployment gate. The reservation appears exactly once in all three cash equations. The new model coverage does not imply that production pending custody, freezes or continuation entry points are implemented.
+
+Verification: `forge test --match-contract 'Adl(ValueSchedule|PendingProperties)Test' --fuzz-runs 10000` passed all 13 tests, including five fuzz properties at 10,000 inputs each. `git diff --check` passed. This stage changes documentation only; runtime contracts and exported ABIs are unchanged.
