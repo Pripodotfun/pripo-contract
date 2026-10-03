@@ -44,12 +44,29 @@ library FundingMath {
         uint64 currentBlock,
         uint16 receiveCapX
     ) public pure returns (T.FundingState memory) {
+        return accrueCapped(f, longs, shorts, rate, referencePrice, currentBlock, receiveCapX, type(uint256).max);
+    }
+
+    /// @notice Accrue only within the caller's backed payer-index headroom; discard elapsed time beyond the cap.
+    /// @dev A caller must derive the capacity from current positions and retain any required freeze across touches.
+    function accrueCapped(
+        T.FundingState memory f,
+        uint256 longs,
+        uint256 shorts,
+        int256 rate,
+        uint256 referencePrice,
+        uint64 currentBlock,
+        uint16 receiveCapX,
+        uint256 maxPayerIncrement
+    ) public pure returns (T.FundingState memory) {
         if (currentBlock < f.lastBlock) revert E.TimeWentBackwards(f.lastBlock, currentBlock);
         uint256 elapsed = currentBlock - f.lastBlock;
         f.lastBlock = currentBlock;
         if (elapsed == 0 || longs == 0 || shorts == 0 || rate == 0) return f;
         if (referencePrice == 0 || receiveCapX == 0) revert E.InvalidFundingParameters();
-        uint256 perUnit = Math.mulDiv(F.abs(rate), referencePrice, F.WAD) * elapsed;
+        uint256 perBlock = Math.mulDiv(F.abs(rate), referencePrice, F.WAD);
+        // Compare before multiplying so even a very long gap clamps without an intermediate overflow.
+        uint256 perUnit = perBlock > maxPayerIncrement / elapsed ? maxPayerIncrement : perBlock * elapsed;
         (uint256 paySize, uint256 recvSize) = rate > 0 ? (longs, shorts) : (shorts, longs);
         uint256 payHi = F.highProduct(perUnit, paySize);
         uint256 perRecv = Math.min(payHi / recvSize, perUnit * receiveCapX);
