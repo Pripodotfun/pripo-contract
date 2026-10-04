@@ -6,6 +6,7 @@ import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
 import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
+import {MarketFundingCapacity as Capacity} from "./MarketFundingCapacity.sol";
 import {MarketLens as Lens} from "./MarketLens.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {PositionBook as Book} from "./PositionBook.sol";
@@ -49,6 +50,7 @@ library MarketTrading {
         p.lastFundingIndex = size > 0 ? s._funding.longIndex : s._funding.shortIndex;
         s._amm.entryCostNet += size > 0 ? F.toInt(q.fill.quoteAmount) : -F.toInt(q.fill.quoteAmount);
         Engine.applyFill(s, q.fill);
+        Capacity.refresh(s, user);
         emit IMarketCore.PositionOpened(address(this), user, msg.sender, size, q.fill.avgPrice, q.margin, q.fee);
     }
 
@@ -60,11 +62,13 @@ library MarketTrading {
         if (s._pendingAdl[user].active) revert E.AdlAlreadyPending();
         Engine.touch(s);
         int256 fundingOwed = Engine.settleFunding(s, user);
+        bool backedBefore = s.vault.locked(user, address(this)) >= 0;
         S.CloseQuote memory q = Lens.quoteClose(s, user, fraction);
         Engine.checkLimit(-q.closedSize, q.fill.avgPrice, limitPrice);
         s.vault.checkAndConsume(user, msg.sender, q.fill.quoteAmount, true, proof);
         Engine.applyClose(s, user, q);
         Engine.chargeFee(s, user, q.fee, true);
+        if (backedBefore) Capacity.checkExitCollateral(s, user);
         // Exact position-size arithmetic must detect the final close to clear its snapshot and residual entry cost.
         // slither-disable-next-line incorrect-equality
         if (s._positions[user].size == 0) {
@@ -74,6 +78,7 @@ library MarketTrading {
             s.vault.release(user, F.toUint(s.vault.locked(user, address(this))));
             delete s._positions[user];
         }
+        Capacity.refresh(s, user);
         // Partial closes retain collateral. The owner can remove the excess subject to the initial-margin checks.
         emit IMarketCore.PositionClosed(
             address(this), user, msg.sender, q.closedSize, q.fill.avgPrice, q.pnl, fundingOwed, q.fee

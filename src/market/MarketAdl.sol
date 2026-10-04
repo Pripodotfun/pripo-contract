@@ -8,6 +8,7 @@ import {CurveMath as Curve} from "../libraries/CurveMath.sol";
 import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
+import {MarketFundingCapacity as Capacity} from "./MarketFundingCapacity.sol";
 import {MarketSettlement as Settlement} from "./MarketSettlement.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {PositionBook as Book} from "./PositionBook.sol";
@@ -59,6 +60,7 @@ library MarketAdl {
         position.adlPending = true;
         ++s.pendingAdlCount;
         Engine.setStatus(s, T.Status.Paused);
+        Capacity.refresh(s, user);
         return _run(s, user, supplied, automatic, 0);
     }
 
@@ -237,6 +239,8 @@ library MarketAdl {
             if (s.vault.payAdlRounding(user, c.user)) ++p.allowanceConsumed;
             else emit IMarketCore.AdlZeroProfit(address(this), c.user, winnerSize);
         }
+        Capacity.refresh(s, c.user);
+        Capacity.refresh(s, user);
         emit IMarketCore.AutoDeleveraged(address(this), c.user, user, winnerSize, quote, winnerEntry);
     }
 
@@ -276,6 +280,7 @@ library MarketAdl {
                 s, s.guardianPaused ? T.Status.Paused : Engine.isDegraded(s) ? T.Status.Degraded : T.Status.Active
             );
         }
+        Capacity.refresh(s, user);
         emit IMarketCore.AdlCompleted(address(this), user, p.relief, returned);
     }
 

@@ -9,6 +9,7 @@ import {LiquidationMath as L} from "../libraries/LiquidationMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
 import {MarketAdl as Adl} from "./MarketAdl.sol";
+import {MarketFundingCapacity as Capacity} from "./MarketFundingCapacity.sol";
 import {MarketLens as Lens} from "./MarketLens.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -89,6 +90,7 @@ library MarketLiquidation {
             s.vault.release(user, F.toUint(s.vault.locked(user, address(this))));
             delete s._positions[user];
         }
+        Capacity.refresh(s, user);
         uint256 average = Math.mulDiv(
             q.fill.quoteAmount, F.WAD, F.abs(q.closedSize), q.closedSize < 0 ? Math.Rounding.Ceil : Math.Rounding.Floor
         );

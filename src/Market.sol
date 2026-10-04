@@ -14,8 +14,10 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {MarketAccounting as Engine} from "./market/MarketAccounting.sol";
 import {MarketAdl as Adl} from "./market/MarketAdl.sol";
+import {MarketFundingCapacity as Capacity} from "./market/MarketFundingCapacity.sol";
 import {MarketLens as Lens} from "./market/MarketLens.sol";
 import {MarketLiquidation as Liquidation} from "./market/MarketLiquidation.sol";
+import {MarketMaintenance as Maintenance} from "./market/MarketMaintenance.sol";
 import {MarketMargin as Margin} from "./market/MarketMargin.sol";
 import {MarketSettlement as Settlement} from "./market/MarketSettlement.sol";
 import {MarketState as S} from "./market/MarketState.sol";
@@ -207,22 +209,8 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         return Adl.eligibleSize(S.load(), user);
     }
 
-    // Guarded adapter reads happen after an internally consistent funding/TWAP checkpoint.
-    // slither-disable-next-line reentrancy-eth
     function poke() external nonReentrant {
-        S.Data storage s = S.load();
-        Engine.touch(s);
-        if (s.externalIndex) {
-            S.Observation memory o = Engine.readSource(s, s._config.priceSource, "", 0);
-            if (!Engine.fresh(s, o) && s._config.secondarySource != address(0)) {
-                o = Engine.readSource(s, s._config.secondarySource, "", 0);
-            }
-            if (Engine.fresh(s, o)) {
-                s._index = o.price;
-                s._indexBlock = o.updatedBlock;
-                if (!s.guardianPaused && s.pendingAdlCount == 0) Engine.setStatus(s, T.Status.Active);
-            }
-        }
+        Maintenance.poke(S.load());
     }
 
     function sweepFundingSurplus() external nonReentrant {
@@ -308,73 +296,54 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         return (Math.mulDiv(s.longSize, mark, F.WAD), Math.mulDiv(s.shortSize, mark, F.WAD), Engine.oiCap(s));
     }
 
+    function fundingCapacity(address user) external view returns (int256, uint256, uint256) {
+        // All three tuple components are forwarded to the caller.
+        // slither-disable-next-line unused-return
+        return Capacity.account(S.load(), user);
+    }
+
+    function fundingLimit(bool isLong) external view returns (address, int256) {
+        // Both tuple components are forwarded to the caller.
+        // slither-disable-next-line unused-return
+        return Capacity.minimum(S.load(), isLong);
+    }
+
+    function fundingBinding() external view returns (address) {
+        return Engine.fundingBinding(S.load());
+    }
+
     function fundingRatePerBlock() public view returns (int256) {
         S.Data storage s = S.load();
         if (s._config.status >= T.Status.Settling) return 0;
-        if (Engine.isDegraded(s) || s.pendingAdlCount != 0) return 0;
+        if (Engine.isDegraded(s) || s.pendingAdlCount != 0 || Engine.fundingBinding(s) != address(0)) return 0;
         return Engine.cachedRate(s);
     }
 
     function remark() external nonReentrant {
-        _remark("", 0);
+        Maintenance.remark(S.load(), "", 0);
     }
 
     function remark(bytes calldata update) external payable nonReentrant {
-        _remark(update, msg.value);
-    }
-
-    // Only reachable from the two nonReentrant remark entry points.
-    // slither-disable-next-line reentrancy-eth
-    function _remark(bytes memory update, uint256 value) private {
-        S.Data storage s = S.load();
-        Engine.touch(s);
-        Engine.refreshPrice(s, update, value);
-        if (!s.guardianPaused && s.pendingAdlCount == 0) Engine.setStatus(s, T.Status.Active);
+        Maintenance.remark(S.load(), update, msg.value);
     }
 
     function pauseOpens() external nonReentrant {
-        S.Data storage s = S.load();
-        if (msg.sender != s.vault.guardian()) revert Unauthorized();
-        Engine.touch(s);
-        s.guardianPaused = true;
-        Engine.setStatus(s, T.Status.Paused);
+        Maintenance.pauseOpens(S.load());
     }
 
     function resumeOpens() external nonReentrant {
-        S.Data storage s = S.load();
-        if (msg.sender != s.vault.governor()) revert Unauthorized();
-        s.vault.requireOpenAllowed(address(this));
-        Engine.touch(s);
-        s.guardianPaused = false;
-        Engine.setStatus(
-            s, s.pendingAdlCount != 0 ? T.Status.Paused : Engine.isDegraded(s) ? T.Status.Degraded : T.Status.Active
-        );
+        Maintenance.resumeOpens(S.load());
     }
 
     function claimCreatorFees() external nonReentrant {
-        S.Data storage s = S.load();
-        if (msg.sender != s._config.creator) revert Unauthorized();
-        uint256 amount = s.vault.claimCreatorFees();
-        emit CreatorFeesClaimed(address(this), msg.sender, amount);
+        Maintenance.claimCreatorFees(S.load());
     }
 
     function transferCreator(address to) external nonReentrant {
-        S.Data storage s = S.load();
-        if (msg.sender != s._config.creator) revert Unauthorized();
-        if (to == address(0)) revert InvalidAddress();
-        s._config.creator = to;
-        s.vault.transferCreator(to);
-        emit CreatorTransferred(msg.sender, to);
+        Maintenance.transferCreator(S.load(), to);
     }
 
     function reseed(uint256 depth) external nonReentrant {
-        S.Data storage s = S.load();
-        if (msg.sender != s._config.creator) revert Unauthorized();
-        if (s.longSize != 0 || s.shortSize != 0) revert PositionExists();
-        if (Curve.clearing(s._amm) != 0 || s.vault.ledger(address(this)).clearing != 0) revert AccountingInvariant();
-        Engine.touch(s);
-        s._amm = Curve.seed(Curve.mark(s._amm), depth);
-        Engine.validateDepth(s, depth);
-        s._twap.write(Curve.mark(s._amm), Engine.currentBlock());
+        Maintenance.reseed(S.load(), depth);
     }
 }

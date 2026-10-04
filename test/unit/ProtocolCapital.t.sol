@@ -35,31 +35,20 @@ contract ProtocolCapitalTest is Test {
         _newMarket();
     }
 
-    function testAdmissionUsesCeilAndPersistsWithoutExposureUntilFinalized() public {
+    function testAdmissionRetiresFundingBudgetButKeepsFixedFundedFloorAndTerminalGuard() public {
         assertEq(vault.reserveFloor(), 10_000e18);
-        uint256 budget = (25_000e18 * uint256(RATE) * 96_000 + 1e18 - 1) / 1e18;
-        for (uint256 i; i < 10; ++i) {
+        for (uint256 i; i < 11; ++i) {
             address m = i < 2 ? markets[i] : _newMarket();
             vm.prank(m);
             vault.admitMarket(25_000e18, RATE);
-            assertEq(vault.reserveBudget(m), budget);
+            assertEq(vault.reserveBudget(m), 0);
+            assertTrue(vault.marketAdmitted(m));
         }
-        assertEq(vault.aggregateReserveBudget(), 10 * budget);
-        TerminalMarketStub(markets[0]).setState(T.Status.Paused, 0, 0);
-        assertEq(vault.aggregateReserveBudget(), 10 * budget);
-        address last = _newMarket();
-        vm.prank(last);
-        vm.expectPartialRevert(E.ReserveBelowFloor.selector);
-        vault.admitMarket(25_000e18, RATE);
-        assertFalse(vault.marketAdmitted(last));
-        assertEq(vault.aggregateReserveBudget(), 10 * budget);
-        vault.fundProtocolReserve(1_000e6);
-        vm.prank(last);
-        vault.admitMarket(25_000e18, RATE);
-        assertEq(vault.reserveFloor(), 11 * budget);
-        _finish(markets[0], 0);
+        assertEq(vault.aggregateReserveBudget(), 0);
         assertEq(vault.reserveFloor(), 10_000e18);
-        assertEq(vault.aggregateReserveBudget(), 10 * budget);
+        TerminalMarketStub(markets[0]).setState(T.Status.Paused, 0, 0);
+        assertEq(vault.reserveFloor(), 10_000e18);
+        _finish(markets[0], 0);
         vm.prank(markets[0]);
         vm.expectRevert(E.InvalidConfiguration.selector);
         vault.admitMarket(25_000e18, RATE);

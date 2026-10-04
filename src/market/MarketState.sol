@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {IMarginVault} from "../interfaces/IMarginVault.sol";
+import {FundingCapacityHeap} from "../libraries/FundingCapacityHeap.sol";
 import {MarkTwap} from "../libraries/MarkTwap.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 
@@ -32,6 +33,9 @@ library MarketState {
         uint256[] _freeSlots;
         mapping(address => T.AdlPending) _pendingAdl;
         uint256 pendingAdlCount;
+        FundingCapacityHeap.State longFundingCaps;
+        FundingCapacityHeap.State shortFundingCaps;
+        address fundingBinding;
     }
 
     struct OpenQuote {

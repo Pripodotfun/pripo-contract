@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {Market} from "../../src/Market.sol";
+import {IPripoErrors as E} from "../../src/interfaces/IPripoErrors.sol";
+import {CurveMath as Curve} from "../../src/libraries/CurveMath.sol";
 import {FixedPointMath as F} from "../../src/libraries/FixedPointMath.sol";
 import {FundingMath as Funding} from "../../src/libraries/FundingMath.sol";
 import {RiskMath as Risk} from "../../src/libraries/RiskMath.sol";
@@ -61,7 +63,7 @@ contract FundingCapacityProposalTest is MarketFixture {
         _assertCash();
     }
 
-    function testProposedCapSpendsCurveLossCollateralBeforeVoluntaryClose() public {
+    function testObsoleteCapWouldSpendCurveCollateralButSettlementGuardRejectsIt() public {
         _setup(true);
         address[] memory extras = new address[](24);
         for (uint256 i; i < 12; ++i) {
@@ -97,15 +99,21 @@ contract FundingCapacityProposalTest is MarketFixture {
         vm.prank(alice);
         vault.withdraw(withdrawal);
 
-        // Earlier shorts leave through normal closes. No liquidation or market-limit bypass is used.
-        for (uint256 i; i < 12; ++i) {
-            _close(extras[i], 1e18);
-        }
-        (,, int256 pnl,) = market.quoteClose(bob, 1e18);
-        assertLt(int256(retained) + pnl, 0, "maintenance alone does not cover permitted curve loss");
+        // The production settlement guard rejects the obsolete cap before it can spend trading collateral.
         uint256 insuranceBefore = vault.ledger(address(market)).insurance;
-        _close(bob, 1e18);
-        assertLt(vault.ledger(address(market)).insurance, insuranceBefore, "the proposed cap still consumes insurance");
+        vm.prank(bob);
+        vm.expectPartialRevert(E.FundingCapacityExceeded.selector);
+        market.close(1e18, type(uint256).max, "");
+        assertEq(vault.ledger(address(market)).insurance, insuranceBefore);
+        // Independently price the previously permitted sequence to retain the curve-loss counterexample.
+        T.AmmState memory a = market.ammState();
+        for (uint256 i; i < 12; ++i) {
+            T.Fill memory fill = Curve.quoteExit(a, -18e18);
+            a.baseReserve = fill.baseReserve;
+            a.quoteReserve = fill.quoteReserve;
+        }
+        int256 pnl = Curve.realizablePnl(a, -18e18, p.entryCost);
+        assertLt(int256(retained) + pnl, 0, "maintenance alone does not cover permitted curve loss");
         _assertCashWith(extras);
         emit log_named_uint("binding entry quote WAD", p.entryCost);
         emit log_named_uint("retained maintenance quote WAD", maintenance);

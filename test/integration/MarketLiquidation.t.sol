@@ -7,10 +7,11 @@ import {IPripoErrors as E} from "../../src/interfaces/IPripoErrors.sol";
 import {FundingMath} from "../../src/libraries/FundingMath.sol";
 import {LiquidationMath as L} from "../../src/libraries/LiquidationMath.sol";
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
+import {DebtShockFixture} from "../helpers/DebtShockFixture.sol";
 import {MarketFixture} from "../helpers/MarketFixture.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract MarketLiquidationTest is MarketFixture {
+contract MarketLiquidationTest is DebtShockFixture {
     InsuranceBackstop private backstop;
 
     function setUp() public {
@@ -129,7 +130,7 @@ contract MarketLiquidationTest is MarketFixture {
     function _indebted(uint256 elapsed) private {
         _open(alice, 10e18);
         _open(bob, -1e18);
-        vm.roll(block.number + elapsed);
+        _seedLegacyFundingDebt(block.number + elapsed);
         (, bool liquidatable) = market.health(alice);
         assertTrue(liquidatable);
     }
@@ -265,13 +266,13 @@ contract MarketDegradedLiquidationTest is MarketFixture {
         assertEq(source.calls(), calls);
         assertEq(market.fundingRatePerBlock(), 0);
         (, bool unhealthy) = market.health(alice);
-        assertTrue(unhealthy, "degraded call must not escalate beyond half");
+        assertFalse(unhealthy, "the capped funding debt leaves a healthy half-position");
+        assertEq(market.fundingBinding(), address(0));
         _assertCash();
         vm.prank(carol);
+        vm.expectPartialRevert(E.NotLiquidatable.selector);
         market.liquidate(alice, "");
-        assertEq(market.position(alice).size, 2.5e18);
-        (, unhealthy) = market.health(alice);
-        assertFalse(unhealthy);
+        assertEq(market.position(alice).size, 5e18);
         _assertCash();
     }
 

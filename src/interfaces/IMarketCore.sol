@@ -6,6 +6,14 @@ import {IPripoErrors} from "./IPripoErrors.sol";
 
 /// @notice Implemented isolated trading runtime. Proof overloads use the vault's double-hashed market leaves.
 interface IMarketCore is IPripoErrors {
+    event FundingCapacityFrozen(address indexed market, address indexed binding);
+    event FundingCapacityResumed(address indexed market, address indexed binding);
+    function fundingCapacity(address user)
+        external
+        view
+        returns (int256 capIndex, uint256 protectedAmount, uint256 capacity);
+    function fundingLimit(bool isLong) external view returns (address binding, int256 capIndex);
+    function fundingBinding() external view returns (address);
     function externalIndex() external view returns (bool);
     function longSize() external view returns (uint256);
     function shortSize() external view returns (uint256);

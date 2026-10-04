@@ -9,9 +9,10 @@ import {MarketAccounting as Engine} from "../../src/market/MarketAccounting.sol"
 import {MarketSettlement as Settlement} from "../../src/market/MarketSettlement.sol";
 import {MarketState as S} from "../../src/market/MarketState.sol";
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
+import {DebtShockFixture} from "../helpers/DebtShockFixture.sol";
 import {MarketFixture} from "../helpers/MarketFixture.sol";
 
-contract MarketSettlementTest is MarketFixture {
+contract MarketSettlementTest is DebtShockFixture {
     function setUp() public {
         _setup(false);
     }
@@ -19,7 +20,7 @@ contract MarketSettlementTest is MarketFixture {
     function testFundingReceiptsAreHaircutBeforeProtocolCapital() public {
         _open(alice, 10e18);
         _open(bob, -1e18);
-        vm.roll(block.number + 10_000_000);
+        _seedLegacyFundingDebt(block.number + 10_000_000);
         T.SettlementQuote memory q = market.settlementQuote();
         uint256 reserve = vault.protocolReserve();
         uint256 bobFree = vault.freeBalance(bob);
@@ -43,7 +44,7 @@ contract MarketSettlementTest is MarketFixture {
     function testWithdrawnWinnerLeavesTerminalDeficitAndMarketCannotRestart() public {
         _open(alice, 10e18);
         _open(bob, -1e18);
-        vm.roll(block.number + 40_000_000);
+        _seedLegacyFundingDebt(block.number + 40_000_000);
         _close(bob, 1e18);
         uint256 raw = vault.freeBalance(bob) / 1e12;
         vm.prank(bob);
@@ -89,7 +90,7 @@ contract MarketSettlementTest is MarketFixture {
         uint256 elapsed = bound(blocks_, 10_000_000, 45_000_000);
         _open(alice, short ? -int256(10e18) : int256(10e18));
         _open(bob, short ? int256(1e18) : -int256(1e18));
-        vm.roll(block.number + elapsed);
+        _seedLegacyFundingDebt(block.number + elapsed);
         if (winnerLeft) _close(bob, 1e18);
         market.liquidate(alice, "");
         _assertTerminal();
@@ -164,7 +165,7 @@ contract SettlementValuationTest is MarketFixture {
     }
 }
 
-contract DegradedSettlementTest is MarketFixture {
+contract DegradedSettlementTest is DebtShockFixture {
     function setUp() public {
         _setup(true);
     }
@@ -179,7 +180,7 @@ contract DegradedSettlementTest is MarketFixture {
         _open(bob, -1e18);
         source.set(99e18, uint64(block.number), 0);
         market.remark();
-        vm.roll(block.number + 400_000_001);
+        _seedLegacyFundingDebt(block.number + 400_000_001);
         _close(bob, 0.5e18);
         vm.roll(block.number + 150);
         source.setBroken(true);

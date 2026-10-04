@@ -2,9 +2,9 @@
 pragma solidity 0.8.30;
 
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
-import {MarketFixture} from "../helpers/MarketFixture.sol";
+import {DebtShockFixture} from "../helpers/DebtShockFixture.sol";
 
-contract SettlementGasTest is MarketFixture {
+contract SettlementGasTest is DebtShockFixture {
     address[127] private accounts;
 
     function setUp() public {
@@ -15,7 +15,7 @@ contract SettlementGasTest is MarketFixture {
             _deposit(accounts[i], 20e6);
             _open(accounts[i], i % 2 == 0 ? -int256(0.1e18) : int256(0.1e18));
         }
-        vm.roll(block.number + 50_000_000);
+        _seedLegacyFundingDebt(block.number + 50_000_000);
     }
 
     function testWholeBookSettlementAt128Positions() public {
@@ -46,7 +46,7 @@ contract SettlementGasTest is MarketFixture {
     }
 }
 
-contract AdlGasTest is MarketFixture {
+contract AdlGasTest is DebtShockFixture {
     address[126] private accounts;
 
     function setUp() public {
@@ -58,7 +58,7 @@ contract AdlGasTest is MarketFixture {
             _deposit(accounts[i], 300e6);
             _open(accounts[i], -int256(0.08e18));
         }
-        vm.roll(block.number + 10_000_000);
+        _seedLegacyFundingDebt(block.number + 10_000_000);
         _close(carol, 0.999e18);
         vm.roll(block.number + 300);
         (,,, int256 owed) = market.quoteClose(alice, 1e18);

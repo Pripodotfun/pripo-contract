@@ -70,21 +70,21 @@ contract MarketTradingTest is MarketFixture {
         _assertCash();
     }
 
-    function testFundingDebtSurvivesUnsignedPositionAndClosesAgainstInsurance() public {
+    function testFundingStopsBeforeDebtAndClosePreservesInsurance() public {
         _open(alice, 10e18);
         _open(bob, -1e18);
         vm.roll(block.number + 3_000_000);
         vm.prank(alice);
         market.addMargin(1);
-        assertEq(market.position(alice).margin, 0);
-        assertGt(market.positionDebt(alice), 0);
+        assertGt(market.position(alice).margin, 0);
+        assertEq(market.positionDebt(alice), 0);
         (, bool liquidatable) = market.health(alice);
         assertTrue(liquidatable);
         _assertFunding();
         _assertCash();
         uint256 insuranceBefore = vault.ledger(address(market)).insurance;
         _close(alice, 1e18);
-        assertLt(vault.ledger(address(market)).insurance, insuranceBefore);
+        assertGe(vault.ledger(address(market)).insurance, insuranceBefore);
         assertEq(market.positionDebt(alice), 0);
         _close(bob, 1e18);
         market.sweepFundingSurplus();

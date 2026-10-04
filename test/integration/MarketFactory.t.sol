@@ -12,6 +12,7 @@ import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
 import {MarketFixture} from "../helpers/MarketFixture.sol";
 import {MockPyth} from "../helpers/MockPyth.sol";
 import {HookUSDC} from "../helpers/MockUSDC.sol";
+import {TerminalMarketStub} from "../helpers/TerminalMarketStub.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -256,18 +257,29 @@ contract MarketFactoryTest is MarketFixture {
         assertTrue(predicted.code.length != 0);
     }
 
-    function testReserveAdmissionCapsMarketCountAndFailureReturnsBond() public {
-        for (uint256 i; i < 9; ++i) {
+    function testFixedReserveAdmitsMoreMarketsAndUnderfilledFloorReturnsBond() public {
+        for (uint256 i; i < 12; ++i) {
             vm.prank(creator);
             factory.createMarket(_params(vm.toString(i)));
         }
-        T.CreateParams memory p = _params("OVER-BUDGET");
+        assertEq(vault.reserveFloor(), 10_000e18);
+        assertEq(vault.aggregateReserveBudget(), 0);
+        TerminalMarketStub dead = new TerminalMarketStub();
+        vault.registerMarket(address(dead), creator);
+        vm.prank(address(dead));
+        vault.settleFunding(address(0xdead), 1e18);
+        dead.setState(T.Status.Settled, 0, 0);
+        address[] memory debtors = new address[](1);
+        debtors[0] = address(0xdead);
+        vm.prank(address(dead));
+        vault.finalizeSettlement(debtors);
+        T.CreateParams memory p = _params("UNDERFUNDED-FLOOR");
         address predicted = factory.predictAddress(p.symbol);
         uint256 before = usdc.balanceOf(creator);
         vm.prank(creator);
         vm.expectPartialRevert(E.ReserveBelowFloor.selector);
         factory.createMarket(p);
-        assertEq(factory.marketCount(), 9);
+        assertEq(factory.marketCount(), 12);
         assertEq(predicted.code.length, 0);
         assertEq(usdc.balanceOf(creator), before);
         assertEq(vault.registrarOf(predicted), address(0));

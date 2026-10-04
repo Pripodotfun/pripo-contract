@@ -24,7 +24,6 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     using Heap for Heap.Uint256Heap;
 
     uint256 public constant MIN_PROTOCOL_RESERVE = 10_000e18;
-    uint256 public constant RESERVE_BLOCKS = 96_000;
     uint256 public constant MAX_ALLOCATION_ENTRIES = 32;
     uint256 public constant MAX_TERMINAL_ACCOUNTS = 256;
 
@@ -53,6 +52,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     // Append-only capital accounts. Aggregate controls are not additional terms in the cash identity.
     uint256 public protocolReserve;
     uint256 public totalDeficit;
+    // Retired funding-budget slots retained for storage layout compatibility; new admissions write zero.
     uint256 public aggregateReserveBudget;
     mapping(address => uint256) public reserveBudget;
     mapping(address => bool) public terminalFinalized;
@@ -116,21 +116,18 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         return _ledgers[market];
     }
 
-    function reserveFloor() public view returns (uint256) {
-        return Math.max(MIN_PROTOCOL_RESERVE, aggregateReserveBudget);
+    function reserveFloor() public pure returns (uint256) {
+        return MIN_PROTOCOL_RESERVE;
     }
 
-    /// @notice Reserve the admitted ceiling, irrespective of current insurance, open interest or pause state.
+    /// @notice Admit a market only after the fixed protocol capital floor is funded; funding uses payer collateral.
     /// @dev Trusted immutable market code supplies its validated launch parameters. Admission is permanent until settlement.
     function admitMarket(uint256 oiCap, uint64 fundingCapPerBlock) external nonReentrant onlyMarket {
         if (marketAdmitted[msg.sender] || terminalFinalized[msg.sender]) revert InvalidConfiguration();
         if (oiCap == 0) revert InvalidConfiguration();
-        uint256 budget = Math.mulDiv(oiCap, uint256(fundingCapPerBlock) * RESERVE_BLOCKS, F.WAD, Math.Rounding.Ceil);
-        reserveBudget[msg.sender] = budget;
         marketAdmitted[msg.sender] = true;
-        aggregateReserveBudget += budget;
         requireOpenAllowed(msg.sender);
-        emit ReserveBudgetAdmitted(msg.sender, oiCap, fundingCapPerBlock, budget);
+        emit ReserveBudgetAdmitted(msg.sender, oiCap, fundingCapPerBlock, 0);
     }
 
     function requireOpenAllowed(address market) public view {

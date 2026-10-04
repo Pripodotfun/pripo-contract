@@ -7,6 +7,7 @@ import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
 import {MarketAdl as Adl} from "./MarketAdl.sol";
+import {MarketFundingCapacity as Capacity} from "./MarketFundingCapacity.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -23,6 +24,7 @@ library MarketMargin {
         Engine.settleFunding(s, msg.sender);
         s.vault.lock(msg.sender, amount);
         Adl.replaceCoverage(s, msg.sender, amount);
+        Capacity.refresh(s, msg.sender);
         emit IMarketCore.MarginChanged(address(this), msg.sender, F.toInt(amount));
     }
 
@@ -46,6 +48,7 @@ library MarketMargin {
         uint256 minimum = Math.ceilDiv(p.entryCost, s._config.maxLeverageX);
         if (equity < F.toInt(minimum)) revert E.InsufficientMargin(equity > 0 ? F.toUint(equity) : 0, minimum);
         s.vault.release(msg.sender, amount);
+        Capacity.refresh(s, msg.sender);
         emit IMarketCore.MarginChanged(address(this), msg.sender, -F.toInt(amount));
     }
 }

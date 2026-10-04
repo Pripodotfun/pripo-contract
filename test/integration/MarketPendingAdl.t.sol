@@ -168,7 +168,7 @@ contract MarketPendingAdlTest is AdlFixture {
         _open(carol, 10e18);
         _open(bob, -20e18);
         _open(carol, 1e18);
-        vm.roll(block.number + 50_000_000);
+        _seedLegacyFundingDebt(block.number + 50_000_000);
         _close(carol, uint256(2e18) / 11);
         vm.roll(block.number + 300);
         _setPostFundingMargin(alice, -int256(vault.ledger(address(market)).insurance) + 0.1e18);
@@ -214,7 +214,7 @@ contract MarketPendingAdlTest is AdlFixture {
         _open(bob, -(5e18 - 1));
         _open(dave, -(15e18 + 1));
         _open(carol, 1e18);
-        vm.roll(block.number + 50_000_000);
+        _seedLegacyFundingDebt(block.number + 50_000_000);
         _close(carol, uint256(2e18) / 11);
         vm.roll(block.number + 300);
         _setPostFundingMargin(alice, -int256(vault.ledger(address(market)).insurance) + 0.1e18);

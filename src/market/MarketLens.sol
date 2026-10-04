@@ -67,7 +67,9 @@ library MarketLens {
         healthWad = equity < 0 ? -F.toInt(magnitude) : F.toInt(magnitude);
         uint256 mmr = Engine.isDegraded(s) ? 1500 : s._config.mmrBps;
         liquidatable = !p.adlPending
-            && (collateral < 0 || equity < F.toInt(Math.mulDiv(p.entryCost, mmr, F.BPS, Math.Rounding.Ceil)));
+            && (Engine.fundingBinding(s) == user
+                || collateral < 0
+                || equity < F.toInt(Math.mulDiv(p.entryCost, mmr, F.BPS, Math.Rounding.Ceil)));
     }
 
     function realizablePnl(S.Data storage s, address user) public view returns (int256, int256) {

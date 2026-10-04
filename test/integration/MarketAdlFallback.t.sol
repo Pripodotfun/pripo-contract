@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {Market} from "../../src/Market.sol";
 import {FixedPointMath as F} from "../../src/libraries/FixedPointMath.sol";
 import {MarketState as S} from "../../src/market/MarketState.sol";
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
 import {AdlFixture} from "../helpers/AdlFixture.sol";
+import {DebtShockMarket} from "../helpers/DebtShockFixture.sol";
 import {Vm} from "forge-std/Vm.sol";
 
 /// @dev Seeds only a valid persisted cursor; all positions, prices and custody use the production runtime.
-contract CursorSeedMarket is Market {
+contract CursorSeedMarket is DebtShockMarket {
     function seedCursor(address user, uint32 cursor) external {
         S.Data storage s = S.load();
         require(s._pendingAdl[user].active && cursor <= s._accounts.length, "invalid test cursor");

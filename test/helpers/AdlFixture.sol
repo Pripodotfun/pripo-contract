@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {MarketFixture} from "./MarketFixture.sol";
+import {DebtShockFixture} from "./DebtShockFixture.sol";
 
-abstract contract AdlFixture is MarketFixture {
+abstract contract AdlFixture is DebtShockFixture {
     function _prepare(bool short) internal {
         _prepareSplit(short, 20e18);
     }
@@ -15,7 +15,7 @@ abstract contract AdlFixture is MarketFixture {
         _open(bob, -side * int256(bobSize));
         if (bobSize != 20e18) _open(creator, -side * int256(20e18 - bobSize));
         _open(carol, side * 1e18);
-        vm.roll(block.number + 30_000_000);
+        _seedLegacyFundingDebt(block.number + 30_000_000);
         _close(carol, uint256(2e18) / 11);
         vm.roll(block.number + 300);
         (,,, int256 owed) = market.quoteClose(alice, 1e18);

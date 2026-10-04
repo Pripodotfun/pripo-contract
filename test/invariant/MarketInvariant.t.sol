@@ -93,6 +93,8 @@ contract MarketHandler is Test {
         T.MarketConfig memory c = market.config();
         uint256 required =
             Risk.initialMargin(market.ammState(), p.size, p.entryCost, c.maxLeverageX, c.mmrBps, c.sideCapBps);
+        (, uint256 protectedAmount,) = market.fundingCapacity(user);
+        required = Math.max(required, protectedAmount);
         (,,, int256 owed) = market.quoteClose(user, 1e18);
         (, int256 pnl) = market.realizablePnl(user);
         int256 net = vault.locked(user, address(market)) - owed;

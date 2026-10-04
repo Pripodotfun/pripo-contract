@@ -2,9 +2,9 @@
 pragma solidity 0.8.30;
 
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
-import {MarketFixture} from "../helpers/MarketFixture.sol";
+import {DebtShockFixture} from "../helpers/DebtShockFixture.sol";
 
-contract MarketPartialPendingAdlTest is MarketFixture {
+contract MarketPartialPendingAdlTest is DebtShockFixture {
     function setUp() public {
         _setup(true);
     }
@@ -93,7 +93,7 @@ contract MarketPartialPendingAdlTest is MarketFixture {
         _open(carol, 1e18);
         source.set(90e18, uint64(block.number), 0);
         market.remark();
-        vm.roll(block.number + 400_000_001);
+        _seedLegacyFundingDebt(block.number + 400_000_001);
         _close(carol, uint256(2e18) / 11);
         vm.roll(block.number + 600);
         (,,, int256 owed) = market.quoteClose(alice, 1e18);

@@ -45,4 +45,5 @@ interface IPripoErrors {
     error NoPendingAdl();
     error AdlFallbackNotReady(uint256 readyBlock);
     error InvalidAdlIterations();
+    error FundingCapacityExceeded(address user, uint256 owed, uint256 capacity);
 }

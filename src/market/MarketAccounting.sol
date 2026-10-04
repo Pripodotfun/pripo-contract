@@ -11,6 +11,7 @@ import {FundingMath as Funding} from "../libraries/FundingMath.sol";
 import {MarkTwap} from "../libraries/MarkTwap.sol";
 import {RiskMath as Risk} from "../libraries/RiskMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
+import {MarketFundingCapacity as Capacity} from "./MarketFundingCapacity.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {PositionBook as Book} from "./PositionBook.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -48,8 +49,17 @@ library MarketAccounting {
     }
 
     function previewFunding(S.Data storage s) public view returns (T.FundingState memory f) {
+        (f,) = _previewFunding(s);
+    }
+
+    function fundingBinding(S.Data storage s) public view returns (address binding) {
+        (, binding) = _previewFunding(s);
+    }
+
+    function _previewFunding(S.Data storage s) private view returns (T.FundingState memory f, address binding) {
         f = s._funding;
-        if (s._config.status >= T.Status.Settling) return f;
+        binding = s.fundingBinding;
+        if (s._config.status >= T.Status.Settling) return (f, binding);
         uint64 current = currentBlock();
         uint64 end = current;
         if (s.externalIndex) {
@@ -58,7 +68,7 @@ library MarketAccounting {
         }
         if (end > f.lastBlock && s._config.status != T.Status.Degraded && s.pendingAdlCount == 0) {
             uint256 referencePrice = s.externalIndex ? s._index : s._twap.consult(300, current);
-            f = Funding.accrue(f, s.longSize, s.shortSize, cachedRate(s), referencePrice, end, s._config.receiveCapX);
+            (f, binding) = Capacity.preview(s, f, cachedRate(s), referencePrice, end);
         }
         f.lastBlock = current;
     }
@@ -66,7 +76,10 @@ library MarketAccounting {
     function touch(S.Data storage s) public {
         if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
         int256 rate = isDegraded(s) || s.pendingAdlCount != 0 ? int256(0) : cachedRate(s);
-        s._funding = previewFunding(s);
+        address binding;
+        (s._funding, binding) = _previewFunding(s);
+        Capacity.latch(s, binding);
+        if (binding != address(0)) rate = 0;
         // The equality discriminates an enum; oracle age uses an ordered comparison.
         // slither-disable-next-line incorrect-equality
         if (isDegraded(s) && s._config.status == T.Status.Active) setStatus(s, T.Status.Degraded);
@@ -82,6 +95,7 @@ library MarketAccounting {
         // slither-disable-next-line incorrect-equality
         if (p.size == 0) return 0;
         (s._funding, owed, p.lastFundingIndex) = Funding.settle(s._funding, p.size, p.lastFundingIndex);
+        Capacity.checkDebit(s, user, owed);
         s.vault.settleFunding(user, owed);
     }
 
@@ -202,7 +216,10 @@ library MarketAccounting {
     }
 
     function initialMargin(S.Data storage s, int256 size, uint256 entry) internal view returns (uint256) {
-        return Risk.initialMargin(s._amm, size, entry, s._config.maxLeverageX, s._config.mmrBps, s._config.sideCapBps);
+        return Math.max(
+            Risk.initialMargin(s._amm, size, entry, s._config.maxLeverageX, s._config.mmrBps, s._config.sideCapBps),
+            Capacity.protectedCollateral(s, size, entry)
+        );
     }
 
     function oiCap(S.Data storage s) internal view returns (uint256) {

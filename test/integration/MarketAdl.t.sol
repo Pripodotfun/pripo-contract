@@ -81,7 +81,7 @@ contract MarketAdlTest is AdlFixture {
             _open(winner, -int256(uint256(20e18) / 126));
         }
         _open(carol, 1e18);
-        vm.roll(block.number + 30_000_000);
+        _seedLegacyFundingDebt(block.number + 30_000_000);
         _close(carol, uint256(2e18) / 11);
         vm.roll(block.number + 300);
         (,,, int256 owed) = market.quoteClose(alice, 1e18);

@@ -245,6 +245,27 @@ The authoritative `FundingState` is in Data model. Sizes are WAD base and indexe
 
 The pseudocode below uses mathematical signed integers for ledger deltas. Solidity must use checked casts, full-precision multiplication/division and explicit bounds for stored WAD² products. In particular, multiplying an index by a size must not silently wrap, and an unsigned counter must be converted before participating in a signed subtraction.
 
+**Collateral-backed funding capacity.** Funding uses only each payer's own locked margin in this market. Margin already backing curve losses cannot also back a funding receipt. For each live position, use entry cost/proceeds as the fixed maintenance notional, the configured maintenance rate, and the existing side-cap worst-close bound:
+
+```text
+worstLoss = max(long ? entryCost - worstLongProceeds : worstShortBuyback - entryCost, 0)
+maintenance = ceil(entryCost * mmrBps / BPS)
+exitFee = ceil(worstCloseQuote * takerFeeBps / BPS)
+protectedCollateral = worstLoss + maintenance + exitFee
+capacity = max(locked - protectedCollateral, 0)
+capIndex = lastFundingIndex + floor(capacity * WAD / abs(size))
+```
+
+Initial margin is also at least `protectedCollateral`. Funding headroom is additional margin above that floor; a position opened exactly at the floor has no headroom and can bind as soon as it would pay funding. This is deliberately more conservative than retaining maintenance alone. A tested maintenance-only cap left 44.0043 USDC against an 81.0205-USDC permitted curve loss. No insurance, backstop, reserve or other market's locked collateral enters this capacity calculation.
+
+Maintain one indexed minimum heap per side, with one entry per live position and at most 128 entries. In-place update/removal prevents unbounded stale-entry accumulation. Keys may be signed; ties use address order. Recompute after every completed open/increase, close, margin change, liquidation, ADL match/completion and terminal removal, after fees, coverage and releases. Entry notional and the seed side-cap bound keep untouched keys stable under mark/oracle moves. Current-market notional must not be substituted without redesigning heap invalidation.
+
+Advance the paying index by at most `max(minCapIndex - sideIndex, 0)`, and derive all receiver credits and surplus from that clamped increment. Compare before multiplying by elapsed blocks so a long outage cannot overflow an increment that should be clamped. Always checkpoint the full elapsed interval, including frozen time; there is no catch-up debt.
+
+Reaching a cap latches `fundingBinding` and stops both indexes. Rate reversal, oracle refresh, a new position, another user's margin/close and surplus sweeping cannot release that latch. Only a completed touch of the binding position can clear it, and only when it closes or its recomputed key exceeds its current side index. A sub-index-quantum top-up or a funding settlement by itself need not restore capacity. Another tied payer can bind on the next accrual. Guardian pause, oracle degradation and pending ADL remain independent controls.
+
+Capacity exhaustion is an explicit additional liquidation predicate: a profitable binding payer can be healthy by the equity ratio and still be liquidatable, with the standard penalty and size rules. This rule does not claim that reaching maintenance collateral makes equity fall below maintenance. `fundingCapacity(user)`, `fundingLimit(isLong)` and `fundingBinding()` expose current bounds and the effective binding payer, including a clamp visible in preview before checkpointing. `FundingCapacityFrozen` and `FundingCapacityResumed` record latch transitions.
+
 **Accrual** is the first statement in every `open`, `close`, `liquidate` and `poke`, so open interest is constant across the interval it settles:
 
 ```solidity
@@ -253,11 +274,16 @@ function _accrueFunding() internal {
     if (elapsed == 0) return;
     funding.lastBlock = uint64(block.number);
     uint256 L = oi.longSize; uint256 S = oi.shortSize;
-    if (L == 0 || S == 0) return;                                 // no counterparty, no funding
+    if (fundingBinding != address(0) || L == 0 || S == 0) return;                                 // no counterparty, no funding
     int256 f = _fundingRatePerBlock();                            // WAD fraction of price per block, signed, clamped
     if (f == 0) return;
     uint256 absF    = uint256(f > 0 ? f : -f);
-    uint256 perUnit = absF * _refPrice() / WAD * elapsed;         // quote per WAD base owed by each payer unit
+    (address binding, int256 capIndex) = minimumForPayingSide(f);
+    int256 idx = f > 0 ? funding.longIndex : funding.shortIndex;
+    uint256 headroom = capIndex > idx ? uint256(capIndex - idx) : 0;
+    uint256 perBlock = mulDiv(absF, _refPrice(), WAD);
+    uint256 perUnit = perBlock > headroom / elapsed ? headroom : perBlock * elapsed;
+    if (idx + int256(perUnit) >= capIndex) fundingBinding = binding;
     (uint256 payN, uint256 recvN) = f > 0 ? (L, S) : (S, L);
     uint256 perRecv = perUnit * payN / recvN;                     // pro-rata receipt per unit, floored
     uint256 capRecv = perUnit * config.receiveCapX;               // default 10x the per-unit payment
@@ -272,6 +298,7 @@ function _accrueFunding() internal {
 //   idx  = position.size > 0 ? funding.longIndex : funding.shortIndex
 //   dHi  = |size| × (idx − position.lastFundingIndex)              // WAD², signed; positive = the position pays
 //   owed = dHi > 0 ? ceilDiv(dHi, WAD) : −(|dHi| / WAD)            // payers round up, receivers round down
+//   if (owed > 0) assert(uint256(owed) <= max(locked[user][market] - protectedCollateral, 0));
 //   locked[user][market] −= owed;   ledger.fundingPool += owed;
 //   funding.roundingHi += uint256(owed × WAD − dHi);              // in [0, WAD), including when owed is negative
 //   weighted_side += dHi;           position.lastFundingIndex = idx;
@@ -305,9 +332,9 @@ f = \text{clamp}\left( \frac{\text{mark} - \text{index}}{\text{index} \cdot F},\
 f = \text{clamp}\left( \frac{c_f \cdot (OI_{long} - OI_{short})}{(OI_{long} + OI_{short}) \cdot F},\; -f_{max},\; f_{max} \right)
 ```
 
-with `c_f` defaulting to 0.05 per period. In `Degraded` state (Oracle adapters), or while any ADL is pending, the rate is forced to zero. Pending initiation checkpoints funding before freezing; completion never accrues the frozen interval retroactively.
+with `c_f` defaulting to 0.05 per period. In `Degraded` state (Oracle adapters), while any ADL is pending, or while a funding-capacity latch is active, the effective rate is zero. Pending initiation checkpoints funding before freezing; completion never accrues the frozen interval retroactively.
 
-**Settlement on a position.** A position snapshots the index of its own side at every touch. Let `dHi = |size| × (sideIndex − position.lastFundingIndex)`. Funding owed in quote WAD is the signed ceiling of `dHi / WAD`: positive means the position pays, negative means it receives. It is applied to margin on every interaction, then the snapshot is refreshed. Payers round up and receivers round down in absolute amount. A position whose post-funding collateral is negative becomes liquidatable regardless of unrealized PnL, not auto-closed; unsigned stored margin must not be allowed to underflow.
+**Settlement on a position.** A position snapshots the index of its own side at every touch. Let `dHi = |size| × (sideIndex − position.lastFundingIndex)`. Funding owed in quote WAD is the signed ceiling of `dHi / WAD`: positive means the position pays, negative means it receives. It is applied to margin on every interaction, then the snapshot is refreshed. Payers round up and receivers round down in absolute amount. Every positive settlement debit must fit that position's current capacity, enforced before the vault debit. The clamp is conservative under payer-ceiling rounding: if `deltaIndex <= floor(capacity * WAD / abs(size))`, then `ceil(abs(size) * deltaIndex / WAD) <= capacity`. Negative or zero owed needs no capacity; existing undercollateralized positions must remain touchable for recovery. Receiver-first settlement remains allowed: the negative funding pool is backed by collectible pending payer debits, with their remaining trading collateral separately protected.
 
 **Why it is exact.** An accrual increases both `pendingHi` and `remainderHi` by `perUnit × payN − perRecv × recvN`, with no ledger transfer. A settlement decreases `pendingHi` by `dHi` and increases `fundingPool × WAD` by `owed × WAD`; the difference is exactly the amount added to `roundingHi`. A sweep decreases both the surplus and its backing expression by `amount × WAD`. Therefore `fundingPool × WAD + pendingHi == int(remainderHi) + int(roundingHi) − int(sweptHi)` after every operation, including a rate reversal, partial close or change of side. Each settlement adds less than one quote wei of rounding; no per-position bound is assumed across repeated settlements.
 
@@ -341,7 +368,7 @@ Here `E` is a long's curve entry cost and `P` is a short's curve entry proceeds.
 - Long of size `s`, entry cost `entryCost`: every short at cap and no other long, so reserves are `B0 + C − s` before the close and `B0 + C` after. `worstExit = k/(B0 + C − s) − k/(B0 + C)`; impact term `entryCost − worstExit + entryCost × mmr`.
 - Short of size `s`, entry proceeds `P`: every long at cap and no other short, so reserves are `B0 − C + s` before the buy-back and `B0 − C` after. `worstBuyback = k/(B0 − C) − k/(B0 − C + s)`; impact term `worstBuyback − P + P × mmr`. The loss is buy-back cost minus proceeds, not the reverse.
 
-A position posts the larger of its leverage minimum and impact minimum; which one binds depends on its entry cost, side, size and maintenance buffer. `impactMarginBps` (default 10,000, the full impact minimum) scales the impact term; governance can relax it once insurance is deep. Fees are charged on top and are not counted toward margin. `maxOpenable(user, isLong)` reports the largest size whose required margin fits the user's available balance and all applicable caps.
+A position posts at least the maximum of its leverage minimum, impact minimum and the funding protected-collateral floor; which one binds depends on its entry cost, side, size and maintenance buffer. `impactMarginBps` (default 10,000, the full impact minimum) scales the impact term; governance can relax it once insurance is deep. Fees are charged on top and are not counted toward margin. `maxOpenable(user, isLong)` reports the largest size whose required margin fits the user's available balance and all applicable caps.
 
 **The side cap is derived from leverage.** The continuous design value is:
 
@@ -359,7 +386,9 @@ The stored parameter is `sideCapBps = floor(10_000 × φ(λ))`, and `C = floor(s
 
 `pnl_ref` is the realizable PnL defined in Solvency and the vault ledger, evaluated at the reserves implied by the mark TWAP (300 blocks in `Active`, 600 in `Degraded`). For oracle-fed markets `pnl_ref = min(realizable, indexPnL)` where `indexPnL = size × index − entryCost` for a long and `entryProceeds − |size| × index` for a short; for oracle-less and `Degraded` markets it is realizable alone. Valuation at spot mark is never used for health. Covered curve liquidations execute at actual reserves, so exit impact lands on the liquidated trader; ADL instead pairs equal opposite sizes off the curve as specified below.
 
-**Liquidatable** when `health < mmrBps / 10_000`, or when post-funding collateral is below zero regardless of unrealized PnL. Both the view and execution path apply the latter predicate; the standard capped penalty applies. Defaults: 2.5% for oracle-fed (20x), 15% for oracle-less (3x).
+**Liquidatable** when `health < mmrBps / 10_000`, post-funding collateral is below zero regardless of unrealized PnL, or the account is the market's effective funding-capacity binding position. View and execution apply all three predicates; the standard capped penalty applies. Defaults: 2.5% for oracle-fed (5x launch leverage), 15% for oracle-less (2x). Pending losers retain their separate continuation path.
+
+**Partial-close backing.** When the position has nonnegative collateral after settling funding, a voluntary partial close must retain enough collateral for the remaining worst-case curve loss plus its whole-close fee. This prevents repeated rounded fees on tiny chunks from creating debt against a still-open residual. A rejected partial may be replaced by a fully backed full close or an owner margin addition. Existing negative collateral retains its recovery semantics; this guard does not claim that pre-existing debt is funded.
 
 **Liquidation flow** (`liquidate(user, oracleUpdate, adlCandidates)`, anyone may call). After funding settlement: the size to close is 50% if the position is above the partial threshold, else 100%; `pen = ceil(liqPenaltyBps × notional / 10_000)`, capped to available positive margin and taken from margin first and split 40% keeper, 60% market insurance; `M = selected share of signed post-penalty collateral` (positive shares round down, negative shares round up in magnitude); `X = loss_curve − M`, the selected curve shortfall; `C = insurance[market] + the backstop's remaining daily allowance for it`. The penalty uses the selected curve quote and is charged once from positive post-funding collateral before PnL. Preflight and covered execution use that selected collateral share, leaving unselected funding debt locked. Preflight promotes a normal partial to full when its projected remainder would remain unhealthy; Degraded retains the partial limit unless terminal settlement is required. Three cases; lack of capital alone does not reject terminal settlement:
 
@@ -495,17 +524,7 @@ Emit `ForcedSettlement`, `SettlementHaircut`, the per-source coverage amounts, a
 
 `settlementQuote()` returns this hypothetical complete-book calculation before a future keeper penalty or oracle update; it does not prove liquidation or settlement eligibility. `settlementInfo()` retains the terminal price, exact haircut and eligible profits. Sources 1/2 of `TerminalCoverage` are emitted at the market address; other capital-source events are emitted at the vault. `TerminalClearingNetted` exposes clearing and isolated debt before netting. Terminal state rejects further funding accrual, price refresh, trading, reseeding and resume, including after recapitalization.
 
-**Protocol reserve and sweeps.** The target, in quote WAD, is:
-
-```text
-fundingCapPerPeriod[m] = fundingCapPerBlock[m] × 12_000
-reserveFloor = max(10_000e18,
-    Σ over risk-active markets m of ceil(oiCap[m] × fundingCapPerPeriod[m] × 8 / WAD))
-```
-
-This is eight 12,000-block funding periods (96,000 blocks, about eight hours at the assumed block time), not eight wall-clock hours enforced by the contract. Reserve budgeting must use an admitted notional ceiling at least as large as the allowed per-side OI cap, not a temporary lower insurance balance that shrinks after losses. Paused and degraded markets with exposure remain in the risk-active set. Market admission, cap increases and resumption must account for the target they add; registry and reserve updates belong to those control paths and batch sweeps, not every trade. The initial reserve must be funded with actual USDC before launch; retaining fees cannot supply the initial floor before fees exist.
-
-At a 25,000-USDC admitted cap, an oracle-fed market contributes at most 200 USDC using the 0.1% period cap; an oracle-less market contributes at most 1,000 USDC using 0.5%. The 10,000 floor binds only while the aggregate contribution is at most 10,000; per-market launch caps alone do not bound the number of permissionless markets. Integer calculations use full-precision multiplication and round the requirement up. No separate equity of the protocol may count the same USDC twice as reserve, insurance, backstop or unclaimed fees.
+**Protocol reserve and sweeps.** Funding is collateral-backed and contributes zero to the reserve target. The current Phase 1 floor is `10_000e18` quote WAD, funded with actual USDC before admission and opens. It remains capital for ADL rounding and terminal settlement. No additional non-funding sizing term has been selected. The eight-period funding model and its per-market admission budgets are retired; permissionless market count does not increase this floor. Existing deprecated aggregate/budget storage slots remain for vault layout compatibility, and new admissions leave them zero. Admission and resume still require zero total deficit and a funded floor. The same USDC cannot count as reserve, insurance, backstop or unclaimed fees twice.
 
 Protocol fee allocation runs **terminal deficit repayment → reserve refill → treasury**. Fee accrual stays per market; the repayment allocator consumes those accrued protocol balances in batches before any distribution. Internal partial repayment/refill can proceed while the target is unmet. A successful external treasury sweep requires zero terminal deficit and leaves `protocolReserve ≥ reserveFloor()`; if those conditions cannot be met, the treasury sweep is blocked. Terminal settlement and the specified ADL allowance transfer may draw reserve below the floor. Either draw blocks opens across all markets until the floor is restored, in addition to the deficit gate; neither is a treasury sweep. A terminal deficit cannot be erased by lowering the reserve target.
 
@@ -518,10 +537,10 @@ Protocol fee allocation runs **terminal deficit repayment → reserve refill →
 | Winners have left; every source is exhausted | After local insurance/loss collection/profit haircuts, gap 10,480; creator fees 100; protocol fees 50; backstop 280; reserve 10,000 | Consume 100 + 50 + 280 + 10,000; record deficit 50 on a Settled market; global opens and treasury distributions remain blocked |
 | Repayment of that deficit | Deficit 50; direct external top-up 30; subsequently allocated protocol fees 20 | Cash rises only by the external 30; deficit falls 30 then 20; fee account falls 20; reserve receives no duplicate 50 credit; reserve refill is still required before treasury sweeping |
 | Cap waiver is terminal only | Backstop 10,000; an external market has 2,000 live allowance; remaining terminal gap 3,000 | Live coverage pays at most 2,000; an authorized final settlement can pay 3,000 total from the actual balance, with no double counting of any earlier live payment |
-| Reserve target grows with permissionless admission | 11 oracle-less markets, each admitted at 25,000, nominal funding cap 0.5% per period | Eight-period target is 11,000 USDC, so the 10,000 minimum is insufficient |
+| Funding does not increase the reserve floor | 11 oracle-less markets with payer-backed funding and valid admission | The reserve floor remains 10,000 USDC; each market independently enforces its payer capacities |
 | Deficit-inclusive identity is not full cash backing | All protocol resources exhausted; cash 100; remaining user balances 125; deficit 25 | Signed cash identity balances; immediate aggregate user withdrawals are still short 25 until actual recapitalization/fee subordination funds the difference |
 
-**Cash-backing limitation and deployment gate.** The reserve is a funded risk buffer, but the eight-period formula is a sizing assumption until maximum funding lag and funding notional are bounded by enforcement. It must be tested against longer keeper outages, oracle/index divergence, existing OI above a later lowered cap, and simultaneous failures across markets. Booking a protocol liability or promising a Guardian top-up does not prove that users can all withdraw now: with 100 USDC cash and 125 USDC of remaining user balances after other resources are exhausted, a 25-USDC deficit balances the identity but still leaves a 25-USDC cash gap. Settling the failed market stops further activity there; it does not remove withdrawal-order exposure for other users of a shared underfunded vault. The statement “user balances are always backed by cash” requires enforceable prevention of that gap or an additional already-funded source that covers it. That proof is a launch gate; step 6 names and assigns the loss but does not supply the missing cash. Guardian authority does not gain the ability to freeze withdrawals or debit user balances.
+**Cash-backing scope and deployment gate.** The payer-cap mechanism replaces the funding-lag reserve assumption: arbitrarily long keeper outages cannot advance either side beyond the weakest payer's backed capacity, and ordinary exits retain curve-loss backing. Invariants must independently check collectible payer debits, heap minima and freeze ownership, actual payable balances against token cash, and complete receiver-first unwinds across multiple markets with no liquidations or recapitalization. Withdrawals in these tests must never be reduced to available cash. Test maintenance/exit rounding and repeated tiny partial closes as well as large positions. Parameter changes, resolver valuation and any additional collateral-spending path need the same backing proof before activation. Signed accounting with a terminal protocol deficit still does not supply cash: historical or synthetic exhausted-capital states remain under the terminal runbook and must not be presented as fully backed. Guardian authority does not gain the ability to freeze withdrawals or debit users.
 
 **Phase 2: advanced-profit cap.** A winner's realized profit is released as cash only to the extent funded by collectible opposite-side locked collateral plus allocated insurance; the remainder is an unpaid profit claim, paid as counterparties close. The available advance capacity must be shared, decremented across all recipients, and exclude collateral already committed to previous advances; otherwise the same collateral could back repeated payouts. Positive funding receipts must be included in this restriction, including receipts settled before a voluntary close, so funding-first withdrawals cannot bypass the cap. Properly enforcing this limit keeps the unsupported profit from leaving the vault, allowing step 2 to reach it. The claims ledger, exact source reservations, repayment ordering and close-path invariants belong to Phase 2; they are not present in the Phase 1 runtime.
 
@@ -562,7 +581,7 @@ interface IPriceSource {
 
 **ChainlinkAdapter (future).** Push feeds: reads `latestRoundData`, converts `updatedAt` to a block estimate using 300 ms per block. Used where Pyth has no feed. Data Streams support is a follow-up.
 
-**NullAdapter (implemented).** Supports only feed zero and rejects update bytes/native value. Returns `(0, block.number, 0, false)`. The market treats `isExternal == false` as oracle-less mode: funding on skew, health on mark TWAP, leverage cap 3x.
+**NullAdapter (implemented).** Supports only feed zero and rejects update bytes/native value. Returns `(0, block.number, 0, false)`. The market treats `isExternal == false` as oracle-less mode: funding on skew, health on mark TWAP, launch leverage cap 2x.
 
 The Pyth adapter normalizes positive prices to WAD, rounds confidence upward, and rejects zero/negative/sub-wei prices and future timestamps. The milliseconds-per-block estimate and update age are immutable deployment settings (local launch fixtures: 300 ms and 3 seconds). It returns `block.number − ceil(ageSeconds × 1000 / blockTimeMillis)`; an age older than the chain’s block count rejects. This estimate must be checked on the target chain; it is not an exact publication-block proof. Local tests use an ABI-compatible provider mock; signed-update verification is delegated to the actual Pyth contract and still requires live fork validation.
 
@@ -928,8 +947,8 @@ Two parameter sets, chosen by whether the market has an external index. Creators
 | ADL pending window | 1,000 blocks | 1,000 blocks | Enables permissionless fallback; never a settlement trigger |
 | Max positions per market | 128 | 128 | Book cap and lifetime rounding target in quote wei; bounds the full scan |
 | completeAdl iterations | 1–64 per call | 1–64 per call | Keeper default 64; progress includes visiting a slot |
-| Protocol reserve floor | max(10,000 USDC, aggregate eight-period exposure) | Same | Retained actual cash; terminal coverage and ADL allowance may draw below it, blocking global opens until refill; treasury sweeps may not breach it |
-| Reserve sizing horizon | 96,000 blocks | 96,000 blocks | Eight funding periods; a sizing assumption until lag/notional enforcement is specified |
+| Protocol reserve floor | 10,000 USDC | Same | Retained actual cash; terminal coverage and ADL allowance may draw below it, blocking global opens until refill; treasury sweeps may not breach it |
+| Funding backing | Per-payer collateral capacity | Same | Clamped indexes and binding-position freeze; no protocol reserve funding budget |
 | Terminal deficit top-up deadline | 24 hours | 24 hours | Guardian operational obligation; recorded at the deficit's creation |
 | Impaired window (Phase 2) | 7 days | 7 days | Only for live-market deficits under the Phase 2 claims regime |
 | Max total deficit / global opens gate | 0 in Phase 1 | 0 in Phase 1 | Any positive terminal deficit pauses opens everywhere; Phase 2 threshold 1% of vault cash; terminal booking itself is not capped or reverted |
@@ -1000,7 +1019,7 @@ The vault and one market clone must pass invariant fuzzing before the factory, a
 - ADL pending: actual vault reservations cannot be spent by other liquidations; funding indexes stay fixed while any pending exists; pending-owner close/removeMargin and overlapping commitments reject; addMargin replaces only unspent loss coverage without changing snapshots, progress, allowance or deadline. No interim loser refund; final refunds respect isolated collateral and unselected exposure.
 - Fallback: stable slots, holes and cursor wrap preserve progress despite partial/full winner closes and eligibility changes, including behind the cursor. After finite external mutations, repeated bounded calls complete or prove insufficiency. A settling transaction always performs a fresh full-book proof. Test free-list reuse across pending lifetimes separately.
 - Terminal funding: assert source order, no double spending of insurance/backstop/fees/reserve, a 100% profit-haircut ceiling, and no debit to existing free or referral balances. The daily backstop cap remains enforced on live paths and is waived only in a transaction ending with the affected market `Settled`.
-- Reserve: every successful treasury sweep leaves `protocolReserve ≥ reserveFloor()` and `totalDeficit == 0`. A terminal draw or supplemental ADL allowance may breach the floor and block all opens; treasury sweeping remains blocked during deficit repayment/refill. Test market admission and cap changes against the aggregate requirement, including more markets than the 10,000-USDC floor supports.
+- Reserve: every successful treasury sweep leaves `protocolReserve ≥ reserveFloor()` and `totalDeficit == 0`. A terminal draw or supplemental ADL allowance may breach the floor and block all opens; treasury sweeping remains blocked during deficit repayment/refill. Test admission and resume against the funded fixed floor, including more than ten markets with no added funding budget.
 - Phase 1 deficit: `deficit > 0 ⇒ Settled`, zero positions and no further funding; `totalDeficit == Σ deficit`. Any positive aggregate pauses opens on every market. Fee repayment, free-balance contributions and external token recapitalizations use distinct balanced entries; repayment cannot mint cash or reopen a settled market.
 - Settlement: all positions close and clearing reaches zero through explicit settlement/coverage entries; retain the full signed cash identity. Settlement entitlements, actual token payouts and any unpaid protocol deficit are checked separately. Full simultaneous withdrawability must not be inferred from a deficit-inclusive accounting equality.
 - Reseed only at zero OI; afterwards `clearing == 0`, `entryCostNet == 0`, `Q == curveBase`, `B == baseAtSeed`.
@@ -1021,7 +1040,7 @@ The vault and one market clone must pass invariant fuzzing before the factory, a
 - Winners already withdrew: zero open profits and insufficient local coverage. Consume unclaimed local fees, uncapped terminal backstop and reserve in order; record any final terminal deficit exactly. Demonstrate the remaining cash gap rather than treating deficit booking as recapitalization.
 - Simultaneous terminal failures: shared backstop/reserve can be consumed only once; one market's residual deficit globally blocks opens and protocol distributions while other existing exits remain enabled.
 - Fee-sweep bypass: direct protocol claims, fee-sweeper batches and insurance surplus distributions cannot transfer treasury funds before deficits are repaid and the floor is restored.
-- Keeper lag beyond 96,000 blocks, funding-reference/mark divergence, a cap reduced below existing exposure, and reserve depletion: measure actual obligations against the reserve sizing assumption.
+- Arbitrarily long keeper lag, rate reversal during a funding freeze, receiver-first withdrawals and simultaneous market clamps: prove individual payer capacity, unchanged frozen indexes, heap/full-scan agreement and actual cash backing without liquidation or recapitalization.
 - Phase 2 advance reuse: several winners and receiver-first funding cannot spend the same opposite-side collateral capacity repeatedly; unsupported profits remain claims before any withdrawal.
 
 **Static analysis**: Slither and Aderyn on every commit; ack3 scan before mainnet deploy.

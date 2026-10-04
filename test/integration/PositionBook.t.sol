@@ -63,6 +63,7 @@ contract PositionBookTest is MarketFixture {
         _open(alice, 10e18);
         _open(bob, -1e18);
         vm.roll(block.number + 3_000_000);
+        vm.prank(carol);
         market.liquidate(alice, "");
         assertEq(market.positionCount(), 1);
         assertEq(market.positionAccounts(0, 1)[0], address(0));

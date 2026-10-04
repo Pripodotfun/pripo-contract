@@ -10,6 +10,7 @@ import {FundingMath as Funding} from "../libraries/FundingMath.sol";
 import {MarkTwap} from "../libraries/MarkTwap.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
+import {MarketFundingCapacity as Capacity} from "./MarketFundingCapacity.sol";
 import {MarketState as S} from "./MarketState.sol";
 import {PositionBook as Book} from "./PositionBook.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -121,6 +122,7 @@ library MarketSettlement {
             Engine.resize(s, s._positions[user].size, 0);
             delete s._positions[user];
             delete s._accountIndex[user];
+            Capacity.refresh(s, user);
         }
         delete s._accounts;
         delete s._freeSlots;

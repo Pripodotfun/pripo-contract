@@ -5,9 +5,11 @@ import {MarginVault} from "../../src/MarginVault.sol";
 import {Market} from "../../src/Market.sol";
 import {FixedPointMath as F} from "../../src/libraries/FixedPointMath.sol";
 import {FundingMath as Funding} from "../../src/libraries/FundingMath.sol";
+import {RiskMath as Risk} from "../../src/libraries/RiskMath.sol";
 import {PripoTypes as T} from "../../src/types/PripoTypes.sol";
-import {MarketFixture} from "../helpers/MarketFixture.sol";
+import {DebtShockFixture} from "../helpers/DebtShockFixture.sol";
 import {MockUSDC} from "../helpers/MockUSDC.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Test} from "forge-std/Test.sol";
 
@@ -84,6 +86,16 @@ contract LiquidationHandler is Test {
         T.Position memory position = market.position(user);
         int256 size = position.size;
         if (F.abs(size) < 2 || position.adlPending) return;
+        (, uint256 fee, int256 pnl, int256 owed) = market.quoteClose(user, 0.5e18);
+        int256 marginBefore = vault.locked(user, address(market)) - owed;
+        uint256 amount = F.abs(size) / 2;
+        uint256 remainder = F.abs(size) - amount;
+        uint256 entry = position.entryCost - Math.mulDiv(position.entryCost, amount, F.abs(size));
+        uint256 worst = Risk.worstClose(market.ammState(), size > 0, remainder, market.config().sideCapBps);
+        int256 loss = size > 0 ? int256(entry) - int256(worst) : int256(worst) - int256(entry);
+        uint256 required = (loss > 0 ? uint256(loss) : 0)
+            + Math.mulDiv(worst, market.config().takerFeeBps, 10_000, Math.Rounding.Ceil);
+        if (marginBefore >= 0 && marginBefore + pnl - int256(fee) < int256(required)) return;
         vm.prank(user);
         market.close(0.5e18, size > 0 ? 0 : type(uint256).max, "");
     }
@@ -119,7 +131,7 @@ contract LiquidationHandler is Test {
     }
 }
 
-contract LiquidationInvariantTest is StdInvariant, MarketFixture {
+contract LiquidationInvariantTest is StdInvariant, DebtShockFixture {
     LiquidationHandler private handler;
     address[4] private actors;
 
@@ -130,7 +142,7 @@ contract LiquidationInvariantTest is StdInvariant, MarketFixture {
         _open(carol, 10e18);
         _open(bob, -20e18);
         _open(carol, 1e18);
-        vm.roll(block.number + 30_000_000);
+        _seedLegacyFundingDebt(block.number + 30_000_000);
         _close(carol, uint256(2e18) / 11);
         vm.roll(block.number + 300);
         (,,, int256 owed) = market.quoteClose(alice, 1e18);
