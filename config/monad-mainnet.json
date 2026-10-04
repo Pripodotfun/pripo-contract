@@ -1,0 +1,34 @@
+{
+  "chainId": 143,
+  "pythCore": "0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d",
+  "legacyPythCore": "0x2880aB155794e7179c9eE2e38200202908C17B43",
+  "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+  "hermes": "https://pyth.dourolabs.app/hermes",
+  "sources": {
+    "pythCore": "https://docs.pyth.network/price-feeds/core/upgrade/contracts",
+    "legacyPythCore": "https://github.com/monad-crypto/protocols/blob/main/mainnet/pyth.jsonc",
+    "usdc": "https://developers.circle.com/stablecoins/usdc-contract-addresses"
+  },
+  "equityCandidates": {
+    "NVDA": {
+      "us": "0xb1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593",
+      "index": "0xa470c4ac46f44b547b2cba52338f311fb642b79375ce5f0cfd5cb5b99227b852"
+    },
+    "TSLA": {
+      "us": "0x16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1",
+      "index": "0xe6da44bff5b8b06897a3739dd331b440d6662595bb862e37046892c568ae3fc0"
+    },
+    "AAPL": {
+      "us": "0x49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688",
+      "index": "0xaaba35e6f33fb973bb2201d48a79ae24795affa6ba8bd50a93dcaf7da0030f36"
+    },
+    "COIN": {
+      "us": "0xfee33f2a978bf32dd6b662b65ba8083c6773b494f8401194ec1870c640860245",
+      "index": "0x49387483ff50427bf0ff5928082b0cf16331421067c59f4c582a07aa117db1ac"
+    },
+    "HOOD": {
+      "us": "0x306736a4035846ba15a3496eed57225b64cc19230a50d14f3ed20fd7219b7849",
+      "index": "0x4a4f96283d157d08b7b8aa596363f7978587d4fa59a77dcb90f84af7d870a630"
+    }
+  }
+}

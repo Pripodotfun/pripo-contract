@@ -26,6 +26,13 @@ runs = 10000
 depth = 50
 fail_on_revert = true
 
+[profile.monad]
+match_path = "test/fork/*.t.sol"
+fs_permissions = [{ access = "read", path = "./config" }, { access = "read", path = "./reports/monad" }]
+
+[rpc_endpoints]
+monad = "${ALCHEMY_MONAD_RPC}"
+
 [fmt]
 line_length = 120
 sort_imports = true

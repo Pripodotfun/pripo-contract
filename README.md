@@ -14,12 +14,14 @@ Requirements: Foundry, Python 3, and Git. Solidity **0.8.30** is pinned in `foun
 make deps       # install pinned dependency releases
 make build      # compile, check contract sizes, and lint production sources
 make test       # unit tests, fuzz tests, and funding invariants
+make monad-preflight # read-only RPC, Pyth and native-USDC observations; uses ignored .env
+make monad-fork  # opt-in tests at the preflight's pinned block; no broadcast
 make ci         # 10,000 runs for each invariant; depth 50; size/lint/ABI checks
 make abi        # regenerate JSON ABIs and TypeScript constants
 make analyze    # Slither + Aderyn; requires both analyzers installed
 ```
 
-Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/releases/tag/v1.11.0) and [OpenZeppelin Contracts v5.4.0](https://github.com/OpenZeppelin/openzeppelin-contracts/releases/tag/v5.4.0). They are installed into ignored `lib/` directories. Tests run locally without an RPC or private key.
+Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/releases/tag/v1.11.0) and [OpenZeppelin Contracts v5.4.0](https://github.com/OpenZeppelin/openzeppelin-contracts/releases/tag/v5.4.0). They are installed into ignored `lib/` directories. Standard tests run locally without an RPC or private key. The opt-in [Monad fork checks](docs/monad-integration.md) use the ignored `.env` RPC and a pinned preflight report; they never broadcast transactions.
 
 ## Layout
 
