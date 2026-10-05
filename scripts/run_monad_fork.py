@@ -24,6 +24,14 @@ def main():
         raise SystemExit(str(exc)) from None
     if header["hash"] != report["forkHash"]:
         raise SystemExit("Pinned block hash changed; rerun preflight before testing")
+    if "updateFork" in report:
+        update = report["updateFork"]
+        try:
+            header = rpc(endpoint, "eth_getBlockByNumber", [hex(update["block"]), False])
+        except ProbeError as exc:
+            raise SystemExit(str(exc)) from None
+        if header["hash"] != update["hash"]:
+            raise SystemExit("Signed-update block hash changed; rerun preflight before testing")
     env.update(FOUNDRY_PROFILE="monad", MONAD_FORK_ENABLED="true", MONAD_FORK_BLOCK=str(report["forkBlock"]))
     result = subprocess.run(["forge", "test", "-vv"], cwd=ROOT, env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)

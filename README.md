@@ -16,6 +16,7 @@ make build      # compile, check contract sizes, and lint production sources
 make test       # unit tests, fuzz tests, and funding invariants
 make monad-preflight # read-only RPC, Pyth and native-USDC observations; uses ignored .env
 make monad-fork  # opt-in tests at the preflight's pinned block; no broadcast
+make monad-estimate-pyth # read-only Monad RPC estimates for captured signed provider updates
 make ci         # 10,000 runs for each invariant; depth 50; size/lint/ABI checks
 make abi        # regenerate JSON ABIs and TypeScript constants
 make analyze    # Slither + Aderyn; requires both analyzers installed

@@ -4,6 +4,10 @@
   "legacyPythCore": "0x2880aB155794e7179c9eE2e38200202908C17B43",
   "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
   "hermes": "https://pyth.dourolabs.app/hermes",
+  "controlFeed": {
+    "symbol": "Crypto.BTC/USD",
+    "feedId": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"
+  },
   "sources": {
     "pythCore": "https://docs.pyth.network/price-feeds/core/upgrade/contracts",
     "legacyPythCore": "https://github.com/monad-crypto/protocols/blob/main/mainnet/pyth.jsonc",

@@ -1,4 +1,4 @@
-.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork
+.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth
 
 deps:
 	forge install --no-git --shallow foundry-rs/forge-std@v1.11.0 OpenZeppelin/openzeppelin-contracts@v5.4.0
@@ -15,6 +15,7 @@ ci:
 	forge build --sizes
 	forge lint src --deny warnings
 	FOUNDRY_PROFILE=ci forge test
+	python3 -m unittest discover -s test/scripts
 	python3 scripts/export_abis.py --check
 
 fmt:
@@ -34,3 +35,6 @@ monad-preflight:
 
 monad-fork:
 	python3 scripts/run_monad_fork.py
+
+monad-estimate-pyth:
+	python3 scripts/monad_estimate_pyth.py

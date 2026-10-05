@@ -44,11 +44,20 @@ def load_env():
 
 def request_json(url, data=None, headers=None):
     body = None if data is None else json.dumps(data).encode()
-    request = urllib.request.Request(url, body, headers or {})
+    request_headers = {"User-Agent": "pripo-integration/1.0", "Accept": "application/json"}
+    request_headers.update(headers or {})
+    request = urllib.request.Request(url, body, request_headers)
     try:
         with urllib.request.build_opener(NoRedirect).open(request, timeout=20) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
+        # Classify known provider denials without echoing bodies, credentials or URLs.
+        detail = exc.read(4096).decode(errors="replace")
+        if exc.code == 403 and detail.startswith("Not entitled:"):
+            kind = "pyth-indices" if '"pyth-indices"' in detail else "requested asset/feed"
+            raise ProbeError(f"HTTP 403: not entitled to {kind}") from None
+        if exc.code == 403 and '"browser_signature_banned"' in detail:
+            raise ProbeError("HTTP 403: client signature rejected") from None
         raise ProbeError(f"HTTP {exc.code}") from None
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         raise ProbeError(f"Connection failed ({type(exc).__name__})") from None
@@ -57,7 +66,7 @@ def request_json(url, data=None, headers=None):
 
 
 def rpc(url, method, params):
-    allowed = {"eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_call", "eth_getStorageAt"}
+    allowed = {"eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_call", "eth_getStorageAt", "eth_estimateGas"}
     if method not in allowed:
         raise ProbeError("Only read-only RPC methods are permitted")
     result = request_json(url, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
@@ -86,6 +95,19 @@ def price(raw):
             "conf": int.from_bytes(words[1], "big"),
             "expo": int.from_bytes(words[2], "big", signed=True),
             "publish_time": int.from_bytes(words[3], "big")}
+
+
+def freshness(updates, observed_at):
+    result = {}
+    for observation in updates.get("parsed", []):
+        p = observation["price"]
+        raw, conf, published = int(p["price"]), int(p["conf"]), int(p["publish_time"])
+        age = int(observed_at.timestamp()) - published
+        confidence_bps = (conf * 10_000 + raw - 1) // raw if raw > 0 else None
+        result[observation["id"]] = {
+            "publishTime": published, "ageSeconds": age, "confidenceBpsCeil": confidence_bps,
+            "withinThreeSecondAndOnePercentGate": raw > 0 and 0 <= age <= 3 and confidence_bps <= 100}
+    return result
 
 
 def main():
@@ -155,30 +177,24 @@ def main():
         for ticker, result in pool.map(inspect_ticker, cfg["equityCandidates"]):
             report["feeds"][ticker] = result
     if key:
+        def capture(feed):
+            query = urllib.parse.urlencode([("ids[]", feed), ("encoding", "hex"), ("parsed", "true")])
+            updates = attempt(lambda: request_json(cfg["hermes"] + "/v2/updates/price/latest?" + query, headers=auth))
+            now = datetime.now(timezone.utc)
+            return {"updates": updates, "observedAt": now.isoformat(), "onUtcWeekend": now.weekday() >= 5,
+                    "freshness": freshness(updates, now)}
+
+        # A gated feed must not prevent captures of feeds the key is entitled to read.
         ids = [feed for feeds in cfg["equityCandidates"].values() for feed in feeds.values()]
-        query = urllib.parse.urlencode([("ids[]", feed) for feed in ids] + [("encoding", "hex"), ("parsed", "true")])
-        updates = attempt(lambda: request_json(cfg["hermes"] + "/v2/updates/price/latest?" + query,
-                                               headers=auth))
-        report["latestUpdates"] = updates
-        now = datetime.now(timezone.utc)
-        report["updatesObservedAt"] = now.isoformat()
-        report["observedOnUtcWeekend"] = now.weekday() >= 5
-        report["freshness"] = {}
-        for observation in updates.get("parsed", []):
-            p = observation["price"]
-            raw, conf, published = int(p["price"]), int(p["conf"]), int(p["publish_time"])
-            age = int(now.timestamp()) - published
-            confidence_bps = (conf * 10_000 + raw - 1) // raw if raw > 0 else None
-            report["freshness"][observation["id"]] = {
-                "publishTime": published, "ageSeconds": age, "confidenceBpsCeil": confidence_bps,
-                "withinThreeSecondAndOnePercentGate": raw > 0 and 0 <= age <= 3 and confidence_bps <= 100}
-        # This later block can anchor signed-update verification without warping a fork's timestamp.
-        if "error" not in updates:
-            update_header = rpc(endpoint, "eth_getBlockByNumber", ["latest", False])
-            report["updateFork"] = {"block": int(update_header["number"], 16), "hash": update_header["hash"],
-                                    "timestamp": int(update_header["timestamp"], 16)}
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            report["equityUpdates"] = dict(zip(ids, pool.map(capture, ids)))
+        report["controlUpdate"] = capture(cfg["controlFeed"]["feedId"])
+        update_header = rpc(endpoint, "eth_getBlockByNumber", ["latest", False])
+        report["updateFork"] = {"block": int(update_header["number"], 16), "hash": update_header["hash"],
+                                "timestamp": int(update_header["timestamp"], 16)}
+        report["equityCaptures"] = sum("error" not in entry["updates"] for entry in report["equityUpdates"].values())
     else:
-        report["latestUpdates"] = {"error": "PYTH_API_KEY is missing; weekend freshness and signed verification pending"}
+        report["captureError"] = "PYTH_API_KEY is missing; weekend freshness and signed verification pending"
     output = ROOT / args.output
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2) + "\n")
@@ -186,7 +202,12 @@ def main():
     print(f"Chain {chain}, pinned block {report['forkBlock']}, UTC {report['forkUtc']}")
     for name, contract in report["contracts"].items():
         print(f"{name}: {contract['address']}, code bytes {contract['codeBytes']}")
-    print("Signed updates:", "captured" if "error" not in report["latestUpdates"] else report["latestUpdates"]["error"])
+    if key:
+        print(f"Signed equity updates captured: {report['equityCaptures']}/10")
+        control = report["controlUpdate"]["updates"]
+        print("BTC control:", control.get("error", "captured"))
+    else:
+        print(report["captureError"])
 
 
 if __name__ == "__main__":
