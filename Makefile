@@ -1,4 +1,4 @@
-.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth
+.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth deployment-dry-run
 
 deps:
 	forge install --no-git --shallow foundry-rs/forge-std@v1.11.0 OpenZeppelin/openzeppelin-contracts@v5.4.0
@@ -38,3 +38,6 @@ monad-fork:
 
 monad-estimate-pyth:
 	python3 scripts/monad_estimate_pyth.py
+
+deployment-dry-run:
+	python3 scripts/dry_run_deployment.py

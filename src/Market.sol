@@ -88,6 +88,8 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
     }
 
     function liquidationPrice(address user) external view returns (uint256 price) {
+        // The scalar API deliberately omits the reference and reason returned by the tagged API below.
+        // slither-disable-next-line unused-return
         (price,,) = Lens.liquidationPriceInfo(S.load(), user);
     }
 
@@ -96,6 +98,8 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         view
         returns (uint256 price, T.LiquidationReference referenceKind, T.LiquidationPriceReason reason)
     {
+        // All three tuple components are forwarded directly to the caller.
+        // slither-disable-next-line unused-return
         return Lens.liquidationPriceInfo(S.load(), user);
     }
 

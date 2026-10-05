@@ -17,6 +17,7 @@ make test       # unit tests, fuzz tests, and funding invariants
 make monad-preflight # read-only RPC, Pyth and native-USDC observations; uses ignored .env
 make monad-fork  # opt-in tests at the preflight's pinned block; no broadcast
 make monad-estimate-pyth # read-only Monad RPC estimates for captured signed provider updates
+make deployment-dry-run # deploy/configure/trade rehearsal on pinned local forks; no broadcast
 make ci         # 10,000 runs for each invariant; depth 50; size/lint/ABI checks
 make abi        # regenerate JSON ABIs and TypeScript constants
 make analyze    # Slither + Aderyn; requires both analyzers installed
@@ -38,6 +39,7 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 | `src/types/` | Shared WAD-denominated market, position, funding, and policy structs |
 | `src/interfaces/` | Spec interfaces, events, and custom errors |
 | `src/libraries/` | Pricing, risk, funding, fixed-point, and fee math |
+| `script/DeployPripo.s.sol` | Contract deployment, final-role initialization and resumable Governor setup |
 | `test/unit/` | Regression examples, boundary cases, and fuzz properties |
 | `test/integration/` | Proxy/clone trading, oracle failures, callbacks, and market isolation |
 | `test/invariant/` | Eight-actor funding arithmetic and actual-token custody invariants |
@@ -53,7 +55,9 @@ Production pending ADL tests cover both sides, random continuation boundaries, r
 
 `marketAbi`, `marginVaultAbi`, `marketFactoryAbi`, `pythAdapterAbi`, `nullAdapterAbi` and `feeSweeperAbi` describe implemented contracts. `plannedMarketAbi` describes the remaining Phase 1 surface and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts. `@pripo/sdk` currently exports ABI constants; transaction preparation and signing are later work.
 
-Factory tests cover atomic creation/rollback, fixed launch caps, reserve admission, feed escrow, delayed approvals and callback rejection. Pyth tests use an ABI-compatible provider mock; a live signed-update Monad fork remains a deployment gate.
+Factory tests cover atomic creation/rollback, fixed launch caps, reserve admission, feed escrow, delayed approvals and callback rejection. Oracle tests cover both an ABI-compatible provider mock and authenticated signed updates against the real Monad provider on pinned forks. Testnet execution and charged-fee measurements remain deployment gates.
+
+The [deployment runbook](docs/deployment.md) covers the passing 19-contract creation rehearsal, final Governor setup, signed-price market lifecycle, testnet inputs and remaining mainnet gates. The rehearsal broadcasts no transactions; live deployment and Monad-native charged-fee measurements remain pending.
 
 See [implementation notes](docs/implementation-notes.md), [static-analysis triage](docs/validation.md), and the [protocol specification](Pripo-Perp%20protocol%20spec%20%E2%80%94%20permissionless%20LP-free%20markets%20on%20Monad%20%281%29.md).
 

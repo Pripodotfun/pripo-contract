@@ -7,6 +7,20 @@ import urllib.parse
 from monad_preflight import ROOT, ProbeError, load_env, rpc
 
 
+def redact_output(output, env):
+    endpoint = env.get("ALCHEMY_MONAD_RPC", "")
+    secrets = [endpoint, env.get("PYTH_API_KEY", ""), env.get("MONAD_TESTNET_RPC", "")]
+    for url in (endpoint, env.get("MONAD_TESTNET_RPC", "")):
+        parsed = urllib.parse.urlsplit(url)
+        secrets += [v for _, v in urllib.parse.parse_qsl(parsed.query)]
+        secrets += [part for part in parsed.path.split("/") if len(part) > 12]
+        if parsed.password:
+            secrets.append(parsed.password)
+    for secret in sorted(filter(None, secrets), key=len, reverse=True):
+        output = output.replace(secret, "[REDACTED]")
+    return output
+
+
 def main():
     env = load_env()
     endpoint = env.get("ALCHEMY_MONAD_RPC")
@@ -43,13 +57,7 @@ def main():
     env.update(FOUNDRY_PROFILE="monad", MONAD_FORK_ENABLED="true", MONAD_FORK_BLOCK=str(report["forkBlock"]))
     result = subprocess.run(["forge", "test", "-vv"], cwd=ROOT, env=env,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    output = result.stdout
-    secrets = [endpoint, env.get("PYTH_API_KEY", "")]
-    parsed = urllib.parse.urlsplit(endpoint)
-    secrets += [v for _, v in urllib.parse.parse_qsl(parsed.query)]
-    secrets += [part for part in parsed.path.split("/") if len(part) > 12]
-    for secret in sorted(filter(None, secrets), key=len, reverse=True):
-        output = output.replace(secret, "[REDACTED]")
+    output = redact_output(result.stdout, env)
     (ROOT / "reports/monad/fork.log").write_text(output)
     print(output, end="")
     raise SystemExit(result.returncode)

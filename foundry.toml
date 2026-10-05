@@ -9,6 +9,7 @@ optimizer = true
 optimizer_runs = 200
 via_ir = true
 bytecode_hash = "none"
+fs_permissions = [{ access = "read", path = "./config" }, { access = "read-write", path = "./reports/deployment" }]
 
 [profile.default.fuzz]
 runs = 1024
@@ -28,10 +29,11 @@ fail_on_revert = true
 
 [profile.monad]
 match_path = "test/fork/*.t.sol"
-fs_permissions = [{ access = "read", path = "./config" }, { access = "read", path = "./reports/monad" }]
+fs_permissions = [{ access = "read", path = "./config" }, { access = "read", path = "./reports/monad" }, { access = "read-write", path = "./reports/deployment" }]
 
 [rpc_endpoints]
 monad = "${ALCHEMY_MONAD_RPC}"
+monad_testnet = "${MONAD_TESTNET_RPC}"
 
 [fmt]
 line_length = 120
