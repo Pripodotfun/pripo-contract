@@ -110,6 +110,16 @@ def freshness(updates, observed_at):
     return result
 
 
+def governance_anchor(endpoint, update_anchor):
+    # Use a real historical header for the factory delay; never backdate an oracle observation.
+    block = max(1, update_anchor["block"] - 600_000)
+    header = rpc(endpoint, "eth_getBlockByNumber", [hex(block), False])
+    stamp = int(header["timestamp"], 16)
+    if update_anchor["timestamp"] - stamp < 86_400:
+        raise ProbeError("Historical factory anchor must precede signed updates by at least one day")
+    return {"block": int(header["number"], 16), "hash": header["hash"], "timestamp": stamp}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--block", type=int, help="Pin an explicit historical block (default: finalized)")
@@ -192,6 +202,7 @@ def main():
         update_header = rpc(endpoint, "eth_getBlockByNumber", ["latest", False])
         report["updateFork"] = {"block": int(update_header["number"], 16), "hash": update_header["hash"],
                                 "timestamp": int(update_header["timestamp"], 16)}
+        report["governanceFork"] = attempt(lambda: governance_anchor(endpoint, report["updateFork"]))
         report["equityCaptures"] = sum("error" not in entry["updates"] for entry in report["equityUpdates"].values())
     else:
         report["captureError"] = "PYTH_API_KEY is missing; weekend freshness and signed verification pending"

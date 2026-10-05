@@ -15,6 +15,16 @@ import monad_preflight as probe
 
 
 class PreflightTest(unittest.TestCase):
+    def test_factory_anchor_requires_a_real_elapsed_day(self):
+        anchor = {"block": 1_000_000, "timestamp": 200_000}
+        with patch.object(probe, "rpc", return_value={"number": hex(400_000), "timestamp": hex(113_600), "hash": "pinned"}) as rpc:
+            self.assertEqual(probe.governance_anchor("endpoint", anchor),
+                             {"block": 400_000, "timestamp": 113_600, "hash": "pinned"})
+            self.assertEqual(rpc.call_args.args[2], [hex(400_000), False])
+        with patch.object(probe, "rpc", return_value={"number": hex(400_000), "timestamp": hex(113_601), "hash": "pinned"}):
+            with self.assertRaisesRegex(probe.ProbeError, "at least one day"):
+                probe.governance_anchor("endpoint", anchor)
+
     def test_client_identity_and_redirect_rejection(self):
         with patch.object(probe.urllib.request, "build_opener") as opener:
             opener.return_value.open.return_value = io.BytesIO(b"{}")

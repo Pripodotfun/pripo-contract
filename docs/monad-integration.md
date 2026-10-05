@@ -37,6 +37,16 @@ No primary/secondary choice has been activated. Enable the denied regular equity
 
 There is an additional implementation dependency: `MarketConfig` currently supplies **one feed ID to both adapters**. Selecting `Equity.Index.X/USD` as primary and `Equity.US.X/USD` as secondary requires explicit mapping in a reviewed adapter or separate source/feed configuration. Merely setting two `PythAdapter` addresses would query the same feed twice. Freshness-driven feed selection does not currently change exchange-hours policy or enable weekend funding automatically.
 
+## Factory verification on October 5, 2026 (UTC)
+
+The follow-up capture pins signed updates to block **110731422**, timestamp **2026-10-05 10:43:45 UTC**. Adapter approval is scheduled at historical block **110131422**, timestamp **2026-10-03 08:22:45 UTC**; **181,260 seconds** elapse before activation. The suite rejects early activation and permits an unrelated caller to activate after the real one-day delay. Only locally deployed protocol contracts persist across these two forks.
+
+Six new factory tests pass, bringing verified fork coverage to **18 tests**. They exercise deterministic cloning through the production factory, the actual launch configuration and signed BTC updates; the 5,000-USDC seed bond and 500-USDC listing escrow; a trader's deposit/open/close/withdrawal and exact vault custody; and atomic rollback for failed initialization, insufficient reserve, invalid signatures, incorrect update fees and stale prices. Rejected creation leaves the creator's tokens, native balance, clone address, registries and insurance unchanged, then valid creation can reuse the symbol. Listing refunds wait until maturity and pay the original lister; slashed escrow refills reserve through separate batches.
+
+The factory-created market uses the verified oracle price despite a creator-supplied initial price of one. Its clone runtime targets the reviewed implementation, and the factory retains neither seed funds nor a vault token allowance. Measured creation cost is **1,112,137 local gross gas**, including the test caller setup; this is not a Monad RPC estimate or charged gas.
+
+Feed permissions are unchanged: only TSLA US and the BTC control are accessible among the requested captures. TSLA US resumed publication by Monday's capture, with age zero and **3 bps** confidence. This does not establish weekend availability or provide an Index comparison. Sunday's observation remains the off-hours evidence above.
+
 ## Reproduce
 
 Put credentials in the ignored `.env` file, using the names in `.env.example`. Do not commit them.
@@ -53,7 +63,9 @@ make monad-fork
 
 The preflight uses only read-only RPC methods. It records block number/hash/time, code fingerprints, native-USDC decimals, historical state access, candidate metadata and cached prices in `reports/monad/preflight.json`. With a key, it attempts each equity feed separately and captures a BTC control, preserving per-feed errors rather than discarding accessible payloads when another feed is denied. Prices, signed payloads, observation times and freshness measurements accompany a later block for signed-update verification. The key is sent as a Bearer header to the documented [Hermes endpoint](https://docs.pyth.network/price-feeds/core/upgrade/preparing). Redirects are rejected; only recognized error categories are reported, without raw response bodies or credentials.
 
-The runner rechecks both pinned block hashes, enables the `monad` Foundry profile, and saves redacted output in `reports/monad/fork.log`. Reports and credentials are ignored by Git. Standard tests skip the opt-in fork suites and need no network. Four offline Python regression tests cover client identification/redirect rejection, safe error classification, freshness/confidence and preservation of entitled captures when others fail. Run them with `python3 -m unittest discover -s test/scripts`; `make ci` includes them.
+The preflight also records a `governanceFork` header 600,000 blocks before the signed capture and checks that at least one day elapsed between their actual timestamps. The factory suite schedules adapter approval on that earlier fork, carries its local deployments to the signed-update fork, and activates permissionlessly there. Pyth and USDC remain the real state at each selected block. No storage edit bypasses the approval delay, and no oracle timestamp is backdated. An unavailable historical anchor is reported explicitly and skips the factory suite.
+
+The runner rechecks all recorded block hashes, enables the `monad` Foundry profile, and saves redacted output in `reports/monad/fork.log`. Reports and credentials are ignored by Git. Standard tests skip the opt-in fork suites and need no network. Five offline Python regression tests cover client identification/redirect rejection, safe error classification, freshness/confidence, preservation of entitled captures when others fail, and the minimum elapsed governance delay. Run them with `python3 -m unittest discover -s test/scripts`; `make ci` includes them.
 
 ## Gas and remaining gates
 
