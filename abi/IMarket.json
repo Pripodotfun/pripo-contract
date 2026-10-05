@@ -525,6 +525,35 @@
   },
   {
     "type": "function",
+    "name": "liquidationPriceInfo",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "referenceKind",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationReference"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationPriceReason"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "longSize",
     "inputs": [],
     "outputs": [

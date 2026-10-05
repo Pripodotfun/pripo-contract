@@ -5,6 +5,8 @@ import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
 import {CurveMath as Curve} from "../libraries/CurveMath.sol";
 import {FeeMath as Fees} from "../libraries/FeeMath.sol";
 import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
+import {LiquidationPriceMath as Prices} from "../libraries/LiquidationPriceMath.sol";
+import {OpenCapacityMath as OpenCapacity} from "../libraries/OpenCapacityMath.sol";
 import {RiskMath as Risk} from "../libraries/RiskMath.sol";
 import {PripoTypes as T} from "../types/PripoTypes.sol";
 import {MarketAccounting as Engine} from "./MarketAccounting.sol";
@@ -13,6 +15,70 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @notice Linked quote and risk calculations using the same state and arithmetic as execution.
 library MarketLens {
+    function liquidationPriceInfo(S.Data storage s, address user)
+        public
+        view
+        returns (uint256 price, T.LiquidationReference referenceKind, T.LiquidationPriceReason reason)
+    {
+        T.Position memory p = s._positions[user];
+        if (p.size == 0) return (0, T.LiquidationReference.None, T.LiquidationPriceReason.NoPosition);
+        if (s._pendingAdl[user].active) return (0, T.LiquidationReference.None, T.LiquidationPriceReason.PendingAdl);
+        if (s._config.status >= T.Status.Settling) {
+            return (0, T.LiquidationReference.None, T.LiquidationPriceReason.Inactive);
+        }
+        if (Engine.fundingBinding(s) == user) {
+            return (0, T.LiquidationReference.None, T.LiquidationPriceReason.FundingCapacity);
+        }
+        int256 collateral = s.vault.locked(user, address(this)) - Engine.fundingOwed(s, p);
+        if (collateral < 0) return (0, T.LiquidationReference.None, T.LiquidationPriceReason.NegativeCollateral);
+        bool degraded = Engine.isDegraded(s);
+        uint256 maintenance = Math.mulDiv(p.entryCost, degraded ? 1500 : s._config.mmrBps, F.BPS, Math.Rounding.Ceil);
+        referenceKind = s.externalIndex && !degraded ? T.LiquidationReference.Index : T.LiquidationReference.Twap;
+        int256 twapEquity = collateral + Curve.realizablePnl(Engine.twapReserves(s), p.size, p.entryCost);
+        if (twapEquity < F.toInt(maintenance)) {
+            return (0, referenceKind, T.LiquidationPriceReason.TwapAlreadyLiquidatable);
+        }
+        price = referenceKind == T.LiquidationReference.Index
+            ? Prices.indexPrice(p.size, p.entryCost, F.toUint(collateral), maintenance)
+            : Prices.twapPrice(
+                s._amm,
+                p.size,
+                p.entryCost,
+                F.toUint(collateral),
+                maintenance,
+                Engine.twapPrice(s),
+                s._config.sideCapBps
+            );
+        reason = price == 0 ? T.LiquidationPriceReason.NoCrossing : T.LiquidationPriceReason.Threshold;
+    }
+
+    function maxOpenable(S.Data storage s, address user, bool isLong) public view returns (int256) {
+        if (user == address(0) || s._config.status != T.Status.Active || s.guardianPaused || s.pendingAdlCount != 0) {
+            return 0;
+        }
+        T.Position memory p = s._positions[user];
+        if (p.size != 0 && (p.size > 0) != isLong) return 0;
+        if (p.size == 0 && s._positionCount >= s._config.maxPositionsPerMarket) return 0;
+        try s.vault.requireOpenAllowed(address(this)) {}
+        catch {
+            return 0;
+        }
+        OpenCapacity.Context memory c = OpenCapacity.Context(
+            s._amm,
+            s._config,
+            s.longSize,
+            s.shortSize,
+            F.abs(p.size),
+            p.entryCost,
+            s.vault.locked(user, address(this)) - Engine.fundingOwed(s, p),
+            s.vault.freeBalance(user),
+            Engine.oiCap(s),
+            isLong
+        );
+        uint256 amount = OpenCapacity.maximum(c);
+        return isLong ? F.toInt(amount) : -F.toInt(amount);
+    }
+
     function quoteOpen(S.Data storage s, address user, int256 size) public view returns (S.OpenQuote memory q) {
         if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
         if (user == address(0) || size == 0 || size == type(int256).min) revert E.InvalidSize();

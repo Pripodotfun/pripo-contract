@@ -83,6 +83,22 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         return Lens.health(S.load(), user);
     }
 
+    function maxOpenable(address user, bool isLong) external view returns (int256) {
+        return Lens.maxOpenable(S.load(), user, isLong);
+    }
+
+    function liquidationPrice(address user) external view returns (uint256 price) {
+        (price,,) = Lens.liquidationPriceInfo(S.load(), user);
+    }
+
+    function liquidationPriceInfo(address user)
+        external
+        view
+        returns (uint256 price, T.LiquidationReference referenceKind, T.LiquidationPriceReason reason)
+    {
+        return Lens.liquidationPriceInfo(S.load(), user);
+    }
+
     function realizablePnl(address user) external view returns (int256, int256) {
         // Both tuple components are forwarded directly to the caller.
         // slither-disable-next-line unused-return

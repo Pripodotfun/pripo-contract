@@ -121,6 +121,16 @@ interface IMarketCore is IPripoErrors {
         view
         returns (uint256 avgFill, uint256 fee, int256 pnl, int256 fundingOwed);
     function health(address user) external view returns (int256 healthWad, bool liquidatable);
+    /// @notice Largest additional signed size within margin, fee and cap limits; zero if opens are gated.
+    /// @dev Owner capacity at current state. Valid oracle updates, operator permission and slippage remain send-time checks.
+    function maxOpenable(address user, bool isLong) external view returns (int256 size);
+    /// @notice Inclusive index threshold, or first adverse reachable TWAP crossing with current collateral/funding.
+    /// @dev Zero is not a health signal; use liquidationPriceInfo and health for non-price triggers and absence.
+    function liquidationPrice(address user) external view returns (uint256);
+    function liquidationPriceInfo(address user)
+        external
+        view
+        returns (uint256 price, T.LiquidationReference referenceKind, T.LiquidationPriceReason reason);
     function realizablePnl(address user) external view returns (int256 atCurrentReserves, int256 atTwapReserves);
     function curveAccounts() external view returns (uint256 curveBase, int256 entryCostNet, int256 clearing);
     function markPrice() external view returns (uint256);

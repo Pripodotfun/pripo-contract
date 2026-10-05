@@ -11,6 +11,22 @@ library PripoTypes {
         Settled
     }
 
+    enum LiquidationReference {
+        None,
+        Index,
+        Twap
+    }
+    enum LiquidationPriceReason {
+        Threshold,
+        NoPosition,
+        PendingAdl,
+        Inactive,
+        FundingCapacity,
+        NegativeCollateral,
+        TwapAlreadyLiquidatable,
+        NoCrossing
+    }
+
     struct MarketConfig {
         address priceSource;
         address secondarySource;

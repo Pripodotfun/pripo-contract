@@ -810,6 +810,54 @@ export const marketAbi = [
   },
   {
     "type": "function",
+    "name": "liquidationPrice",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liquidationPriceInfo",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "referenceKind",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationReference"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationPriceReason"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "longSize",
     "inputs": [],
     "outputs": [
@@ -830,6 +878,30 @@ export const marketAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "maxOpenable",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "isLong",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256",
+        "internalType": "int256"
       }
     ],
     "stateMutability": "view"
@@ -3095,6 +3167,54 @@ export const marketCoreAbi = [
   },
   {
     "type": "function",
+    "name": "liquidationPrice",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liquidationPriceInfo",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "referenceKind",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationReference"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationPriceReason"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "longSize",
     "inputs": [],
     "outputs": [
@@ -3115,6 +3235,30 @@ export const marketCoreAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "maxOpenable",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "isLong",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "size",
+        "type": "int256",
+        "internalType": "int256"
       }
     ],
     "stateMutability": "view"
@@ -5341,6 +5485,35 @@ export const plannedMarketAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "liquidationPriceInfo",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "price",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "referenceKind",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationReference"
+      },
+      {
+        "name": "reason",
+        "type": "uint8",
+        "internalType": "enum PripoTypes.LiquidationPriceReason"
       }
     ],
     "stateMutability": "view"

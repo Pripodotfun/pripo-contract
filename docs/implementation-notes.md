@@ -17,7 +17,7 @@
 
 `scripts/export_abis.py` reads compiler artifacts and writes fifteen deterministic JSON ABIs plus TypeScript `as const` exports. Run `make abi` after changing interfaces. The `--check` mode compares exports with the current build without modifying files.
 
-`Market` implements `IMarketCore`. The extended `IMarket` interface describes future exact risk views and resolver methods; there are no placeholder implementations. SDK `marketAbi` and `marginVaultAbi` come from the concrete contracts. Deployment addresses and transaction-sending SDK methods remain future work.
+`Market` implements `IMarketCore`. The extended `IMarket` interface describes future resolver methods; there are no placeholder implementations. SDK `marketAbi` and `marginVaultAbi` come from the concrete contracts. Deployment addresses and transaction-sending SDK methods remain future work.
 
 ## Vault integration
 
@@ -35,6 +35,33 @@
 - `quoteOpen(size)` quotes for `msg.sender`; operators should use `quoteOpenFor(user,size)`. Returned margin is the **additional** free collateral required after simulated funding settlement. Fees are additional. Opens increase an existing position on the same side; closing to zero is required before changing sides.
 - `quoteClose` returns the closed portion's curve PnL and fee, but funding owed for the entire position, matching execution. Partial closes retain collateral; `removeMargin` checks both worst-case initial margin and reference equity. A full close removes all remaining entry cost and releases all positive collateral.
 - A buy's limit is a maximum price and a sell's limit is a minimum. Use transaction simulation to check authorization, balance, current oracle data and status; numerical quote views do not perform external oracle updates or consume a policy.
+
+## Exact risk views
+
+`maxOpenable(user, isLong)` returns the largest **additional** signed base size, using post-trade marks, both side limits, the 2,000-USDC account cap, current insurance/OI cap, exact entry and impact/protected margin, previewed funding, available free balance and the opening fee (including any skew discount). It returns zero for unavailable market/vault gates, an opposite existing position, a full book for a new account, or no executable size. Existing accounts can increase at the book limit. Owner capacity does not include an operator's separate authorization/budget or a future oracle update, native fee or limit price; simulate the actual send.
+
+The search does not assume feasibility is a monotonic prefix. In particular a short can reduce post-trade mark enough to restore an exceeded long-side quote cap, and integer mark, quote, margin and fee rounding can create gaps. It visits intervals from larger sizes to smaller, rejecting a range only when bounds on quote, worst close, mark, side size, margin and the possible fee discount prove the whole range infeasible. Seed-base bounds give at most 94 bisection levels and a 96-entry memory stack; this bounds stack depth, not the total number of visited intervals. Measured extreme-price queries stay below 1.75 million local gross gas; the regression ceiling is 5 million, not a universal gas proof.
+
+`liquidationPrice(user)` is the inclusive adverse **integer WAD price** threshold at fixed current collateral and previewed funding. For an active external market whose TWAP branch is healthy, a long is unhealthy at or below the returned index price, and a short at or above it. Floor-long/ceil-short quote rounding and strict maintenance inequality are retained. A mathematical index threshold can lie outside the oracle's accepted price range.
+
+For oracle-less or Degraded markets, the result is the **nearest adverse TWAP crossing** within the seed-side-cap reachable mark range, using the exact virtual-reserve square root and close-alone quote. Rounded curve PnL need not be monotonic at individual quote wei, so a more adverse price must still be checked with `health`; the search does not invent a globally monotonic boundary. A TWAP crossing freezes the other inputs and does not forecast future funding or TWAP samples. Degraded uses 15% maintenance and the 600-block reference.
+
+The scalar returns zero when there is no actionable price threshold, including when a separate trigger already applies. Always read `liquidationPriceInfo` and `health`; zero never means safe. The detailed view returns `(price, referenceKind, reason)` with these ABI enum values:
+
+| Reference | Value |
+| --- | ---: |
+| None / index / TWAP | 0 / 1 / 2 |
+
+| Reason | Value | Meaning |
+| --- | ---: | --- |
+| Threshold | 0 | Nonzero threshold as described above |
+| NoPosition | 1 | Empty account |
+| PendingAdl | 2 | Reserved pending loser; ordinary liquidation unavailable |
+| Inactive | 3 | Settling or settled market |
+| FundingCapacity | 4 | Effective binding payer, including an uncheckpointed clamp |
+| NegativeCollateral | 5 | Post-funding collateral below zero |
+| TwapAlreadyLiquidatable | 6 | Current close-alone TWAP equity is below maintenance, irrespective of index |
+| NoCrossing | 7 | No positive long index threshold or no reachable adverse TWAP crossing |
 
 ## Bounded position book
 
@@ -121,7 +148,7 @@ The updated protocol spec resolves the ADL and terminal-shortfall choices:
 3. Full-book terminal and ranked ADL fork scenarios now pass with real signed Pyth updates and native USDC. Complete Monad-native estimation and testnet charged-fee measurements, including final oracle payloads and linked-library deployment settings. The current local 20-million-gas budget is a regression threshold, not a network guarantee; see [Monad integration](monad-integration.md).
 4. The Phase 2 advanced-profit cap must reserve capacity across recipients and include positive funding receipts, so receivers cannot bypass it by settling and withdrawing before a close.
 
-Next implementation work includes these deployment gates, exact remaining risk views (`liquidationPrice`, `maxOpenable`), resolver governance integration and parameter changes. The adapter and factory now have signed-update/native-USDC fork coverage; testnet execution and charged-gas verification remain. The runtime has not been deployed.
+Next implementation work includes these deployment gates, resolver governance integration and parameter changes. The adapter and factory now have signed-update/native-USDC fork coverage; testnet execution and charged-gas verification remain. The runtime has not been deployed.
 
 Five invariant suites cover numerical funding, actual-token trading, eight-market synthetic capital allocation, liquidation/ADL/terminal recovery from an explicit historical-debt fixture, and payer-backed funding across two production markets. The recovery handler includes block advances, margin changes, partial closes, capital contributions, fee allocation and withdrawals bounded by actual cash; its purpose is signed accounting and terminal mechanics. The separate backing handler uses no liquidation, synthetic debt or recapitalization and never reduces a withdrawal to available cash. It checks funding capacities, both heaps, frozen bindings, payable balances and signed custody, then fully unwinds receivers before payers. The former integer-fragment boundary is covered by the integrated funded-rounding and pending-continuation tests.
 

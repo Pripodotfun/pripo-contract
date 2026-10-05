@@ -368,7 +368,7 @@ Here `E` is a long's curve entry cost and `P` is a short's curve entry proceeds.
 - Long of size `s`, entry cost `entryCost`: every short at cap and no other long, so reserves are `B0 + C − s` before the close and `B0 + C` after. `worstExit = k/(B0 + C − s) − k/(B0 + C)`; impact term `entryCost − worstExit + entryCost × mmr`.
 - Short of size `s`, entry proceeds `P`: every long at cap and no other short, so reserves are `B0 − C + s` before the buy-back and `B0 − C` after. `worstBuyback = k/(B0 − C) − k/(B0 − C + s)`; impact term `worstBuyback − P + P × mmr`. The loss is buy-back cost minus proceeds, not the reverse.
 
-A position posts at least the maximum of its leverage minimum, impact minimum and the funding protected-collateral floor; which one binds depends on its entry cost, side, size and maintenance buffer. `impactMarginBps` (default 10,000, the full impact minimum) scales the impact term; governance can relax it once insurance is deep. Fees are charged on top and are not counted toward margin. `maxOpenable(user, isLong)` reports the largest size whose required margin fits the user's available balance and all applicable caps.
+A position posts at least the maximum of its leverage minimum, impact minimum and the funding protected-collateral floor; which one binds depends on its entry cost, side, size and maintenance buffer. `impactMarginBps` (default 10,000, the full impact minimum) scales the impact term; governance can relax it once insurance is deep. Fees are charged on top and are not counted toward margin. `maxOpenable(user, isLong)` reports the largest additional signed size whose required margin plus opening fee fits the user's free balance after previewed funding and all applicable caps.
 
 **The side cap is derived from leverage.** The continuous design value is:
 
@@ -407,6 +407,10 @@ The runtime uses stable slots; `positionAccounts(offset, limit)` returns holes a
 **OI caps** constrain each side in two units: quote notional must not exceed `(insuranceBalance + backstopAllocation) × oiMultiplier`, and base size must not exceed `C = floor(sideCapBps × B0 / 10_000)`. The quote notional of each side uses the current mark, including the post-trade mark when validating an open. Apply both checks independently; do not compare a quote amount directly with a base size. Launch notional caps apply in addition. The factory's depth minimum supports the initial insurance bound at the seed price; later price changes can change which bound binds. Opens that breach either bound revert; closes and liquidations remain available.
 
 **Agent-facing views**: `health(user)`, `liquidationPrice(user)`, `maxOpenable(user, isLong)`, `quoteOpen(size)`, `quoteClose(user, sizeFraction)`. All are exact, not estimates; the SDK calls them before every send.
+
+`maxOpenable` is additional owner capacity at the current state, including the opening fee and previewed funding. Market/vault opens gates, the book limit for first opens, both post-trade side caps and the account cap apply. Zero means no executable size under those inputs. A valid future oracle update, native update fee, operator authorization and limit price still require transaction simulation. The search must not assume a monotonic prefix: short flow can restore an exceeded quote cap by reducing the mark, and exact integer rounding can introduce gaps.
+
+`liquidationPrice` uses an inclusive integer-price boundary: an index-based long is unhealthy at or below it and a short at or above it, with collateral and funding held at their current preview values and the TWAP branch healthy. For oracle-less/Degraded valuation it returns the nearest adverse reachable TWAP crossing using exact virtual reserves, rather than assuming rounded close PnL is monotonic at every wei. Recheck `health` at the observed price. Zero is not a safety signal: an empty/pending/terminal position, an already binding payer, negative collateral, an already unhealthy TWAP branch or absence of a reachable crossing can all have no standalone price threshold. `liquidationPriceInfo(user)` additionally reports reference kind and reason; ABI enum values and crossing semantics are documented in `docs/implementation-notes.md`. Keepers inspect these reasons as well as price crossings.
 
 ## Solvency and the vault ledger
 
@@ -795,7 +799,7 @@ The proof-carrying `openFor` and `closeFor` overloads append `bytes32[] marketPr
 
 ## Contract interfaces
 
-These are the target interfaces for SDK, MCP server, indexer and front-end generation. Pending ADL methods, state and events are implemented and exported. The concrete `marketAbi` and `marginVaultAbi` are the implemented integration surface; the broader planned interface still includes future risk views and resolver methods. Agents simulate mutating calls with `eth_call` before sending.
+These are the target interfaces for SDK, MCP server, indexer and front-end generation. Pending ADL methods, state and events are implemented and exported. The concrete `marketAbi` and `marginVaultAbi` are the implemented integration surface; the broader planned interface still includes future resolver methods. The exact capacity and liquidation-price views are implemented. Agents simulate mutating calls with `eth_call` before sending.
 
 ```solidity
 interface IMarket {
@@ -831,6 +835,7 @@ interface IMarket {
     function realizablePnl(address user) external view returns (int256 atCurrentReserves, int256 atTwapReserves);
     function curveAccounts() external view returns (uint256 curveBase, int256 entryCostNet, int256 clearing);
     function liquidationPrice(address user) external view returns (uint256);
+    function liquidationPriceInfo(address user) external view returns (uint256 price, uint8 referenceKind, uint8 reason);
     function maxOpenable(address user, bool isLong) external view returns (int256 size);
     function markPrice() external view returns (uint256);
     function indexPrice() external view returns (uint256 price, uint64 updatedBlock, bool isExternal);
@@ -972,7 +977,7 @@ Monad is EVM-equivalent at the bytecode level, so nothing here needs a special c
 
 **Block time and finality.** 300 ms blocks with speculative finality well under a second. Staleness, funding periods, dispute windows and TWAPs are all denominated in blocks, never in seconds, so a block-time change is a parameter update rather than a rewrite.
 
-**Execution events for keepers.** Keepers subscribe to Monad's execution event stream rather than polling logs. The liquidation keeper keeps an in-memory table of every open position's `liquidationPrice` and re-checks it on every `FundingAccrued` and price event; the first keeper to land the transaction wins the penalty.
+**Execution events for keepers.** Keepers subscribe to Monad's execution event stream rather than polling logs. The liquidation keeper keeps an in-memory table of every open position's `liquidationPriceInfo` and re-checks it and `health` on every `FundingAccrued` and price event, including non-price binding/collateral triggers; the first keeper to land the transaction wins the penalty.
 
 **Pyth on Monad.** Pull oracle: the price update is carried in calldata and paid for by the sender. The SDK fetches the latest VAA from Hermes, attaches it to `open`/`close`/`liquidate`, and forwards the Pyth fee as `msg.value`.
 
@@ -986,7 +991,7 @@ Everything off-chain is derived from the events and views above; none of it hold
 
 **Keeper (TypeScript, anyone can run).**
 
-- Liquidation loop: subscribes to execution events, maintains `liquidationPrice` per open position, fires `liquidate` with a fresh Pyth VAA when index crosses it. Gas limit tight, nonce pool of 8 for concurrency.
+- Liquidation loop: subscribes to execution events, maintains `liquidationPriceInfo` per open position, checks `health` for index/TWAP crossings and non-price triggers, then simulates and fires `liquidate` with a fresh Pyth VAA when required. Gas limit tight, nonce pool of 8 for concurrency.
 - Funding poke: calls `poke()` on any market idle for more than 600 blocks.
 - Sweeps: `FeeSweeper.sweep` hourly, `InsuranceBackstop.topUp` daily.
 - Resolver: `finalize` after dispute windows; `startStaleWindDown` on idle markets.
