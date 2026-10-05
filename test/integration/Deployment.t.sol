@@ -115,6 +115,26 @@ contract DeploymentTest is Test {
         assertEq(d.factory.adapterReadyAt(address(d.pythAdapter)), 0);
     }
 
+    function testTenderlyChainUsesSameDeploymentAndGovernancePath() public {
+        vm.chainId(999143);
+        config.chainId = 999143;
+        PripoDeployment.Deployment memory d = script.deploy(config, deployer);
+        script.configureDeployment(config, d);
+        assertEq(d.vault.governor(), config.governor);
+        assertTrue(d.vault.registrars(address(d.factory)));
+        assertEq(address(d.vault.backstopController()), address(d.backstop));
+        config.chainId = 143;
+        vm.expectRevert("wrong chain");
+        script.configureDeployment(config, d);
+    }
+
+    function testRehearsalConfigCannotBeRetargetedToMainnet() public {
+        vm.expectRevert("rehearsal config cannot target a public chain");
+        script.parseConfig('{"chainId":143,"rehearsalOnly":true}');
+        vm.expectRevert("rehearsal config cannot target a public chain");
+        script.parseConfig('{"chainId":10143,"rehearsalOnly":true}');
+    }
+
     function testManifestRoundTripAndTamperedRuntimeRejected() public {
         PripoDeployment.Deployment memory d = script.deploy(config, deployer);
         vm.createDir("reports/deployment", true);

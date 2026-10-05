@@ -1,4 +1,4 @@
-.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth deployment-dry-run
+.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth deployment-dry-run tenderly-support tenderly-alerts
 
 deps:
 	forge install --no-git --shallow foundry-rs/forge-std@v1.11.0 OpenZeppelin/openzeppelin-contracts@v5.4.0
@@ -41,3 +41,9 @@ monad-estimate-pyth:
 
 deployment-dry-run:
 	python3 scripts/dry_run_deployment.py
+
+tenderly-support:
+	python3 scripts/tenderly_stage.py support
+
+tenderly-alerts:
+	python3 scripts/tenderly_stage.py alerts

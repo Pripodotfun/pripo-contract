@@ -55,7 +55,7 @@ abstract contract PripoDeployment is Script {
     bytes32 internal constant IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
 
     function _validate(Config memory c) internal view {
-        require(c.chainId == 143 || c.chainId == 10143, "unsupported network");
+        require(c.chainId == 143 || c.chainId == 10143 || c.chainId == 999143, "unsupported network");
         require(block.chainid == c.chainId, "wrong chain");
         require(c.governor != address(0) && c.guardian != address(0) && c.treasury != address(0), "missing role");
         require(c.usdc.code.length != 0 && c.pythCore.code.length != 0, "missing dependency");
@@ -124,8 +124,11 @@ abstract contract PripoDeployment is Script {
         require(address(d.sweeper.vault()) == address(d.vault), "wrong sweeper vault");
     }
 
-    function _config(string memory json) internal pure returns (Config memory c) {
+    function _config(string memory json) internal view returns (Config memory c) {
         c.chainId = vm.parseJsonUint(json, ".chainId");
+        if (vm.keyExistsJson(json, ".rehearsalOnly") && vm.parseJsonBool(json, ".rehearsalOnly")) {
+            require(c.chainId == 999143, "rehearsal config cannot target a public chain");
+        }
         c.usdc = vm.parseJsonAddress(json, ".usdc");
         c.pythCore = vm.parseJsonAddress(json, ".pythCore");
         c.governor = vm.parseJsonAddress(json, ".governor");
@@ -171,6 +174,7 @@ abstract contract PripoDeployment is Script {
     function _writeManifest(Config memory c, Deployment memory d, address sender, string memory path) internal {
         string memory key = "deployment";
         vm.serializeUint(key, "chainId", c.chainId);
+        vm.serializeBool(key, "rehearsalOnly", c.chainId == 999143);
         vm.serializeUint(key, "blockNumber", block.number);
         vm.serializeAddress(key, "deployer", sender);
         vm.serializeAddress(key, "usdc", c.usdc);

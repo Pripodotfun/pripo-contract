@@ -4,6 +4,10 @@ pragma solidity 0.8.30;
 import {PripoDeployment} from "../../script/DeployPripo.s.sol";
 
 contract DeploymentHarness is PripoDeployment {
+    function parseConfig(string memory json) external view returns (Config memory) {
+        return _config(json);
+    }
+
     function deploy(Config memory c, address sender) external returns (Deployment memory) {
         return _deploy(c, sender);
     }

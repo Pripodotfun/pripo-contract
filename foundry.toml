@@ -34,6 +34,7 @@ fs_permissions = [{ access = "read", path = "./config" }, { access = "read", pat
 [rpc_endpoints]
 monad = "${ALCHEMY_MONAD_RPC}"
 monad_testnet = "${MONAD_TESTNET_RPC}"
+tenderly = "${TENDERLY_RPC}"
 
 [fmt]
 line_length = 120

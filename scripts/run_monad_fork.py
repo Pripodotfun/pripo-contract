@@ -8,9 +8,13 @@ from monad_preflight import ROOT, ProbeError, load_env, rpc
 
 
 def redact_output(output, env):
-    endpoint = env.get("ALCHEMY_MONAD_RPC", "")
-    secrets = [endpoint, env.get("PYTH_API_KEY", ""), env.get("MONAD_TESTNET_RPC", "")]
-    for url in (endpoint, env.get("MONAD_TESTNET_RPC", "")):
+    urls = [env.get(name, "") for name in (
+        "ALCHEMY_MONAD_RPC", "MONAD_TESTNET_RPC", "ALCHEMY_MONAD_TESTNET_RPC", "TENDERLY_RPC"
+    )]
+    secrets = urls + [env.get(name, "") for name in (
+        "PYTH_API_KEY", "TENDERLY_ACCESS_KEY", "FUNDED_DEPLOYER_PRIVATE_KEY"
+    )]
+    for url in urls:
         parsed = urllib.parse.urlsplit(url)
         secrets += [v for _, v in urllib.parse.parse_qsl(parsed.query)]
         secrets += [part for part in parsed.path.split("/") if len(part) > 12]

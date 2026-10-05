@@ -1,5 +1,11 @@
 # Monad integration
 
+## Staging update — October 5
+
+Shared staging now uses a fresh Tenderly Virtual TestNet fork of Monad **mainnet**, with the same USDC and Pyth addresses verified below. Tenderly's live registry confirms Virtual TestNet and monitoring support for chain 143. The rehearsal uses virtual chain 999143 and fork-local Safes; no hosted fork or alert is claimed until account setup and deployment receipts exist. See the [current runbook](deployment.md) for the Tuesday–Saturday plan, alert definitions and Thursday Resolver fallback.
+
+Historical Foundry captures below remain local regression evidence. Refork on each testing day and before the final rehearsal, and validate new signed Pyth updates against the fresh router state. Monad testnet is used only for Friday's one-hour native gas/timing measurements and optional Mera P-256 verification; testnet faucet/mock-USDC staging is removed.
+
 ## Verified on October 4, 2026 (UTC)
 
 The configured `ALCHEMY_MONAD_RPC` responds as Monad mainnet, chain ID **143**. The initial fork is pinned to block **110547446**, timestamp **2026-10-04 19:15:58 UTC**, hash recorded in the local preflight report. An additional native-USDC state read at block **110447446** succeeds. This establishes historical access for the tested blocks, not unlimited archive retention.

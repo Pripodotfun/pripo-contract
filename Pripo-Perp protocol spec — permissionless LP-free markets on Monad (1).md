@@ -13,7 +13,7 @@ Pripo is a permissionless, LP-free perpetuals protocol on Monad where anyone dep
 - No pooled liquidity anywhere. Traders net on the vAMM; fees build the insurance that lets each market grow.
 - Fees are the business: taker and settlement fees, creator and referral splits that recruit their own volume, and metered agent infrastructure.
 
-**Phasing.** Phase 1 ships October 13, 2026 as the public launch under capped parameters. Phase 2 lifts caps after external review and adds the equity market-hours engine, cross-margin, gas sponsorship and the first points season. Phase 3 adds tokenized-stock collateral, agent identity tiers and reputation-based margin. Details under Product phases.
+**Phasing.** Phase 1 targets Saturday, October 10, 2026 under capped parameters, conditional on the Thursday-night Resolver gate and Friday security/Monad measurements. If Resolver is not green Thursday night, submit the fork demo Saturday and move mainnet to judging week. Phase 2 lifts caps after external review and adds the equity market-hours engine, cross-margin, gas sponsorship and the first points season. Phase 3 adds tokenized-stock collateral, agent identity tiers and reputation-based margin. Details under Product phases.
 
 **Brand.** Pripo (pre-IPO). Domain pripo.fun, handle @pripodotfun. Markets read as `PRIPO:SPACEX`, the SDK ships as `@pripo/sdk`, the tribe is the Pripos, the verb is "pripo it," and the mascot is a character named Pripo. "Unlisted markets" stays as the descriptor line: Pripo — trade what isn't listed yet.
 
@@ -25,7 +25,7 @@ Three phases, each gated on a measurable exit rather than a date. Phase 1 is the
 
 | Phase | Window | Scope | Exit criteria |
 | --- | --- | --- | --- |
-| 1 — Launch | Sep 26 – Oct 13, 2026 | Vault, market clones, factory, Pyth and null adapters, resolver, referrals, skew discount, operator keys, SDK, MCP server, indexer, keeper, three pre-IPO markets, launch caps | Mainnet live; external review scoped; 500,000 USDC/day volume in any 7-day window |
+| 1 — Launch | Sep 26 – Oct 10, 2026 target; judging-week fallback | Vault, market clones, factory, Pyth and null adapters, resolver, referrals, skew discount, operator keys, SDK, MCP server, indexer, keeper, three pre-IPO markets, launch caps | Mainnet live; external review scoped; 500,000 USDC/day volume in any 7-day window |
 | 2 — Depth | Oct 2026 – Jan 2027 | Review closed and caps lifted; equity market-hours engine; cross-margin; relayer and gas sponsorship; Chainlink Data Streams adapter; points season 1; Nad.fun auto-markets; Telegram alerts | 5,000,000 USDC/day volume; 50 markets with OI; 25% of volume from operator keys |
 | 3 — Prime | Feb – Jun 2027 | Tokenized-stock and multi-asset collateral; ERC-8004 agent tiers; reputation-based margin; creator-role secondary market; governance token decision | 25,000,000 USDC/day volume; insurance backstop covers 30 days of worst-case bad debt |
 
@@ -1085,20 +1085,29 @@ A governance token is a Phase 3 decision, not a Phase 1 promise.
 
 ## Build sequence
 
-Phase 1 runs from September 26 to the submission cutoff, which the Metropolis portal lists as Sunday, October 12 (the marketing page says the 13th; treat the 12th as real). Contracts first, with the front end and SDK in parallel once interfaces freeze on day 2. Two decisions that change the build are made in days 1–2 and written down: the margin asset, and the account layer. Referrals and the skew-fee discount are in the day 3–5 scope because they change the fee path. Phases 2 and 3 follow below the cut list.
+**Staging decision, October 5.** The shared rehearsal environment is a Tenderly Virtual TestNet forked from **Monad mainnet (143)**, using the real mainnet USDC and Pyth addresses/state. Tenderly's live supported-network registry reports Monad Virtual TestNets, monitoring, simulator and explorer support. Use isolated virtual chain ID **999143** for rehearsal signatures. The same deployment scripts and reviewed transaction sequence are replayed with production configuration and new signatures; fork signer keys and state overrides never enter the production configuration. Testnet faucets and mock-USDC staging are off this plan.
 
-| Days | Deliverable | Done when |
+Fork on the day of testing, record source block/hash/time and environment IDs, and refork from mainnet before the final rehearsal. Verify a newly fetched Hermes update against that fork's actual Pyth router state. Old cached-price reads do not satisfy this gate. Stop live state synchronization while running deterministic fault scenarios, and keep all administrative state changes in a separate scenario log.
+
+| Day | Deliverable | Done when |
 | --- | --- | --- |
-| 1–2 | Interfaces frozen, repo scaffold, math library with unit vectors. Margin-asset decision: AUSD as the vault's primary asset through a configurable `asset` (qualifies for Agora's $10,000 mobile trading bounty), or AUSD plus USDC behind a 1:1 whitelist. Mera evaluation: if the passkey SDK is drop-in, Mera is the human account layer (Foundation bounty) and Privy server wallets handle agent operators; if not, Privy for both | `IMarket`, `IMarketFactory`, `IResolver` ABIs committed; SDK codegen runs; asset and account-layer decisions recorded in this doc |
-| 3–5 | `MarginVault` + `Market` clone: vAMM, funding, open/close, fees, referrals, skew-fee discount | Invariant suite green on vault + one market |
-| 6–8 | Liquidation, partial liquidation, bad-debt waterfall, insurance bound, derived side cap, impact-aware margin, operator policies | Attack scenarios scripted and passing |
-| 9–10 | `MarketFactory`, `PythAdapter`, `NullAdapter`, `FeeSweeper`. Alchemy as keeper RPC with webhooks; Tenderly for the SDK's exact-quote simulation and the fuzz suite's virtual testnet | Fork test opens an NVDA market with a live VAA |
-| 11–12 | `Resolver`: propose, dispute, finalize, wind-down, settlement | Settlement invariant green; haircut path tested |
-| 9–13 (parallel) | Front end on the chosen account layer, Envio indexer, SDK, MCP server, keeper, reference agent on Kimi with a Qwen fallback | Human trade from UI, agent trade via MCP, on testnet |
-| 14 | Static analysis, self-audit pass, ack3 scan, fixes | No high or medium findings open |
-| 15 | Mainnet deploy with launch caps; three pre-IPO markets seeded; reference agent live | Real OI in all three markets |
-| 16 | Submission package: demo video under three minutes, pitch video under two, logo under 3 MB, public repo readable by metropolis@hackathon.monad.xyz, track and bounties selected on the portal | Submitted on October 11 |
-| 17 | Buffer; the 12th is not a working day | Nothing left to do |
+| Tue Oct 6 | Fresh fork, fork-local Safes, complete deploy and role wiring; ADL, forced settlement, long-gap funding and Degraded rehearsals; four monitoring event categories | Actual Safe threshold execution and expected rejection paths verified; deployment manifests, transaction/debugger links and cash/state assertions retained |
+| Wed–Thu Oct 7–8 | Resolver propose/dispute/finalize, Council resolution, stale wind-down and settlement; fresh mainnet fork and full rerun | Dispute/window boundary and settlement invariants green; real signed Pyth updates verify on the fresh fork |
+| Thu night | Resolver release decision | Green: continue mainnet track; not green: submit fork demo Saturday and move mainnet to judging week |
+| Fri Oct 9 | Security checks plus a one-hour Monad testnet gas/timing pass; optional Mera P-256 path | Four worst-case calls report estimated and actually charged gas/fees; Mera path verified on real Monad if selected; real mainnet Safes/signers and USDC/MON capital ready |
+| Sat Oct 10 | Mainnet deployment replay if every gate is green; live alerts; reserve/bonds funded; three markets created; submission that night | Production config and receipts reviewed, on-call delivery verified, funded reserve and market custody reconciled, submission sent; otherwise fork-demo submission |
+
+The fork covers full ADL/forced settlement, Resolver dispute windows, stale wind-down, long funding gaps and Degraded after the strict 100-block threshold. Manipulate block height and timestamp separately and assert each clock explicitly. Use the debugger for every reverted transaction, including expected authorization/deadline failures. Test-only legacy-debt injections used to reach recovery paths are labeled and excluded from the production replay; normal funding must still demonstrate cash backing without those injections.
+
+**Gas and timing exception.** Tenderly results do not establish Monad's gas-limit charging or 300-ms behavior. Friday measures initial 64-match ADL, bounded fallback completion, 128-position terminal settlement and a full payer-book checkpoint after a long funding gap. Preserve the RPC estimate, submitted limit, receipt gas used/effective price, transferred native value and sender balance delta; report charged fee separately. Keep deployment/provider receipts too. If Mera is selected, exercise its P-256 verification and end-to-end passkey flow on real Monad testnet during the same hour.
+
+**Alerts.** Prepare `BadDebt`, `StatusChanged`, `DeficitChanged` and `ForcedSettlement` rules now. Market events target each clone; deficit events target the vault proxy. Record the destination and created rule IDs, and prove delivery rather than equating a local definition with a live alert. Verify whether the project accepts the Virtual TestNet as an alert target; Monad mainnet monitoring support alone does not prove that. Retarget/recreate verified rules against production addresses for Saturday, and enroll each subsequently created market.
+
+**Capital and roles.** Today: Tenderly access, authenticated Pyth and mainnet RPC. By Friday: real mainnet Safes/signers, 10,000 USDC protocol reserve, listing/seed bonds and MON for gas. Fork Safes use temporary rehearsal signers with the specified role thresholds; production uses real signers. Council wiring follows the implemented Resolver. Gas-hour balances are provisioned separately; mock collateral is not the staging substitute.
+
+**One-day adapter delay.** A new factory's Pyth approval cannot be activated on the same day it is scheduled. Saturday Pyth market creation requires Friday deployment/scheduling of that infrastructure, subject to the release decision. Otherwise new Saturday Pyth approvals activate Sunday. Oracle-less markets do not require Pyth approval. The schedule never bypasses this delay; the launch market type and infrastructure timing must be resolved in the production plan.
+
+Detailed commands, status and evidence are in `docs/deployment.md`. Resolver incompleteness cannot be waived for a mainnet launch; the fork-demo fallback replaces that launch.
 
 **Cut list, in order, if behind schedule**
 
@@ -1106,7 +1115,7 @@ Phase 1 runs from September 26 to the submission cutoff, which the Metropolis po
 2. `ChainlinkAdapter` (Pyth covers the demo).
 3. Partial liquidation (full-close only, lower per-user caps to compensate).
 4. `reseed` and `transferCreator`.
-5. Resolver dispute path (propose + council-only for the demo; document the full flow).
+5. If Resolver is not green Thursday night, cut the Saturday mainnet launch and submit the fork demo; complete Resolver before mainnet in judging week.
 
 **Never cut**: invariant suite, launch caps, operator policy checks, exact quote views.
 

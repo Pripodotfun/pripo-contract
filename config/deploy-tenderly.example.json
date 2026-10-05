@@ -1,0 +1,12 @@
+{
+  "chainId": 999143,
+  "rehearsalOnly": true,
+  "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+  "pythCore": "0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d",
+  "governor": "0x0000000000000000000000000000000000000000",
+  "guardian": "0x0000000000000000000000000000000000000000",
+  "treasury": "0x0000000000000000000000000000000000000000",
+  "maxUpdateAgeSeconds": 3,
+  "blockTimeMillis": 300,
+  "slashToReserve": true
+}
