@@ -15,9 +15,9 @@
 
 ## Public artifacts
 
-`scripts/export_abis.py` reads compiler artifacts and writes fifteen deterministic JSON ABIs plus TypeScript `as const` exports. Run `make abi` after changing interfaces. The `--check` mode compares exports with the current build without modifying files.
+`scripts/export_abis.py` reads compiler artifacts and writes fifteen deterministic canonical JSON ABIs. The standalone SDK generates TypeScript `as const` exports from a committed snapshot. Run `make abi` after changing interfaces. The `--check` mode compares exports with the current build without modifying files.
 
-`Market` implements `IMarketCore`. The extended `IMarket` interface describes future resolver methods; there are no placeholder implementations. SDK `marketAbi` and `marginVaultAbi` come from the concrete contracts. Deployment addresses and transaction-sending SDK methods remain future work.
+`Market` implements `IMarketCore`. The extended `IMarket` interface describes future resolver methods; there are no placeholder implementations. The standalone `pripo-sdk` repository derives `marketAbi` and `marginVaultAbi` from the concrete JSON ABIs at a pinned contracts commit. SDK implementation and releases live outside this contracts repository.
 
 ## Vault integration
 

@@ -23,7 +23,7 @@ make testnet-dry-run # shared deployment sequence on a local testnet fork; no br
 make tenderly-support # confirm live Monad-mainnet Virtual TestNet and monitoring support
 make tenderly-alerts # prepare four ABI-derived alert definitions; does not create remote alerts
 make ci         # 10,000 runs for each invariant; depth 50; size/lint/ABI checks
-make abi        # regenerate JSON ABIs and TypeScript constants
+make abi        # regenerate canonical JSON ABIs
 make analyze    # Slither + Aderyn; requires both analyzers installed
 ```
 
@@ -48,7 +48,6 @@ Dependencies are [forge-std v1.11.0](https://github.com/foundry-rs/forge-std/rel
 | `test/integration/` | Proxy/clone trading, oracle failures, callbacks, and market isolation |
 | `test/invariant/` | Eight-actor funding arithmetic and actual-token custody invariants |
 | `abi/` | Generated JSON interface ABIs |
-| `packages/sdk/src/generated/abis.ts` | Generated TypeScript ABI constants |
 | `docs/implementation-notes.md` | Numerical conventions and integration work |
 
 ## Current verification scope
@@ -57,7 +56,9 @@ The funding harness isolates numerical accounting. The market invariant uses an 
 
 Production pending ADL tests cover both sides, random continuation boundaries, realizable relief, stable cursors under winner closes, multiple reservations, margin replacement, funding freezes and terminal cleanup. The liquidation invariant reconciles each reservation with the vault and checks frozen schedules and funding. Independent model properties retain longer random chunk schedules and arbitrary finite eligibility changes. See [runtime validation](docs/validation.md#pending-adl-runtime-integration) for the tested scope and remaining deployment work.
 
-`marketAbi`, `marginVaultAbi`, `marketFactoryAbi`, `pythAdapterAbi`, `nullAdapterAbi` and `feeSweeperAbi` describe implemented contracts. `plannedMarketAbi` describes the remaining Phase 1 surface and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts. `@pripo/sdk` currently exports ABI constants; transaction preparation and signing are later work.
+The contracts repository owns the canonical JSON files in `abi/`. The standalone `pripo-sdk` repository owns `@pripo/sdk`, including generated TypeScript constants and transaction helpers. Its ABI manifest pins a contracts commit and content hashes; SDK consumers pin package versions. There is no npm workspace or runtime dependency on a sibling checkout. After contract changes, run `make abi` and commit the JSON artifacts, then explicitly sync that commit in the SDK.
+
+The concrete Market, MarginVault, MarketFactory, PythAdapter, NullAdapter and FeeSweeper ABIs describe implemented contracts. `IMarket` includes planned Phase 1 methods and must not be used as proof that those methods exist today. Operator overloads carry market proofs, and all vault settlement credits have named source accounts.
 
 Factory tests cover atomic creation/rollback, fixed launch caps, reserve admission, feed escrow, delayed approvals and callback rejection. Oracle tests cover both an ABI-compatible provider mock and authenticated signed updates against the real Monad provider on pinned forks. Testnet execution and charged-fee measurements remain deployment gates.
 
