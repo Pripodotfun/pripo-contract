@@ -21,6 +21,18 @@ python3 scripts/mock_testnet.py activate --broadcast
 
 Mock manifests, logs and receipt journals use `reports/deployment/mock-testnet/`; native deployment records remain in `reports/deployment/`. An existing mock journal/manifest blocks accidental redeployment. Verification checks exact call targets and amounts, all new/reused runtime hashes, real receipts, historical fee balances and the initial 10,000-token reserve backing. An interrupted broadcast must be reconciled with its saved Foundry transactions before continuing.
 
+### First demo market
+
+`CreateDemoMarket` creates `PRIPO:DEMO` through the active mock factory: oracle-less, initial price **100 mUSDC**, virtual quote depth **200,000 mUSDC**, and **2,000 mUSDC** transferred to market insurance. Depth is virtual pricing capacity; the seed is actual mock-token custody. The fixed factory caps give **2× maximum leverage** and an initial **20,000 mUSDC OI cap**. The script rejects other chains, non-mock manifests and an existing demo symbol. No Pyth activation is needed for the canonical NullAdapter.
+
+```sh
+python3 scripts/create_demo_market.py               # simulate approval and creation
+python3 scripts/create_demo_market.py --broadcast   # submit those two transactions
+python3 scripts/create_demo_market.py --verify-only # receipts and creation-block state, no signing
+```
+
+The runner validates exact calldata before submission and retains `market.json`, `market-receipts.json` and `market-broadcast.json` beside the mock manifest. It verifies the factory event, deterministic clone implementation, complete launch configuration, virtual reserves, zero initial positions/OI, seed custody and insurance, exhausted approval, unchanged protocol reserve and opens gate. Gas fees are reconciled against historical sender balances. A saved market journal blocks another broadcast; reconcile interrupted transactions before any retry.
+
 ### Active mock deployment — October 6
 
 All ten transactions succeeded from build commit **`c8e135c`**. At block **68711245**, the new vault holds **10,000 mUSDC**, `protocolReserve` is **10,000e18**, and the deployer retains **90,000 mUSDC**. The [active deployment record](../deployments/monad-testnet.json) contains the new addresses, reused code hashes, exact receipt evidence and fees. Demo clients should use this record.

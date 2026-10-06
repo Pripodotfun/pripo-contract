@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {CreateDemoMarket} from "../../script/CreateDemoMarket.s.sol";
 import {DeployMockTestnet} from "../../script/DeployMockTestnet.s.sol";
 import {PripoDeployment} from "../../script/DeployPripo.s.sol";
 import {TestnetMockUSDC} from "../../script/testnet/MockUSDC.sol";
+import {Market} from "../../src/Market.sol";
 import {DeploymentHarness} from "../helpers/DeploymentHarness.sol";
 import {MockPyth} from "../helpers/MockPyth.sol";
 import {MockUSDC} from "../helpers/MockUSDC.sol";
@@ -63,6 +65,23 @@ contract MockTestnetTest is Test {
         assertEq(token.balanceOf(trader), 10_000e6);
         assertEq(token.balanceOf(address(d.vault)), 10_000e6);
         assertEq(d.vault.protocolReserve(), 10_000e18);
+        vm.setEnv("DEMO_MARKET_OUTPUT", "reports/deployment/mock-test/demo-market.json");
+        CreateDemoMarket creator = new CreateDemoMarket();
+        Market market = creator.run();
+        assertEq(d.factory.marketCount(), 1);
+        assertEq(d.factory.marketForSymbol(keccak256("PRIPO:DEMO")), address(market));
+        assertEq(token.balanceOf(sender), 88_000e6);
+        assertEq(token.balanceOf(address(d.vault)), 12_000e6);
+        assertEq(token.balanceOf(address(d.factory)), 0);
+        assertEq(d.vault.freeBalance(address(d.factory)), 0);
+        assertEq(d.vault.protocolReserve(), 10_000e18);
+        assertEq(d.vault.ledger(address(market)).insurance, 2_000e18);
+        assertEq(market.config().maxLeverageX, 2);
+        assertEq(market.positionCount(), 0);
+        assertEq(token.allowance(sender, address(d.factory)), 0);
+        vm.expectRevert("demo already created");
+        creator.run();
+        assertEq(token.balanceOf(sender), 88_000e6);
     }
 
     function testMockDeploymentAndFaucetRejectMainnet() public {
@@ -72,6 +91,9 @@ contract MockTestnetTest is Test {
         DeployMockTestnet script = new DeployMockTestnet();
         vm.expectRevert("testnet only");
         script.run();
+        CreateDemoMarket creator = new CreateDemoMarket();
+        vm.expectRevert("testnet only");
+        creator.run();
         vm.chainId(10143);
         TestnetMockUSDC token = new TestnetMockUSDC(address(this));
         vm.chainId(143);

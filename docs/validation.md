@@ -438,3 +438,9 @@ All **ten transactions** from build commit `c8e135c` succeeded: five new contrac
 At block **68711245**, the vault holds **10,000e6 mUSDC units** against **10,000e18 reserve units**, and the deployer holds **90,000e6 mUSDC units**. The demo therefore has a funded reserve without depending on the Circle faucet. `Pripo Mock USDC` is clearly labelled, has six decimals and exposes a permissionless 10,000-token `faucet()`; it is not dollar-backed collateral.
 
 The simulated gas-limit sum was **6,612,590**. Actual submitted limits and receipt gas both total **7,278,504**; charged fees were **0.749685912007278504 testnet MON**, exactly reconciled to historical sender balances. The replacement factory's full Pyth delay ends **October 7 at 14:40:01 UTC**. No markets were created in this stage. The [active deployment record](../deployments/monad-testnet.json) now identifies the mock demo; the native deployment is preserved in its separate archive. Resolver and stale wind-down remain implementation work.
+
+## First market preparation — October 6
+
+The two mock deployment integration tests now also exercise the actual `CreateDemoMarket` script: `PRIPO:DEMO` creation with 2,000 mUSDC insurance, unchanged 10,000 mUSDC reserve, 12,000 mUSDC vault custody, 2× launch leverage, no initial positions and no leftover approval or factory balance. A second call rejects the duplicate without spending, and the creation entry point rejects mainnet. All **16 offline tooling tests** pass, including rejection of a wrong creation target/sender, unexpected value, incorrectly scaled seed, missing call, mainnet and non-mock manifest. Formatting and whitespace checks pass.
+
+The unsigned RPC simulation succeeded with exactly two calls, **1,201,357** total simulated gas limits and predicted market `0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb`. This preparation stage has not submitted transactions; live receipt evidence is recorded separately after creation.
