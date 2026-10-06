@@ -5,12 +5,25 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from monad_preflight import ProbeError, rpc
-from deploy_testnet import receipt_cost
+from deploy_testnet import create2_address, created_address, receipt_cost
 from run_monad_fork import redact_output
 from testnet_stage import key_address, testnet_env, wallet
 
 
 class TestnetStageTest(unittest.TestCase):
+    def test_create2_library_receipts_without_contract_address(self):
+        self.assertEqual(create2_address("0x" + "0" * 40, "0" * 64, "00"),
+                         "0x4d1a2e2bb4f88f0250f26ffff098b0b30b26bf38")
+        factory = "0x4e59b44847b379578588920ca78fbf26c0b4956c"
+        target = create2_address(factory, "0" * 64, "00")
+        item = {"transactionType": "CREATE2", "contractAddress": target}
+        tx = {"to": factory, "input": "0x" + "0" * 64 + "00"}
+        self.assertEqual(created_address(item, tx, {"contractAddress": None}), target)
+        with self.assertRaises(ProbeError):
+            created_address(item, dict(tx, input="0x" + "0" * 64 + "01"), {})
+        with self.assertRaises(ProbeError):
+            created_address(item, dict(tx, to="0x" + "1" * 40), {})
+
     def test_receipt_cost_keeps_limit_execution_and_value_separate(self):
         tx = {"gas": hex(100_000), "value": hex(7)}
         receipt = {"status": "0x1", "transactionHash": "0xabc", "blockNumber": "0x12",
