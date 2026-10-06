@@ -1,7 +1,7 @@
 {
   "network": "Monad testnet",
   "chainId": 10143,
-  "status": "mock-demo-reserve-funded",
+  "status": "mock-demo-market-active",
   "productionReady": false,
   "mockCollateral": true,
   "contractBuildCommit": "c8e135cb0972bdfa9f4d6ce38b5cf95201beccb4",
@@ -102,17 +102,24 @@
   },
   "onchainStatus": {
     "chainId": 10143,
-    "block": 68711245,
-    "hash": "0x4b47ed4a5b721673236f2e303313bec13e82929e350e3e0fa5b7fa9e15a585d6",
-    "timestamp": 1791297604,
+    "block": 68730216,
+    "hash": "0x164e0056db19b75fe59f323c1912a0c74d99ae64230e6a436bea3a2bc69f909d",
+    "timestamp": 1791303386,
     "mockCollateral": true,
-    "vaultTokenUnits": 10000000000,
-    "deployerTokenUnits": 90000000000,
+    "vaultTokenUnits": 12000000000,
+    "deployerTokenUnits": 88000000000,
     "reserveWad": "10000000000000000000000",
     "adapterReadyAt": 1791384001,
     "adapterAllowed": false,
     "adapterReadyUtc": "2026-10-07T14:40:01+00:00",
-    "reserveFunded": true
+    "marketCount": 1,
+    "status": "Active",
+    "opensAllowed": true,
+    "insuranceWad": "2000000000000000000000",
+    "maxLeverageX": 2,
+    "oiCapWad": "20000000000000000000000",
+    "reserveFunded": true,
+    "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb"
   },
   "stages": {
     "deploy": {
@@ -252,9 +259,82 @@
       "balanceReconciled": true,
       "submittedGasLimit": 7278504,
       "receiptGasUsed": 7278504
+    },
+    "createDemoMarket": {
+      "status": "verified",
+      "chainId": 10143,
+      "action": "create-demo-market",
+      "startedAt": "2026-10-06T16:16:00.279421+00:00",
+      "simulatedGasLimit": 1201357,
+      "gitCommit": "d0f7b1e2d7426deaac85a34ea3df780c28b53d10",
+      "market": {
+        "chainId": 10143,
+        "collateral": "0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF",
+        "creator": "0x3b2F1773a1B279A1b0b13aD425019C91433693c3",
+        "depthWad": "200000000000000000000000",
+        "factory": "0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0",
+        "initialPriceWad": "100000000000000000000",
+        "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb",
+        "mockCollateral": true,
+        "priceSource": "0xB9CCec2Fa71E7C92Df27E7040129c62ac96D49a7",
+        "runtimeCodeHash": "0x8ca488c10d6c385d4c21e98b9ada47c5f5942a02c4c4e0c56b027b6e5674294c",
+        "seedBondUnits": 2000000000,
+        "symbol": "PRIPO:DEMO",
+        "vault": "0x1980B3a41393f610a8BE552C71BAE3F42AAB6735"
+      },
+      "transactions": [
+        {
+          "hash": "0x27c76577d5c551c5aec6e666d4906ca536211d88f6203b21557c5a3737d8efc1",
+          "block": 68730213,
+          "gasLimit": 67731,
+          "receiptGasUsed": 67731,
+          "effectiveGasPriceWei": "103000000001",
+          "receiptFeeWei": "6976293000067731",
+          "valueWei": "0",
+          "contractAddress": null
+        },
+        {
+          "hash": "0xe0b520fcf7f9ad825203a5c6240ca68bb2ddf5dc1b7b271094f1cb44b377794e",
+          "block": 68730216,
+          "gasLimit": 1290495,
+          "receiptGasUsed": 1290495,
+          "effectiveGasPriceWei": "103000000001",
+          "receiptFeeWei": "132920985001290495",
+          "valueWei": "0",
+          "contractAddress": null
+        }
+      ],
+      "state": {
+        "chainId": 10143,
+        "block": 68730216,
+        "hash": "0x164e0056db19b75fe59f323c1912a0c74d99ae64230e6a436bea3a2bc69f909d",
+        "timestamp": 1791303386,
+        "mockCollateral": true,
+        "vaultTokenUnits": 12000000000,
+        "deployerTokenUnits": 88000000000,
+        "reserveWad": "10000000000000000000000",
+        "adapterReadyAt": 1791384001,
+        "adapterAllowed": false,
+        "adapterReadyUtc": "2026-10-07T14:40:01+00:00",
+        "marketCount": 1,
+        "status": "Active",
+        "opensAllowed": true,
+        "insuranceWad": "2000000000000000000000",
+        "maxLeverageX": 2,
+        "oiCapWad": "20000000000000000000000"
+      },
+      "balanceBlockBefore": 68730212,
+      "balanceBlockAfter": 68730216,
+      "balanceBeforeWei": "34719497233292721496",
+      "balanceAfterWei": "34579599955291363270",
+      "balanceDeltaWei": "139897278001358226",
+      "receiptFeesWei": "139897278001358226",
+      "balanceReconciled": true,
+      "submittedGasLimit": 1358226,
+      "receiptGasUsed": 1358226
     }
   },
-  "totalChargedFeeWei": "749685912007278504",
+  "totalChargedFeeWei": "889583190008636730",
   "collateral": {
     "address": "0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF",
     "name": "Pripo Mock USDC",
@@ -267,5 +347,28 @@
   "pending": [
     "Pyth activation after 2026-10-07T14:40:01+00:00",
     "Resolver and stale wind-down implementation"
+  ],
+  "markets": [
+    {
+      "chainId": 10143,
+      "collateral": "0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF",
+      "creator": "0x3b2F1773a1B279A1b0b13aD425019C91433693c3",
+      "depthWad": "200000000000000000000000",
+      "factory": "0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0",
+      "initialPriceWad": "100000000000000000000",
+      "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb",
+      "mockCollateral": true,
+      "priceSource": "0xB9CCec2Fa71E7C92Df27E7040129c62ac96D49a7",
+      "runtimeCodeHash": "0x8ca488c10d6c385d4c21e98b9ada47c5f5942a02c4c4e0c56b027b6e5674294c",
+      "seedBondUnits": 2000000000,
+      "symbol": "PRIPO:DEMO",
+      "vault": "0x1980B3a41393f610a8BE552C71BAE3F42AAB6735",
+      "status": "Active",
+      "createdBlock": 68730216,
+      "creationTransaction": "0xe0b520fcf7f9ad825203a5c6240ca68bb2ddf5dc1b7b271094f1cb44b377794e",
+      "maxLeverageX": 2,
+      "initialInsuranceWad": "2000000000000000000000",
+      "initialOiCapWad": "20000000000000000000000"
+    }
   ]
 }

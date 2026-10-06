@@ -42,8 +42,13 @@ All ten transactions succeeded from build commit **`c8e135c`**. At block **68711
 | Mock USDC | [0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF](https://testnet.monadvision.com/address/0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF) |
 | Vault proxy | [0x1980B3a41393f610a8BE552C71BAE3F42AAB6735](https://testnet.monadvision.com/address/0x1980B3a41393f610a8BE552C71BAE3F42AAB6735) |
 | Factory | [0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0](https://testnet.monadvision.com/address/0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0) |
+| PRIPO:DEMO market | [0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb](https://testnet.monadvision.com/address/0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb) |
 
 Simulation estimated **6,612,590** gas limits. Mined transactions submitted and were charged **7,278,504** gas, costing **0.749685912007278504 testnet MON**, exactly matching the sender's historical balance decrease. The new factory's Pyth approval is activatable **October 7 at 14:40:01 UTC / 15:40:01 WAT**. Its reserve is funded, so oracle-less market admission has no collateral-supply blocker. No market creation is claimed by this deployment stage. Resolver and stale wind-down remain unfinished.
+
+The subsequent market creation stage from script commit **`d0f7b1e`** succeeded at block **68730216**. [`PRIPO:DEMO` creation transaction](https://testnet.monadvision.com/tx/0xe0b520fcf7f9ad825203a5c6240ca68bb2ddf5dc1b7b271094f1cb44b377794e) emitted the expected factory event; registry, clone implementation and complete launch configuration match. The market is **Active**, its opens gate passes, initial price is **100 mUSDC**, insurance is **2,000 mUSDC**, leverage is capped at **2×**, and initial OI capacity is **20,000 mUSDC**. It has no positions at this snapshot. Vault custody is now **12,000 mUSDC**: 10,000 reserve plus 2,000 market insurance. The deployer retains **88,000 mUSDC**.
+
+Approval plus creation simulated **1,201,357** gas limits; actual submitted limits and receipt gas totaled **1,358,226**, costing **0.139897278001358226 testnet MON**. Historical sender balances reconcile exactly. The active deployment record includes the market under `markets`, both receipts under `stages.createDemoMarket`, and the creation-block state under `onchainStatus`.
 
 ## Native dependency reference
 
