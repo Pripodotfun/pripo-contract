@@ -1,7 +1,7 @@
 {
   "network": "Monad testnet",
   "chainId": 10143,
-  "status": "mock-demo-market-active",
+  "status": "mock-demo-position-open",
   "productionReady": false,
   "mockCollateral": true,
   "contractBuildCommit": "c8e135cb0972bdfa9f4d6ce38b5cf95201beccb4",
@@ -102,24 +102,27 @@
   },
   "onchainStatus": {
     "chainId": 10143,
-    "block": 68730216,
-    "hash": "0x164e0056db19b75fe59f323c1912a0c74d99ae64230e6a436bea3a2bc69f909d",
-    "timestamp": 1791303386,
+    "block": 68788491,
+    "hash": "0xf68e02d8e3662b252b6f2483058b32a0b4755fbe0619adc116aa177cb854f9d5",
+    "timestamp": 1791321053,
     "mockCollateral": true,
-    "vaultTokenUnits": 12000000000,
-    "deployerTokenUnits": 88000000000,
+    "vaultTokenUnits": 12100000000,
+    "deployerTokenUnits": 87900000000,
     "reserveWad": "10000000000000000000000",
     "adapterReadyAt": 1791384001,
     "adapterAllowed": false,
     "adapterReadyUtc": "2026-10-07T14:40:01+00:00",
-    "marketCount": 1,
-    "status": "Active",
-    "opensAllowed": true,
-    "insuranceWad": "2000000000000000000000",
-    "maxLeverageX": 2,
-    "oiCapWad": "20000000000000000000000",
-    "reserveFunded": true,
-    "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb"
+    "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb",
+    "positionCount": 1,
+    "insuranceWad": "2000024012006003001500",
+    "markPriceWad": "100100075050031268760",
+    "freeBalanceWad": "49894947473736868433",
+    "lockedWad": "50025012506253126564",
+    "healthWad": "499000499750124937",
+    "liquidatable": false,
+    "longSizeWad": "1000000000000000000",
+    "shortSizeWad": "0",
+    "reserveFunded": true
   },
   "stages": {
     "deploy": {
@@ -332,9 +335,93 @@
       "balanceReconciled": true,
       "submittedGasLimit": 1358226,
       "receiptGasUsed": 1358226
+    },
+    "openDemoPosition": {
+      "status": "verified",
+      "chainId": 10143,
+      "action": "open-demo-position",
+      "startedAt": "2026-10-06T21:10:19.004193+00:00",
+      "simulatedGasLimit": 1093300,
+      "gitCommit": "f1b962e8813082abf7272b84f0914c6df8991837",
+      "transactions": [
+        {
+          "hash": "0xe1a0ccf76d331a24ddbd77191c78230f483ff547042e318fb2643fad4595f0c7",
+          "block": 68788485,
+          "gasLimit": 67731,
+          "receiptGasUsed": 67731,
+          "effectiveGasPriceWei": "103000000001",
+          "receiptFeeWei": "6976293000067731",
+          "valueWei": "0",
+          "contractAddress": null
+        },
+        {
+          "hash": "0x2185b4bd2709d757ce8c380f4534f092327cf6d17d4d7a4a2307e76089ba3739",
+          "block": 68788488,
+          "gasLimit": 175267,
+          "receiptGasUsed": 175267,
+          "effectiveGasPriceWei": "103000000001",
+          "receiptFeeWei": "18052501000175267",
+          "valueWei": "0",
+          "contractAddress": null
+        },
+        {
+          "hash": "0xce77a3a0e45d188b4833a6257e55dbbee1b8d2d573f4084b38fde682cd12f01a",
+          "block": 68788491,
+          "gasLimit": 927199,
+          "receiptGasUsed": 927199,
+          "effectiveGasPriceWei": "103000000001",
+          "receiptFeeWei": "95501497000927199",
+          "valueWei": "0",
+          "contractAddress": null
+        }
+      ],
+      "state": {
+        "chainId": 10143,
+        "block": 68788491,
+        "hash": "0xf68e02d8e3662b252b6f2483058b32a0b4755fbe0619adc116aa177cb854f9d5",
+        "timestamp": 1791321053,
+        "mockCollateral": true,
+        "vaultTokenUnits": 12100000000,
+        "deployerTokenUnits": 87900000000,
+        "reserveWad": "10000000000000000000000",
+        "adapterReadyAt": 1791384001,
+        "adapterAllowed": false,
+        "adapterReadyUtc": "2026-10-07T14:40:01+00:00",
+        "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb",
+        "positionCount": 1,
+        "insuranceWad": "2000024012006003001500",
+        "markPriceWad": "100100075050031268760",
+        "freeBalanceWad": "49894947473736868433",
+        "lockedWad": "50025012506253126564",
+        "healthWad": "499000499750124937",
+        "liquidatable": false,
+        "longSizeWad": "1000000000000000000",
+        "shortSizeWad": "0"
+      },
+      "position": {
+        "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb",
+        "trader": "0x3b2F1773a1B279A1b0b13aD425019C91433693c3",
+        "sizeWad": "1000000000000000000",
+        "side": "long",
+        "entryCostWad": "100050025012506253127",
+        "averagePriceWad": "100050025012506253127",
+        "marginWad": "50025012506253126564",
+        "feeWad": "80040020010005003",
+        "limitPriceWad": "101000000000000000000",
+        "depositUnits": 100000000
+      },
+      "balanceBlockBefore": 68788484,
+      "balanceBlockAfter": 68788491,
+      "balanceBeforeWei": "34579599955291363270",
+      "balanceAfterWei": "34459069664290193073",
+      "balanceDeltaWei": "120530291001170197",
+      "receiptFeesWei": "120530291001170197",
+      "balanceReconciled": true,
+      "submittedGasLimit": 1170197,
+      "receiptGasUsed": 1170197
     }
   },
-  "totalChargedFeeWei": "889583190008636730",
+  "totalChargedFeeWei": "1010113481009806927",
   "collateral": {
     "address": "0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF",
     "name": "Pripo Mock USDC",
@@ -369,6 +456,26 @@
       "maxLeverageX": 2,
       "initialInsuranceWad": "2000000000000000000000",
       "initialOiCapWad": "20000000000000000000000"
+    }
+  ],
+  "positions": [
+    {
+      "market": "0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb",
+      "trader": "0x3b2F1773a1B279A1b0b13aD425019C91433693c3",
+      "sizeWad": "1000000000000000000",
+      "side": "long",
+      "entryCostWad": "100050025012506253127",
+      "averagePriceWad": "100050025012506253127",
+      "marginWad": "50025012506253126564",
+      "feeWad": "80040020010005003",
+      "limitPriceWad": "101000000000000000000",
+      "depositUnits": 100000000,
+      "status": "open",
+      "openedBlock": 68788491,
+      "openingTransaction": "0xce77a3a0e45d188b4833a6257e55dbbee1b8d2d573f4084b38fde682cd12f01a",
+      "freeBalanceWadAtOpen": "49894947473736868433",
+      "healthWadAtOpen": "499000499750124937",
+      "liquidatableAtOpen": false
     }
   ]
 }

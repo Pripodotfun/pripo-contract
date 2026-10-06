@@ -66,6 +66,8 @@ The [testnet runbook](docs/testnet-staging.md) stages the shared demo on Monad t
 
 The first market, **[`PRIPO:DEMO`](https://testnet.monadvision.com/address/0xeA326A40694dA4D7C5c64719B48Ba561EcA8C0Eb)**, is Active on chain 10143 with a 2,000 mUSDC insurance seed, 2× leverage cap and initial price of 100 mUSDC. This demo uses the oracle-less curve. Creation receipts and the funded 12,000 mUSDC vault snapshot are recorded at block 68730216.
 
+The deployer's first **one-unit long** opened at block **68788491** after a 100 mUSDC deposit, at **100.050025 mUSDC** average entry with **50.025013 mUSDC** locked margin. The active deployment record includes the position and all three transaction receipts. Vault custody is 12,100 mUSDC at that snapshot, including the unchanged 10,000-token reserve.
+
 See [implementation notes](docs/implementation-notes.md), [static-analysis triage](docs/validation.md), and the [protocol specification](Pripo-Perp%20protocol%20spec%20%E2%80%94%20permissionless%20LP-free%20markets%20on%20Monad%20%281%29.md).
 
 The funding-backing invariant uses two production markets with no liquidations or recapitalization, verifies each payer's capacity and both heap minima after every action, and withdraws full free entitlements without clamping withdrawals to available cash. Each sequence ends with a receiver-first unwind. Existing ADL/terminal stress fixtures now explicitly inject historical debt through test-only contracts; production no longer creates that debt through unlimited funding. See [implementation notes](docs/implementation-notes.md#payer-funded-capacity-and-recovery) for the capacity predicate and partial-close fee guard.
