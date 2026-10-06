@@ -1,6 +1,12 @@
-# Tenderly staging and mainnet rollout
+# Deployment and staging
 
-## Staging decision — October 5
+## Current decision — October 6
+
+Shared staging now uses **Monad testnet (10143)** because Tenderly access will only be available after submission. Follow [the testnet runbook](testnet-staging.md). Use the shared deployment sequence with testnet dependencies and explicitly separate testnet roles/capital from production. The October 5 Tenderly plan below is retained for later access; it is superseded as the submission staging requirement.
+
+Public testnet provides real Monad execution, transaction receipts and charged fees. Local forks provide block/time manipulation and deterministic recovery scenarios. Public testnet does not offer arbitrary time advancement, so the factory's 24-hour adapter delay is real. The Thursday Resolver gate still applies; if it fails, submit the testnet demo and postpone mainnet.
+
+## Deferred Tenderly plan — October 5
 
 The shared staging environment is a **fresh Tenderly Virtual TestNet fork of Monad mainnet**, using mainnet USDC, mainnet Pyth and production state. Monad testnet is reserved for Friday's one-hour gas/timing pass and Mera P-256 verification if Mera is selected. Testnet faucets and mock-USDC staging are removed from this plan.
 

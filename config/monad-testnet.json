@@ -1,0 +1,10 @@
+{
+  "chainId": 10143,
+  "usdc": "0x534b2f3A21130d7a60830c2Df862319e593943A3",
+  "pythCore": "0xFC6bd9F9f0c6481c6Af3A7Eb46b296A5B85ed379",
+  "hermes": "https://pyth.dourolabs.app/hermes",
+  "sources": {
+    "usdc": "https://developers.circle.com/stablecoins/usdc-contract-addresses",
+    "pythCore": "https://docs.pyth.network/price-feeds/core/upgrade/contracts"
+  }
+}

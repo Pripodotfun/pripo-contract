@@ -18,6 +18,8 @@ make monad-preflight # read-only RPC, Pyth and native-USDC observations; uses ig
 make monad-fork  # opt-in tests at the preflight's pinned block; no broadcast
 make monad-estimate-pyth # read-only Monad RPC estimates for captured signed provider updates
 make deployment-dry-run # deploy/configure/trade rehearsal on pinned local forks; no broadcast
+make testnet-preflight # verify Monad testnet dependencies, signer/balances and fresh signed Pyth
+make testnet-dry-run # shared deployment sequence on a local testnet fork; no broadcast
 make tenderly-support # confirm live Monad-mainnet Virtual TestNet and monitoring support
 make tenderly-alerts # prepare four ABI-derived alert definitions; does not create remote alerts
 make ci         # 10,000 runs for each invariant; depth 50; size/lint/ABI checks
@@ -59,7 +61,7 @@ Production pending ADL tests cover both sides, random continuation boundaries, r
 
 Factory tests cover atomic creation/rollback, fixed launch caps, reserve admission, feed escrow, delayed approvals and callback rejection. Oracle tests cover both an ABI-compatible provider mock and authenticated signed updates against the real Monad provider on pinned forks. Testnet execution and charged-fee measurements remain deployment gates.
 
-The [deployment runbook](docs/deployment.md) stages the shared rehearsal on a fresh Tenderly fork of Monad mainnet, with real USDC/Pyth dependencies and fork-local Safes. It retains the passing local 19-contract rehearsal and reserves Monad testnet for Friday's gas/timing measurements and optional Mera P-256 path. `RehearsalSafes.s.sol` creates actual Safe 1.4.1 proxies and executes Governor wiring with three signatures on isolated chain 999143. Hosted fork creation and alert publication still need Tenderly access. Mainnet depends on the Thursday Resolver gate; the fallback is a fork-demo submission.
+The [testnet runbook](docs/testnet-staging.md) stages the shared demo on Monad testnet with official test USDC and Pyth dependencies. Local forks retain accelerated block/time tests; testnet provides actual execution and fee receipts. Tenderly deployment/Safe/alert tooling is retained for when access becomes available after submission. Mainnet still depends on the Thursday Resolver gate; the fallback is a testnet-demo submission. The [deployment runbook](docs/deployment.md) retains the shared creation/governance sequence and deferred Tenderly plan.
 
 See [implementation notes](docs/implementation-notes.md), [static-analysis triage](docs/validation.md), and the [protocol specification](Pripo-Perp%20protocol%20spec%20%E2%80%94%20permissionless%20LP-free%20markets%20on%20Monad%20%281%29.md).
 

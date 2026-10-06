@@ -66,7 +66,8 @@ def request_json(url, data=None, headers=None):
 
 
 def rpc(url, method, params):
-    allowed = {"eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_call", "eth_getStorageAt", "eth_estimateGas"}
+    allowed = {"eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_call", "eth_getStorageAt", "eth_estimateGas",
+               "eth_getBalance", "eth_gasPrice", "eth_getTransactionReceipt", "eth_getTransactionByHash"}
     if method not in allowed:
         raise ProbeError("Only read-only RPC methods are permitted")
     result = request_json(url, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params},

@@ -135,6 +135,13 @@ contract DeploymentTest is Test {
         script.parseConfig('{"chainId":10143,"rehearsalOnly":true}');
     }
 
+    function testTestnetConfigCannotBeRetargetedToAnotherChain() public {
+        vm.expectRevert("testnet config cannot target another chain");
+        script.parseConfig('{"chainId":143,"testnetOnly":true}');
+        vm.expectRevert("testnet config cannot target another chain");
+        script.parseConfig('{"chainId":999143,"testnetOnly":true}');
+    }
+
     function testManifestRoundTripAndTamperedRuntimeRejected() public {
         PripoDeployment.Deployment memory d = script.deploy(config, deployer);
         vm.createDir("reports/deployment", true);

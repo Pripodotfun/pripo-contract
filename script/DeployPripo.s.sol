@@ -129,6 +129,9 @@ abstract contract PripoDeployment is Script {
         if (vm.keyExistsJson(json, ".rehearsalOnly") && vm.parseJsonBool(json, ".rehearsalOnly")) {
             require(c.chainId == 999143, "rehearsal config cannot target a public chain");
         }
+        if (vm.keyExistsJson(json, ".testnetOnly") && vm.parseJsonBool(json, ".testnetOnly")) {
+            require(c.chainId == 10143, "testnet config cannot target another chain");
+        }
         c.usdc = vm.parseJsonAddress(json, ".usdc");
         c.pythCore = vm.parseJsonAddress(json, ".pythCore");
         c.governor = vm.parseJsonAddress(json, ".governor");
@@ -175,6 +178,7 @@ abstract contract PripoDeployment is Script {
         string memory key = "deployment";
         vm.serializeUint(key, "chainId", c.chainId);
         vm.serializeBool(key, "rehearsalOnly", c.chainId == 999143);
+        vm.serializeBool(key, "testnetOnly", c.chainId == 10143);
         vm.serializeUint(key, "blockNumber", block.number);
         vm.serializeAddress(key, "deployer", sender);
         vm.serializeAddress(key, "usdc", c.usdc);

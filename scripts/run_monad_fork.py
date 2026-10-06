@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the pinned, read-only Monad fork suite and save redacted local output."""
 import json
+import re
 import subprocess
 import urllib.parse
 
@@ -14,6 +15,9 @@ def redact_output(output, env):
     secrets = urls + [env.get(name, "") for name in (
         "PYTH_API_KEY", "TENDERLY_ACCESS_KEY", "FUNDED_DEPLOYER_PRIVATE_KEY"
     )]
+    signer = env.get("FUNDED_DEPLOYER_PRIVATE_KEY", "").removeprefix("0x")
+    if re.fullmatch(r"[0-9a-fA-F]{64}", signer):
+        secrets += [signer, signer.lower(), signer.upper(), str(int(signer, 16))]
     for url in urls:
         parsed = urllib.parse.urlsplit(url)
         secrets += [v for _, v in urllib.parse.parse_qsl(parsed.query)]

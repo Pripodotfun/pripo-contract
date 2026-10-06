@@ -1,4 +1,4 @@
-.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth deployment-dry-run tenderly-support tenderly-alerts
+.PHONY: deps build test ci fmt abi analyze monad-preflight monad-fork monad-estimate-pyth deployment-dry-run tenderly-support tenderly-alerts testnet-preflight testnet-dry-run
 
 deps:
 	forge install --no-git --shallow foundry-rs/forge-std@v1.11.0 OpenZeppelin/openzeppelin-contracts@v5.4.0
@@ -47,3 +47,9 @@ tenderly-support:
 
 tenderly-alerts:
 	python3 scripts/tenderly_stage.py alerts
+
+testnet-preflight:
+	python3 scripts/testnet_stage.py preflight
+
+testnet-dry-run:
+	python3 scripts/testnet_stage.py dry-run

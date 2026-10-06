@@ -1,5 +1,9 @@
 # Monad integration
 
+## Staging update — October 6
+
+Monad testnet (10143) is now the shared staging target until Tenderly access is available after submission. The configured RPC serves the official testnet USDC and upgraded Pyth Core contracts. [Testnet staging](testnet-staging.md) records the current commands and evidence. Local mainnet/testnet forks continue to cover accelerated block/time scenarios; public testnet provides real execution and fee receipts. The October 5 Tenderly choice below is historical.
+
 ## Staging update — October 5
 
 Shared staging now uses a fresh Tenderly Virtual TestNet fork of Monad **mainnet**, with the same USDC and Pyth addresses verified below. Tenderly's live registry confirms Virtual TestNet and monitoring support for chain 143. The rehearsal uses virtual chain 999143 and fork-local Safes; no hosted fork or alert is claimed until account setup and deployment receipts exist. See the [current runbook](deployment.md) for the Tuesday–Saturday plan, alert definitions and Thursday Resolver fallback.
