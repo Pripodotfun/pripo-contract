@@ -1,5 +1,9 @@
 # Monad integration
 
+## Mock collateral update — October 6
+
+The active testnet demo uses **Pripo Mock USDC (`mUSDC`)**, with a verified 10,000-token reserve in a new vault. It reuses the original implementation/adapters and the real testnet Pyth provider. [Active addresses](../deployments/monad-testnet.json) and the [mock workflow](testnet-staging.md#mock-collateral-workflow) identify this freely minted test asset explicitly. The [native-USDC deployment](../deployments/monad-testnet-native.json) and historical real-token fork evidence below remain separate integration records.
+
 ## Staging update — October 6
 
 Monad testnet (10143) is now the shared staging target until Tenderly access is available after submission. The configured RPC serves the official testnet USDC and upgraded Pyth Core contracts. [Testnet staging](testnet-staging.md) records the current commands and evidence. Local mainnet/testnet forks continue to cover accelerated block/time scenarios; public testnet provides real execution and fee receipts. The October 5 Tenderly choice below is historical.

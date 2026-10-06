@@ -6,7 +6,7 @@ Use public Monad testnet, chain **10143**, for the shared rehearsal and submissi
 
 ### Mock collateral workflow
 
-The demo can use **Pripo Mock USDC (`mUSDC`)**, a six-decimal token deployed only on chain 10143. Its constructor mints 100,000 tokens to the deployer; anyone can call `faucet()` to mint another 10,000 to themselves. This is freely minted demo collateral, not Circle-issued or dollar-backed USDC.
+The active demo uses **Pripo Mock USDC (`mUSDC`)**, a six-decimal token deployed only on chain 10143. Its constructor minted 100,000 tokens to the deployer; anyone can call `faucet()` to mint another 10,000 to themselves. This is freely minted demo collateral, not Circle-issued or dollar-backed USDC.
 
 The existing vault cannot change its collateral token through an administrative setter. `DeployMockTestnet` therefore verifies the native deployment, reuses its vault/market implementations, adapters and linked libraries, and creates five contracts: mock token, initialized vault proxy, backstop, sweeper and factory. It performs the same three governance calls and contributes **10,000 mUSDC** through a normal token approval and `fundProtocolReserve`. The reserve floor remains 10,000 tokens, with 90,000 left for demo bonds and trading. The new factory starts its own full 24-hour Pyth approval delay.
 
@@ -21,6 +21,20 @@ python3 scripts/mock_testnet.py activate --broadcast
 
 Mock manifests, logs and receipt journals use `reports/deployment/mock-testnet/`; native deployment records remain in `reports/deployment/`. An existing mock journal/manifest blocks accidental redeployment. Verification checks exact call targets and amounts, all new/reused runtime hashes, real receipts, historical fee balances and the initial 10,000-token reserve backing. An interrupted broadcast must be reconciled with its saved Foundry transactions before continuing.
 
+### Active mock deployment — October 6
+
+All ten transactions succeeded from build commit **`c8e135c`**. At block **68711245**, the new vault holds **10,000 mUSDC**, `protocolReserve` is **10,000e18**, and the deployer retains **90,000 mUSDC**. The [active deployment record](../deployments/monad-testnet.json) contains the new addresses, reused code hashes, exact receipt evidence and fees. Demo clients should use this record.
+
+| Contract | Active demo address |
+| --- | --- |
+| Mock USDC | [0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF](https://testnet.monadvision.com/address/0xd0f68CF8Fe7725A34eE8312515FC27aD955D8fbF) |
+| Vault proxy | [0x1980B3a41393f610a8BE552C71BAE3F42AAB6735](https://testnet.monadvision.com/address/0x1980B3a41393f610a8BE552C71BAE3F42AAB6735) |
+| Factory | [0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0](https://testnet.monadvision.com/address/0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0) |
+
+Simulation estimated **6,612,590** gas limits. Mined transactions submitted and were charged **7,278,504** gas, costing **0.749685912007278504 testnet MON**, exactly matching the sender's historical balance decrease. The new factory's Pyth approval is activatable **October 7 at 14:40:01 UTC / 15:40:01 WAT**. Its reserve is funded, so oracle-less market admission has no collateral-supply blocker. No market creation is claimed by this deployment stage. Resolver and stale wind-down remain unfinished.
+
+## Native dependency reference
+
 | Dependency | Testnet address | Source |
 | --- | --- | --- |
 | Circle test USDC, six decimals | `0x534b2f3A21130d7a60830c2Df862319e593943A3` | [Circle](https://developers.circle.com/stablecoins/usdc-contract-addresses) |
@@ -28,9 +42,9 @@ Mock manifests, logs and receipt journals use `reports/deployment/mock-testnet/`
 
 Both addresses have code through the supplied testnet RPC. A fresh signed BTC payload was accepted by Pyth through `eth_call` at block **68675000**, with price age one second, confidence two basis points and zero provider update fee. The provider-only RPC gas estimate was **175,850**. This check does not submit a transaction or pay gas, and a fresh payload is required again for each live price-dependent operation.
 
-## Live deployment — October 6
+## Original native-USDC deployment — October 6
 
-The core stack is deployed from contract build commit **`0ef1922`**. All 19 creations and three Governor transactions succeeded, all runtime hashes match, and the factory/backstop bindings and final testnet roles pass live reads. The [public deployment record](../deployments/monad-testnet.json) contains addresses, code hashes, transaction hashes, exact fees and status at block **68681084**.
+The original core stack was deployed from contract build commit **`0ef1922`**. All 19 creations and three Governor transactions succeeded, all runtime hashes match, and the factory/backstop bindings and final testnet roles pass live reads. The archived [native deployment record](../deployments/monad-testnet-native.json) contains addresses, code hashes, transaction hashes, exact fees and status at block **68681084**. Its unfunded native-USDC vault is not the active mock demo vault.
 
 | Contract | Address |
 | --- | --- |
