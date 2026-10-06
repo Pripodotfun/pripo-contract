@@ -102,11 +102,11 @@ def verify_stage(endpoint, stage, live_path):
     print(f"Verified {len(costs)} testnet transactions. Receipt fees: {record['receiptFeesWei']} wei.")
 
 
-def run_forge(command, env, label):
+def run_forge(command, env, label, folder=FOLDER):
     result = subprocess.run(command, cwd=ROOT, env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True)
     output = redact_output(result.stdout, env)
-    (FOLDER / f"testnet-{label}.log").write_text(output)
+    (folder / f"testnet-{label}.log").write_text(output)
     print(output, end="", flush=True)
     if result.returncode:
         raise ProbeError(f"Testnet {label} failed; inspect the saved redacted log and receipts")

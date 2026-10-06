@@ -4,6 +4,23 @@
 
 Use public Monad testnet, chain **10143**, for the shared rehearsal and submission demo. Tenderly access and hosted alerts are deferred until access is available after submission. The shared production deployment code remains `PripoDeployment`; `DeployTestnet` adds signing through the configured testnet key and rejects every other chain before reading that key. A `testnetOnly` config cannot be retargeted to mainnet.
 
+### Mock collateral workflow
+
+The demo can use **Pripo Mock USDC (`mUSDC`)**, a six-decimal token deployed only on chain 10143. Its constructor mints 100,000 tokens to the deployer; anyone can call `faucet()` to mint another 10,000 to themselves. This is freely minted demo collateral, not Circle-issued or dollar-backed USDC.
+
+The existing vault cannot change its collateral token through an administrative setter. `DeployMockTestnet` therefore verifies the native deployment, reuses its vault/market implementations, adapters and linked libraries, and creates five contracts: mock token, initialized vault proxy, backstop, sweeper and factory. It performs the same three governance calls and contributes **10,000 mUSDC** through a normal token approval and `fundProtocolReserve`. The reserve floor remains 10,000 tokens, with 90,000 left for demo bonds and trading. The new factory starts its own full 24-hour Pyth approval delay.
+
+```sh
+python3 scripts/mock_testnet.py deploy             # simulate all ten transactions
+python3 scripts/mock_testnet.py deploy --broadcast # five creations, three governance calls, approve/fund
+python3 scripts/mock_testnet.py deploy --verify-only
+python3 scripts/mock_testnet.py status
+# After the new factory's approval timestamp:
+python3 scripts/mock_testnet.py activate --broadcast
+```
+
+Mock manifests, logs and receipt journals use `reports/deployment/mock-testnet/`; native deployment records remain in `reports/deployment/`. An existing mock journal/manifest blocks accidental redeployment. Verification checks exact call targets and amounts, all new/reused runtime hashes, real receipts, historical fee balances and the initial 10,000-token reserve backing. An interrupted broadcast must be reconciled with its saved Foundry transactions before continuing.
+
 | Dependency | Testnet address | Source |
 | --- | --- | --- |
 | Circle test USDC, six decimals | `0x534b2f3A21130d7a60830c2Df862319e593943A3` | [Circle](https://developers.circle.com/stablecoins/usdc-contract-addresses) |
