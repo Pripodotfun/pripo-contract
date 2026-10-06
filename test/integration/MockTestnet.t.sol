@@ -4,7 +4,9 @@ pragma solidity 0.8.30;
 import {CreateDemoMarket} from "../../script/CreateDemoMarket.s.sol";
 import {DeployMockTestnet} from "../../script/DeployMockTestnet.s.sol";
 import {PripoDeployment} from "../../script/DeployPripo.s.sol";
+import {OpenDemoPosition} from "../../script/OpenDemoPosition.s.sol";
 import {TestnetMockUSDC} from "../../script/testnet/MockUSDC.sol";
+import {MarginVault} from "../../src/MarginVault.sol";
 import {Market} from "../../src/Market.sol";
 import {DeploymentHarness} from "../helpers/DeploymentHarness.sol";
 import {MockPyth} from "../helpers/MockPyth.sol";
@@ -82,6 +84,28 @@ contract MockTestnetTest is Test {
         vm.expectRevert("demo already created");
         creator.run();
         assertEq(token.balanceOf(sender), 88_000e6);
+        vm.setEnv("DEMO_MARKET_INPUT", "reports/deployment/mock-test/demo-market.json");
+        vm.setEnv("DEMO_POSITION_OUTPUT", "reports/deployment/mock-test/position.json");
+        OpenDemoPosition opener = new OpenDemoPosition();
+        (uint256 average, uint256 fee, uint256 margin,) = market.quoteOpenFor(sender, 1e18);
+        opener.run();
+        assertEq(market.position(sender).size, 1e18);
+        assertEq(market.position(sender).entryCost, average);
+        assertEq(d.vault.locked(sender, address(market)), int256(margin));
+        assertEq(d.vault.freeBalance(sender), 100e18 - margin - fee);
+        assertEq(token.balanceOf(sender), 87_900e6);
+        assertEq(token.balanceOf(address(d.vault)), 12_100e6);
+        assertEq(d.vault.protocolReserve(), 10_000e18);
+        assertEq(token.allowance(sender, address(d.vault)), 0);
+        vm.expectRevert("position already exists");
+        opener.run();
+        assertEq(token.balanceOf(sender), 87_900e6);
+        // A first-time trader must reject an adverse quote before approving or depositing tokens.
+        vm.setEnv("FUNDED_DEPLOYER_PRIVATE_KEY", vm.toString(uint256(2)));
+        vm.setEnv("DEPLOYER", vm.toString(vm.addr(2)));
+        _moveDemoPriceAboveLimit(market, token, address(d.vault));
+        vm.expectRevert("quote exceeds limit");
+        opener.run();
     }
 
     function testMockDeploymentAndFaucetRejectMainnet() public {
@@ -94,10 +118,23 @@ contract MockTestnetTest is Test {
         CreateDemoMarket creator = new CreateDemoMarket();
         vm.expectRevert("testnet only");
         creator.run();
+        OpenDemoPosition opener = new OpenDemoPosition();
+        vm.expectRevert("testnet only");
+        opener.run();
         vm.chainId(10143);
         TestnetMockUSDC token = new TestnetMockUSDC(address(this));
         vm.chainId(143);
         vm.expectRevert("testnet only");
         token.faucet();
+    }
+
+    function _moveDemoPriceAboveLimit(Market market, TestnetMockUSDC token, address vaultAddress) internal {
+        address trader = makeAddr("price-mover");
+        vm.startPrank(trader);
+        token.faucet();
+        token.approve(vaultAddress, 1_000e6);
+        MarginVault(vaultAddress).deposit(1_000e6);
+        market.open(10e18, 102e18, "");
+        vm.stopPrank();
     }
 }

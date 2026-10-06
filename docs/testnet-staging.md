@@ -33,6 +33,18 @@ python3 scripts/create_demo_market.py --verify-only # receipts and creation-bloc
 
 The runner validates exact calldata before submission and retains `market.json`, `market-receipts.json` and `market-broadcast.json` beside the mock manifest. It verifies the factory event, deterministic clone implementation, complete launch configuration, virtual reserves, zero initial positions/OI, seed custody and insurance, exhausted approval, unchanged protocol reserve and opens gate. Gas fees are reconciled against historical sender balances. A saved market journal blocks another broadcast; reconcile interrupted transactions before any retry.
 
+### First demo position
+
+`OpenDemoPosition` deposits **100 mUSDC** from the configured deployer and opens **one long base unit** on `PRIPO:DEMO`, with an absolute maximum average fill of **101 mUSDC**. The market computes required margin and fees; the unused deposit stays in the trader's free balance. The script checks the quote against both the price limit and the deposit budget before the first broadcast call, and requires that the trader has no existing position.
+
+```sh
+python3 scripts/open_demo_position.py               # quote and simulate three calls
+python3 scripts/open_demo_position.py --broadcast   # exact approval, deposit, open
+python3 scripts/open_demo_position.py --verify-only # recheck receipts at the opening block
+```
+
+The runner rejects different trade directions, sizes, limits, deposit amounts or targets. It records `open-position-receipts.json`, `open-position-broadcast.json` and `position.json` under the mock deployment folder. Receipt verification checks `PositionOpened`, on-chain size/entry/margin, locked and free balances, fee allocations, token custody, reserve preservation, exhausted approval and position health at the opening block. Existing journals block duplicate submission. If only approval/deposit succeeds, reconcile the saved transactions before retrying; the deposit remains in the vault's free balance.
+
 ### Active mock deployment — October 6
 
 All ten transactions succeeded from build commit **`c8e135c`**. At block **68711245**, the new vault holds **10,000 mUSDC**, `protocolReserve` is **10,000e18**, and the deployer retains **90,000 mUSDC**. The [active deployment record](../deployments/monad-testnet.json) contains the new addresses, reused code hashes, exact receipt evidence and fees. Demo clients should use this record.
