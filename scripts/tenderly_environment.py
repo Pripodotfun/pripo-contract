@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 from deploy_testnet import keccak
 from monad_preflight import ROOT, ProbeError, load_env, request_json, rpc
-from tenderly_stage import project_api, project_status
+from tenderly_stage import ProjectAPIError, project_api, project_status
 
 FOLDER = ROOT / "reports/tenderly"
 JOURNAL = FOLDER / "environment.json"
@@ -26,8 +26,8 @@ def create_payload(header):
             "network_configs": [{"network_id": "143", "block_number": header["number"],
                                   "chain_config_overrides": {"chain_id": str(CHAIN_ID)},
                                   "accounts": [{"address": SENDER, "balance": hex(1000 * 10**18)}],
-                                  "explorer_config": {"enabled": False}}],
-            "bridge_config": {"enabled": False}}
+                                  "explorer_config": {"enabled": False, "verification_visibility": "abi"}}],
+            "bridge_config": {"enabled": False, "relay_mode": "autoRelay", "delay_seconds": 0}}
 
 
 def environment_parts(result, record):
@@ -124,13 +124,22 @@ def main():
     flags = parser.add_mutually_exclusive_group()
     flags.add_argument("--create", action="store_true")
     flags.add_argument("--verify-only", action="store_true")
+    flags.add_argument("--retry-rejected", action="store_true", help="Retry an explicitly rejected request after checking for an existing fork")
     args = parser.parse_args()
     env = load_env()
     FOLDER.mkdir(parents=True, exist_ok=True)
     if args.verify_only:
         verify(env, json.loads(JOURNAL.read_text()))
         return
-    if JOURNAL.exists():
+    if args.retry_rejected:
+        previous = json.loads(JOURNAL.read_text())
+        if previous.get("status") != "rejected":
+            raise ProbeError("Only an explicitly rejected request can be retried")
+        attempts = FOLDER / "environment-rejected-attempts.json"
+        history = json.loads(attempts.read_text()) if attempts.exists() else []
+        history.append(previous)
+        attempts.write_text(json.dumps(history, indent=2) + "\n")
+    elif JOURNAL.exists():
         raise ProbeError("Environment journal exists; verify or reconcile without creating another fork")
     status = project_status(env)
     (FOLDER / "project-status.json").write_text(json.dumps(status, indent=2) + "\n")
@@ -146,12 +155,18 @@ def main():
                          "timestamp": int(header["timestamp"], 16)}, "request": payload,
               "gitCommit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()}
     (FOLDER / "environment-plan.json").write_text(json.dumps(record, indent=2) + "\n")
-    if not args.create:
+    if not (args.create or args.retry_rejected):
         print(json.dumps(record, indent=2))
         return
     record.update(status="creation-started", startedAt=datetime.now(timezone.utc).isoformat())
     JOURNAL.write_text(json.dumps(record, indent=2) + "\n")
-    result = project_api(env, "/environments", public=True, data=payload)
+    try:
+        result = project_api(env, "/environments", public=True, data=payload)
+    except ProjectAPIError as exc:
+        if exc.status in (400, 401, 403, 404, 422):
+            record.update(status="rejected", httpStatus=exc.status, rejection=str(exc))
+            JOURNAL.write_text(json.dumps(record, indent=2) + "\n")
+        raise
     record["environmentId"] = result["id"]
     JOURNAL.write_text(json.dumps(record, indent=2) + "\n")
     verify(env, record)

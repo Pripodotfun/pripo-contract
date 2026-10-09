@@ -1,17 +1,31 @@
 import copy
+import io
 import json
 from pathlib import Path
 import sys
 import unittest
+import urllib.error
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from monad_preflight import ProbeError
 from tenderly_environment import CHAIN_ID, admin_rpc, create_payload, environment_parts
-from tenderly_stage import project_status
+from tenderly_stage import ProjectAPIError, project_api, project_status
 
 
 class TenderlyEnvironmentTest(unittest.TestCase):
+    def test_api_validation_errors_redact_credentials_and_rpc_urls(self):
+        env = {"TENDERLY_ACCOUNT_SLUG": "account", "TENDERLY_PROJECT_SLUG": "project", "TENDERLY_ACCESS_KEY": "secret"}
+        error = urllib.error.HTTPError("https://api.tenderly.co", 400, "invalid", {},
+                                      io.BytesIO(b'{"message":"secret https://virtual.monad.rpc.tenderly.co/new-private-rpc"}'))
+        with patch("tenderly_stage.urllib.request.build_opener") as opener:
+            opener.return_value.open.side_effect = error
+            with self.assertRaises(ProjectAPIError) as caught:
+                project_api(env, "/environments", public=True, data={})
+        self.assertEqual(caught.exception.status, 400)
+        self.assertNotIn("secret", str(caught.exception))
+        self.assertNotIn("new-private-rpc", str(caught.exception))
+
     def test_project_metadata_permission_is_separate_and_admin_urls_are_not_reported(self):
         env = {"TENDERLY_ACCOUNT_SLUG": "account", "TENDERLY_PROJECT_SLUG": "project", "TENDERLY_ACCESS_KEY": "secret"}
         item = {"id": "env", "slug": "demo", "active_instance": {

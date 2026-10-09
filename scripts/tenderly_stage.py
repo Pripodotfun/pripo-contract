@@ -5,9 +5,12 @@ from datetime import datetime, timezone
 import json
 import re
 import subprocess
+import urllib.error
+import urllib.request
 from urllib.parse import quote
 
-from monad_preflight import ROOT, ProbeError, load_env, request_json, rpc
+from monad_preflight import ROOT, NoRedirect, ProbeError, load_env, request_json, rpc
+from run_monad_fork import redact_output
 
 REGISTRY = "https://api.tenderly.co/api/v1/supported-networks"
 EVENTS = {
@@ -18,6 +21,12 @@ EVENTS = {
 }
 
 
+class ProjectAPIError(ProbeError):
+    def __init__(self, status, detail):
+        self.status = status
+        super().__init__(f"Tenderly HTTP {status}: {detail}")
+
+
 def project_api(env, path, public=False, data=None):
     account, project = env.get("TENDERLY_ACCOUNT_SLUG"), env.get("TENDERLY_PROJECT_SLUG")
     key = env.get("TENDERLY_ACCESS_KEY")
@@ -25,7 +34,20 @@ def project_api(env, path, public=False, data=None):
         raise ProbeError("Set the Tenderly access key and account/project slugs")
     prefix = "https://api.tenderly.co/api/" + ("public/" if public else "") + "v1"
     base = prefix + "/account/" + quote(account, safe="") + "/project/" + quote(project, safe="")
-    return request_json(base + path, data, {"X-Access-Key": key, "Content-Type": "application/json"})
+    request = urllib.request.Request(base + path, None if data is None else json.dumps(data).encode(),
+                                     {"X-Access-Key": key, "Content-Type": "application/json"})
+    try:
+        with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as exc:
+        body = exc.read(4096).decode(errors="replace")
+        # Provider validation messages are useful, but may echo keys or URLs.
+        detail = re.sub(r"https?://[^\s\"<>]+", "[URL REDACTED]", redact_output(body, env))
+        raise ProjectAPIError(exc.code, detail[:1500]) from None
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        raise ProbeError(f"Tenderly connection failed ({type(exc).__name__})") from None
+    except (ValueError, UnicodeError):
+        raise ProbeError("Invalid Tenderly JSON response") from None
 
 
 def project_status(env):
