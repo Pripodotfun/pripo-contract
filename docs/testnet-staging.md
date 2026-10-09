@@ -4,6 +4,8 @@
 
 Use public Monad testnet, chain **10143**, for the shared rehearsal and submission demo. Tenderly access and hosted alerts are deferred until access is available after submission. The shared production deployment code remains `PripoDeployment`; `DeployTestnet` adds signing through the configured testnet key and rejects every other chain before reading that key. A `testnetOnly` config cannot be retargeted to mainnet.
 
+**October 9 update:** Tenderly access has now been granted. Resume the [fresh mainnet-fork rehearsal](deployment.md) after configuring its account/project credentials. This runbook remains the reference for the existing public demo and real Monad execution/fee measurements. Hosted deployment and alerts are still unverified; access alone is not a completed rehearsal.
+
 ### Mock collateral workflow
 
 The active demo uses **Pripo Mock USDC (`mUSDC`)**, a six-decimal token deployed only on chain 10143. Its constructor minted 100,000 tokens to the deployer; anyone can call `faucet()` to mint another 10,000 to themselves. This is freely minted demo collateral, not Circle-issued or dollar-backed USDC.
@@ -128,6 +130,6 @@ The factory's Pyth adapter approval requires **24 real hours** after `scheduleAd
 
 - Public testnet: deploy, role wiring, actual oracle updates, funding/market/trading flows, revert receipts and traces, gas limits and charged fees; Mera P-256 and end-to-end passkey verification if selected.
 - Local mainnet/testnet forks: accelerated dispute-window boundaries, stale wind-down, Degraded at 100/101 blocks, long funding gaps, full-book ADL and forced-settlement stress. Recovery fixtures that inject legacy debt stay explicitly labelled.
-- After Tenderly access: hosted fresh-fork replay, Safe threshold rehearsal, debugger links and remote alert delivery. Prepared alert definitions are not live monitoring.
+- Tenderly (access granted October 9; workspace credentials pending): hosted fresh-fork replay, Safe threshold rehearsal, debugger links and remote alert delivery where supported. Prepared alert definitions are not live monitoring.
 
-Resolver and stale wind-down remain implementation milestones. Wednesday–Thursday targets those paths; Friday retains the four stress measurements and security checks. If Resolver is not green Thursday night, submit the testnet demo and move mainnet to judging week. Do not launch immutable production markets while their settlement path is unfinished.
+Resolver and stale wind-down remain implementation milestones. The original Wednesday–Thursday targets did not establish completion. Retain the four real-Monad stress measurements and security checks; use a verified demo and postpone mainnet if the Resolver gate is not green. Do not launch immutable production markets while their settlement path is unfinished.

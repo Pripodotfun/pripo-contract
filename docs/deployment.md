@@ -1,22 +1,22 @@
 # Deployment and staging
 
-## Current decision — October 6
+## Current decision — October 9
 
-Shared staging now uses **Monad testnet (10143)** because Tenderly access will only be available after submission. Follow [the testnet runbook](testnet-staging.md). Use the shared deployment sequence with testnet dependencies and explicitly separate testnet roles/capital from production. The October 5 Tenderly plan below is retained for later access; it is superseded as the submission staging requirement.
+Tenderly access has been granted. Resume the **fresh Monad-mainnet fork rehearsal** below once project credentials are configured. A live registry check on October 9 confirms Monad mainnet **143** supports Virtual TestNets, monitoring, simulator and explorer. Use isolated virtual chain **999143** for the hosted rehearsal.
 
-The active demo uses **Pripo Mock USDC (`mUSDC`)** in a replacement vault with a verified 10,000-token reserve. [Current addresses](../deployments/monad-testnet.json) supersede the original native-USDC vault for demo clients. The original deployment remains an archived integration reference. Production still requires real USDC and final Safe roles.
+The existing public-testnet demo uses **Pripo Mock USDC (`mUSDC`)**, a funded reserve, the `PRIPO:DEMO` market and a recorded one-unit long. [Current demo addresses and transaction evidence](../deployments/monad-testnet.json) remain the public demo reference until a hosted deployment is verified. Follow [the testnet runbook](testnet-staging.md) for this environment. Production still requires real USDC and final Safe roles.
 
-Public testnet provides real Monad execution, transaction receipts and charged fees. Local forks provide block/time manipulation and deterministic recovery scenarios. Public testnet does not offer arbitrary time advancement, so the factory's 24-hour adapter delay is real. The Thursday Resolver gate still applies; if it fails, submit the testnet demo and postpone mainnet.
+Public testnet supplies real Monad execution, timing and charged-fee measurements, including Mera P-256 if selected. The hosted fork supplies shared deployment/Safe rehearsal, mainnet USDC/Pyth integration, block/time manipulation, recovery scenarios and debugger evidence. Resolver and stale wind-down are still implementation gates; gaining Tenderly access does not satisfy them or establish mainnet readiness.
 
-## Deferred Tenderly plan — October 5
+## Tenderly rehearsal plan
 
-The shared staging environment is a **fresh Tenderly Virtual TestNet fork of Monad mainnet**, using mainnet USDC, mainnet Pyth and production state. Monad testnet is reserved for Friday's one-hour gas/timing pass and Mera P-256 verification if Mera is selected. Testnet faucets and mock-USDC staging are removed from this plan.
+The hosted staging target is a **fresh Tenderly Virtual TestNet fork of Monad mainnet**, using mainnet USDC, mainnet Pyth and production state. Use fork-only balances against the actual USDC contract for the reserve, bonds and trader deposits. The mock-token public demo remains separate evidence.
 
-Tenderly's [live network registry](https://api.tenderly.co/api/v1/supported-networks) was checked on October 5: Monad, chain **143**, is a mainnet with `virtual_testnet`, `monitoring`, `simulator` and `explorer` all enabled. `make tenderly-support` refreshes and saves the evidence in `reports/tenderly/network-support.json`. Its [Monad support announcement](https://tenderly.co/blog/tenderly-supports-monad-from-day-one/) also explicitly covers Virtual TestNets.
+Tenderly's [live network registry](https://api.tenderly.co/api/v1/supported-networks) was rechecked on **October 9 at 01:54:05 UTC**: Monad, chain **143**, is a mainnet with `virtual_testnet`, `monitoring`, `simulator` and `explorer` all enabled. `make tenderly-support` refreshes and saves the evidence in `reports/tenderly/network-support.json`. Its [Monad support announcement](https://tenderly.co/blog/tenderly-supports-monad-from-day-one/) also explicitly covers Virtual TestNets.
 
 The virtual chain ID is **999143**, keeping rehearsal signatures separate from production while retaining mainnet contract addresses. Saturday replays the same scripts and reviewed deployment sequence with production roles, chain ID, nonces and fresh signatures. It does not reuse signed rehearsal transactions.
 
-**Current hosted status:** no Tenderly credentials are configured, so no hosted fork, fork Safes or live alerts have been created. The local deployment rehearsal below remains evidence for local execution only.
+**Current hosted status:** access is granted and the access key has been added; account/project slugs, Admin RPC and alert destination are still pending. No hosted fork, fork Safe deployment or live alert has been verified from this workspace. The local deployment rehearsal below remains evidence for local execution only.
 
 ## Existing local rehearsal evidence
 
@@ -38,7 +38,9 @@ The runner checks chain ID and pinned block hashes, runs `DeployPripo`, then the
 
 ## Fresh fork and Safe setup
 
-Supply `TENDERLY_ACCESS_KEY`, `TENDERLY_ACCOUNT_SLUG`, `TENDERLY_PROJECT_SLUG`, the Virtual TestNet Admin RPC as `TENDERLY_RPC`, and the existing on-call `TENDERLY_DELIVERY_CHANNEL_ID` in ignored `.env`. The mainnet RPC and Pyth key already exist. Never publish the Admin RPC; it can mutate the environment.
+Supply `TENDERLY_ACCESS_KEY`, `TENDERLY_ACCOUNT_SLUG` and `TENDERLY_PROJECT_SLUG` in ignored `.env` to connect the granted account/project. An access key is created in [Tenderly's API token settings](https://docs.tenderly.co/platform/account/projects/api-tokens); keep it out of chat and Git. If an environment already exists, also provide its Admin RPC as `TENDERLY_RPC`; otherwise obtain that endpoint when creating the fresh environment. Set the existing on-call destination as `TENDERLY_DELIVERY_CHANNEL_ID` before binding alerts. The mainnet RPC and Pyth key already exist. Never publish the Admin RPC; it can mutate the environment.
+
+With account/project access configured, inspect the project and existing environments first, then use the [Virtual Environments API](https://docs.tenderly.co/api-reference/virtual-environments/create-environment) or dashboard to create the fresh rehearsal. Inspect returned environment/instance metadata and confirm the chain-ID override before funding balances or deploying Safes.
 
 Create the environment on the day of testing with parent network **143**, virtual chain **999143**, and a newly observed mainnet block. Save the parent block number, hash, timestamp, environment ID and instance ID. Refork from mainnet before the final rehearsal; cloning Tuesday's already-mutated environment is not a fresh mainnet fork. Freeze state synchronization for deterministic fault/time scenarios and record any balance, block, time or storage changes separately from the production deployment manifest.
 
@@ -127,9 +129,11 @@ python3 scripts/tenderly_stage.py alerts --manifest reports/deployment/tenderly-
 
 Four categories yield ten emitter-specific rules for three markets. The saved `alerts-plan.json` contains the event signatures, topics and documented Tenderly API payloads. It is a **plan**, not proof of remote creation. Add the actual targets to the Tenderly project, create the rules using the [Alerts API](https://docs.tenderly.co/monitoring/alerts/api), then record alert IDs and delivery evidence for each category. Mainnet monitoring support does not alone prove that a particular Virtual TestNet is accepted as an alert target; confirm that capability and actual delivery in the project. Do not substitute virtual chain ID 999143 for a Tenderly-specific network identifier without verification.
 
-On Saturday, regenerate against chain 143 and actual production addresses, verify enabled rules and destinations, and record a delivery test. Every newly created permissionless market must be enrolled; the three launch clones are not permanent coverage of the entire factory. Keep fork and production rule IDs separate. Access, destination selection and deployment addresses currently block remote creation; no alert is described as live until created and verified.
+For production launch, regenerate against chain 143 and actual production addresses, verify enabled rules and destinations, and record a delivery test. Every newly created permissionless market must be enrolled; the three launch clones are not permanent coverage of the entire factory. Keep fork and production rule IDs separate. Workspace credentials, destination selection and deployment addresses currently block remote creation; no alert is described as live until created and verified.
 
 ## Week and release gate
+
+The table records the original October 5 targets. Access arrived October 9; the elapsed Tuesday–Thursday targets are not completed milestones. Re-establish the remaining schedule after the hosted deployment and Resolver status are verified. Production release requires completed gates regardless of date.
 
 | Day | Deliverable |
 | --- | --- |
@@ -141,7 +145,7 @@ On Saturday, regenerate against chain 143 and actual production addresses, verif
 
 **Adapter-delay dependency:** the factory has an unmodified one-day approval delay. Saturday creation of Pyth markets needs the factory deployed and the adapter scheduled on Friday. If all infrastructure is first deployed Saturday, Pyth markets wait until Sunday. Oracle-less markets do not require Pyth approval. The Friday-infrastructure versus Saturday-only choice is pending; no mainnet approval delay is bypassed for the schedule.
 
-Friday's four planned stress measurements are the first 64-match ADL call, bounded fallback completion, 128-position forced settlement, and a full payer-book funding checkpoint after a long gap. Also retain deployment/provider update receipts. Report RPC estimate, submitted gas limit, receipt gas used, effective gas price, transferred native value and isolated sender balance delta; derive the actual charged fee separately. Fork simulation numbers are not charged Monad fees. Check chain 10143 and real deployment dependencies during this measurement pass. Provision the required testnet MON/token balances in advance through the supplied access; no faucet or mock-USDC setup is part of staging.
+The four planned public-testnet stress measurements are the first 64-match ADL call, bounded fallback completion, 128-position forced settlement, and a full payer-book funding checkpoint after a long gap. Also retain deployment/provider update receipts. Report RPC estimate, submitted gas limit, receipt gas used, effective gas price, transferred native value and isolated sender balance delta; derive the actual charged fee separately. Fork simulation numbers are not charged Monad fees. Check chain 10143 and identify the exact dependencies/collateral during this measurement pass. The existing mUSDC deployment can support clearly labelled demo measurements; native-USDC integration is verified separately on the fresh mainnet fork.
 
 If Mera is selected, include real Monad testnet P-256 verification and an end-to-end passkey transaction in the same hour. A Tenderly result cannot satisfy that gate. Otherwise record the path as not selected.
 
