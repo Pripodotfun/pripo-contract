@@ -3,7 +3,9 @@
 import argparse
 from datetime import datetime, timezone
 import io
+import hashlib
 import json
+import shutil
 import subprocess
 import tarfile
 import time
@@ -63,18 +65,20 @@ def prepare_source():
     if SOURCE.exists():
         raise ProbeError("Incomplete source extraction; inspect before retrying")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    deps = {}
-    for name in ("forge-std", "openzeppelin-contracts"):
-        dep = ROOT / "lib" / name
-        if subprocess.check_output(["git", "status", "--porcelain"], cwd=dep, text=True).strip():
-            raise ProbeError("Dependency checkout has local changes: " + name)
-        deps[name] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=dep, text=True).strip()
     archive = subprocess.check_output(["git", "archive", commit, "src", "script", "config", "foundry.toml",
                                        "remappings.txt"], cwd=ROOT)
     SOURCE.mkdir()
     with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
         bundle.extractall(SOURCE, filter="data")
-    (SOURCE / "lib").symlink_to(ROOT / "lib", target_is_directory=True)
+    deps = {}
+    for name in ("forge-std", "openzeppelin-contracts"):
+        dep = SOURCE / "lib" / name
+        shutil.copytree(ROOT / "lib" / name, dep, ignore=shutil.ignore_patterns(".git"))
+        digest = hashlib.sha256()
+        for file in sorted(p for p in dep.rglob("*") if p.is_file()):
+            digest.update(str(file.relative_to(dep)).encode() + b"\0")
+            digest.update(hashlib.sha256(file.read_bytes()).digest())
+        deps[name] = {"treeSha256": digest.hexdigest()}
     (SOURCE / "reports/deployment").mkdir(parents=True)
     record = {"commit": commit, "dependencies": deps, "workingTreeEditsIncluded": False}
     save(path, record)
