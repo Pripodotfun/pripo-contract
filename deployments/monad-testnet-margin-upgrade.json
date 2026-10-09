@@ -1,0 +1,187 @@
+{
+  "chainId": 10143,
+  "testnetOnly": true,
+  "mockCollateral": true,
+  "status": "scheduled",
+  "featureContractsCommit": "bfdcba876f3eabb16273b534506846fb0305174b",
+  "deploymentScriptCommit": "886f5ab9287a50b905e80f0e94431da1760c77e4",
+  "implementation": "0x8fdc5376ecc4dDC475399756e066200D5D60Bb37",
+  "factory": "0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0",
+  "vault": "0x1980B3a41393f610a8BE552C71BAE3F42AAB6735",
+  "previousImplementation": "0x79Bea8B8fb87e2518e61f1D78a5c0f35Dd2013E4",
+  "readyAt": 1791674058,
+  "readyUtc": "2026-10-10T23:14:18+00:00",
+  "readyAfricaLagos": "2026-10-11T00:14:18+01:00",
+  "newMarket": {
+    "symbol": "PRIPO:DEMO-V2",
+    "status": "not-created",
+    "initialPriceWad": "100000000000000000000",
+    "depthWad": "200000000000000000000000",
+    "seedBondUnits": 2000000000
+  },
+  "totalReceiptFeesWei": "1761663108016946452",
+  "runtimeManifest": {
+    "chainId": 10143,
+    "contracts": [
+      "0x8fdc5376ecc4dDC475399756e066200D5D60Bb37",
+      "0x3C0866aC1095d413981E9edF2746cbf3Ba68E32D",
+      "0xAB646c0F89938fbfE5807eEE4B02375cFf6fF67a",
+      "0xFaFE7b9AA3B445C6B3a4929b2477568420d89203",
+      "0x1CB887B4c1756099b6b5da092Fb71318980E4dee",
+      "0x8966a4F63aa1538BB85197756e1fdbEE90aa474F",
+      "0xB181c7A1DA0E1e7B68240de2e7CdEce0b0c2f6C5",
+      "0x988652B7D9E0CEDF62D60933341D393469065278",
+      "0xEBe0Dc05B48B860a1D6C739988d2A41024911Af7",
+      "0xE425e4cd389EA7E8dCACc4616960256DfEb437d1",
+      "0x90Af0F19337cdE918538FffBd8E88B0df67A5a4b",
+      "0x31BD236112F0af7140ec895ffB463Ae522181873"
+    ],
+    "deployer": "0x3b2F1773a1B279A1b0b13aD425019C91433693c3",
+    "factory": "0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0",
+    "implementation": "0x8fdc5376ecc4dDC475399756e066200D5D60Bb37",
+    "mockCollateral": true,
+    "previousImplementation": "0x79Bea8B8fb87e2518e61f1D78a5c0f35Dd2013E4",
+    "runtimeCodeHashes": [
+      "0xc2f4d2bdfb79142a6680206a97348bbb5e4814d0b1d748bbe6176e36f9a6da76",
+      "0x6e363b4248e58ec138f56321419a1f247cb49ef2bfcd82f4ff13b26b23acd871",
+      "0xb512c04609a5e9c1c620ae150c3ff4f6f999c6f9c3dc7b2b90ffac422fcc0314",
+      "0x99fce43f5f83763233fa0014b790fc187b37a2f7e4ebbc3de417e581309b0c5c",
+      "0x7e22b0569ac8fcfced45e6a08732765fea39411c6b18c39a885e59d13fd93f34",
+      "0x13788217fcae4c619db1f89a18a1699779372cfbc829095a353e7f5bc20f9ea3",
+      "0xaa962f033b38205db8573e9551ac16d0a41bc82811b46d2fb5f4a07b3a7be4ee",
+      "0xe6f73106932eb8e3fe4fe396969f01cbd4018e032168e8f75325ec08342937cd",
+      "0x0548e46bed9cfb7c0cae3a8620acbbc48d0e7b0689d489e8c481a011b11a8634",
+      "0x205b3a207f6ec7d6884887e468ec10f89366b537226ce571787c8a48d3c153e6",
+      "0xf20f458a89249dc65b210472c93d49a7874145ac7361f07ed2becbd11c1d086e",
+      "0xa9c9e8591c2c7e7eb861c739f15b80f99a09a77a4453cddf41ad9dedc6ccab20"
+    ],
+    "vault": "0x1980B3a41393f610a8BE552C71BAE3F42AAB6735"
+  },
+  "rehearsal": {
+    "status": "passed",
+    "block": 69666533,
+    "blockHash": "0x7e40635441c647f07361540d6ee43ef3f22248ec10500682d9e8cd51b14f2cb5",
+    "sourceDigest": "1a57fe594ac9ccc7b02cc26b2ed3204f6f78dd550e11bcfc0573f08bb68486be",
+    "broadcast": false
+  },
+  "stages": {
+    "deploy": {
+      "status": "verified",
+      "chainId": 10143,
+      "stage": "deploy",
+      "startedAt": "2026-10-09T23:10:18.930638+00:00",
+      "simulatedGasLimit": 16946452,
+      "sourceDigest": "1a57fe594ac9ccc7b02cc26b2ed3204f6f78dd550e11bcfc0573f08bb68486be",
+      "gitCommit": "886f5ab9287a50b905e80f0e94431da1760c77e4",
+      "transactions": [
+        {
+          "hash": "0xd18e955f957083aec42f9aac80240e4c667b440e3197f54944cf6cb230f02e59",
+          "block": 69666788,
+          "gasLimit": 2169046,
+          "receiptGasUsed": 2169046,
+          "effectiveGasPriceWei": 103000000001,
+          "receiptFeeWei": 223411738002169046,
+          "valueWei": 0,
+          "contractAddress": null,
+          "createdAddress": "0x31bd236112f0af7140ec895ffb463ae522181873"
+        },
+        {
+          "hash": "0x6ba6045f371cec42dcc5afde04f16b0550bdd278e0fa79c6c39269cea036b2c5",
+          "block": 69666792,
+          "gasLimit": 4282146,
+          "receiptGasUsed": 4282146,
+          "effectiveGasPriceWei": 103000000001,
+          "receiptFeeWei": 441061038004282146,
+          "valueWei": 0,
+          "contractAddress": null,
+          "createdAddress": "0x8966a4f63aa1538bb85197756e1fdbee90aa474f"
+        },
+        {
+          "hash": "0xb660bb1e57201c18f0c19357c1210cbc7ed0e80fae62cbb25d13f81bcb881e6c",
+          "block": 69666803,
+          "gasLimit": 2555593,
+          "receiptGasUsed": 2555593,
+          "effectiveGasPriceWei": 103000000001,
+          "receiptFeeWei": 263226079002555593,
+          "valueWei": 0,
+          "contractAddress": null,
+          "createdAddress": "0xebe0dc05b48b860a1d6c739988d2a41024911af7"
+        },
+        {
+          "hash": "0x94fc0a6df1851d3a75783168bb0247ecdec28a0455e5c43f7dc5a709e06b9c38",
+          "block": 69666808,
+          "gasLimit": 2080734,
+          "receiptGasUsed": 2080734,
+          "effectiveGasPriceWei": 103000000001,
+          "receiptFeeWei": 214315602002080734,
+          "valueWei": 0,
+          "contractAddress": null,
+          "createdAddress": "0xe425e4cd389ea7e8dcacc4616960256dfeb437d1"
+        },
+        {
+          "hash": "0x049f437782a0095cd0d26bf164c37fa94e1f2724687b8ec974ecabafa0e58b33",
+          "block": 69666812,
+          "gasLimit": 5858933,
+          "receiptGasUsed": 5858933,
+          "effectiveGasPriceWei": 103000000001,
+          "receiptFeeWei": 603470099005858933,
+          "valueWei": 0,
+          "contractAddress": "0x8fdc5376ecc4ddc475399756e066200d5d60bb37",
+          "createdAddress": "0x8fdc5376ecc4ddc475399756e066200d5d60bb37"
+        }
+      ],
+      "balanceBlockBefore": 69666787,
+      "balanceBlockAfter": 69666812,
+      "balanceBeforeWei": 34092062932090193073,
+      "balanceAfterWei": 32346578376073246621,
+      "receiptFeesWei": 1745484556016946452,
+      "balanceReconciled": true
+    },
+    "schedule": {
+      "status": "verified",
+      "chainId": 10143,
+      "stage": "schedule",
+      "startedAt": "2026-10-09T23:13:59.451224+00:00",
+      "simulatedGasLimit": 155563,
+      "sourceDigest": "1a57fe594ac9ccc7b02cc26b2ed3204f6f78dd550e11bcfc0573f08bb68486be",
+      "gitCommit": "886f5ab9287a50b905e80f0e94431da1760c77e4",
+      "readyAt": 1791674058,
+      "readyUtc": "2026-10-10T23:14:18+00:00",
+      "transactions": [
+        {
+          "hash": "0xf974f0dddae8c6b4381d46847ecf932557f60507c026a50a2396f3e0c5833f12",
+          "block": 69667511,
+          "gasLimit": 155563,
+          "receiptGasUsed": 155563,
+          "effectiveGasPriceWei": 104000000000,
+          "receiptFeeWei": 16178552000000000,
+          "valueWei": 0,
+          "contractAddress": null
+        }
+      ],
+      "balanceBlockBefore": 69667510,
+      "balanceBlockAfter": 69667511,
+      "balanceBeforeWei": 32346578376073246621,
+      "balanceAfterWei": 32330399824073246621,
+      "receiptFeesWei": 16178552000000000,
+      "balanceReconciled": true
+    }
+  },
+  "nextCommands": [
+    "python3 scripts/margin_upgrade.py activate --broadcast",
+    "python3 scripts/margin_upgrade.py create --broadcast"
+  ],
+  "onchainStatus": {
+    "chainId": 10143,
+    "block": 69668062,
+    "blockHash": "0x36df92aa556101a72fdfdaea7ff1d4cdae06fd9dc6c0287dc7f16ac93379af2a",
+    "timestamp": 1791587824,
+    "factory": "0x133A614CBE2CBA1789E67E0898C0F5c56Eb7BBf0",
+    "implementation": "0x79bea8b8fb87e2518e61f1d78a5c0f35dd2013e4",
+    "pendingImplementation": "0x8fdc5376ecc4ddc475399756e066200d5d60bb37",
+    "readyAt": 1791674058,
+    "readyUtc": "2026-10-10T23:14:18+00:00",
+    "activationReady": false,
+    "market": "0x0000000000000000000000000000000000000000"
+  }
+}

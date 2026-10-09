@@ -37,6 +37,24 @@ The runner validates exact calldata before submission and retains `market.json`,
 
 ### Margin-entry implementation upgrade
 
+**Scheduled October 9 UTC / October 10 WAT:** implementation
+[`0x8fdc5376ecc4dDC475399756e066200D5D60Bb37`](https://testnet.monadvision.com/address/0x8fdc5376ecc4dDC475399756e066200D5D60Bb37)
+and four updated linked modules were deployed successfully. All twelve runtime
+hashes (including reused modules) match, and `marginEntryVersion()` returns 1.
+The [schedule transaction](https://testnet.monadvision.com/tx/0xf974f0dddae8c6b4381d46847ecf932557f60507c026a50a2396f3e0c5833f12)
+starts the factory's enforced delay. Activation is permitted from **October 10,
+23:14:18 UTC / October 11, 00:14:18 WAT**. The current factory implementation is
+still the previous version; **PRIPO:DEMO-V2 has not been created**.
+
+The [upgrade record](../deployments/monad-testnet-margin-upgrade.json) contains the
+pinned fork rehearsal, runtime hashes, all six receipts and the exact deadline.
+Deployment cost **1.745484556016946452 testnet MON** and scheduling cost
+**0.016178552 testnet MON**, totaling **1.761663108016946452 testnet MON**. Both
+stages reconcile receipt fees to historical sender balance changes. The rehearsal
+tested rejected early activation, activation at the deadline, creation through the
+existing vault, exact 50-mUSDC/2× entry and closing while preserving the legacy
+position and reserve. All 24 Python deployment-runner tests passed.
+
 `scripts/margin_upgrade.py` upgrades the existing mock factory's implementation
 for **future markets**. It deploys the new Market and its fixed linked modules,
 then schedules the factory's on-chain **24-hour implementation delay**. Existing

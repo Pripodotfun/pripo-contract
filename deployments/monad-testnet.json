@@ -477,5 +477,14 @@
       "healthWadAtOpen": "499000499750124937",
       "liquidatableAtOpen": false
     }
-  ]
+  ],
+  "marginEntryUpgrade": {
+    "status": "scheduled",
+    "implementation": "0x8fdc5376ecc4dDC475399756e066200D5D60Bb37",
+    "readyAt": 1791674058,
+    "readyUtc": "2026-10-10T23:14:18+00:00",
+    "record": "monad-testnet-margin-upgrade.json",
+    "scheduleTransaction": "0xf974f0dddae8c6b4381d46847ecf932557f60507c026a50a2396f3e0c5833f12",
+    "newMarketStatus": "not-created"
+  }
 }
