@@ -1,0 +1,61 @@
+import copy
+import json
+from pathlib import Path
+import sys
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from monad_preflight import ProbeError
+from tenderly_environment import CHAIN_ID, admin_rpc, create_payload, environment_parts
+from tenderly_stage import project_status
+
+
+class TenderlyEnvironmentTest(unittest.TestCase):
+    def test_project_metadata_permission_is_separate_and_admin_urls_are_not_reported(self):
+        env = {"TENDERLY_ACCOUNT_SLUG": "account", "TENDERLY_PROJECT_SLUG": "project", "TENDERLY_ACCESS_KEY": "secret"}
+        item = {"id": "env", "slug": "demo", "active_instance": {
+            "id": "instance", "vnets": [{"rpcs": [{"url": "https://private-rpc-secret"}]}]}}
+        with patch("tenderly_stage.project_api", side_effect=[ProbeError("HTTP 403"), [item]]):
+            report = project_status(env)
+        self.assertTrue(report["environmentAccess"])
+        self.assertEqual(report["projectMetadataError"], "HTTP 403")
+        self.assertNotIn("secret", json.dumps(report))
+        with patch("tenderly_stage.project_api", side_effect=[{}, ProbeError("HTTP 403")]):
+            with self.assertRaises(ProbeError):
+                project_status(env)
+
+    def test_fork_metadata_must_match_isolated_chain_and_exact_parent(self):
+        payload = create_payload({"number": "0x1234"})
+        self.assertEqual(payload["network_configs"][0]["network_id"], "143")
+        self.assertEqual(payload["network_configs"][0]["chain_config_overrides"]["chain_id"], str(CHAIN_ID))
+        record = {"request": payload, "parent": {"block": 0x1234}}
+        vnet = {"fork_config": {"network_id": 143, "block_number": "0x1234"},
+                "virtual_network_config": {"chain_config": {"chain_id": CHAIN_ID}},
+                "rpcs": [{"name": "Admin RPC", "url": "https://virtual.monad.rpc.tenderly.co/private"}]}
+        result = {"slug": payload["slug"], "active_instance": {"id": "instance", "vnets": [vnet]}}
+        self.assertEqual(environment_parts(result, record)[1], vnet)
+        for path, value in (("network_id", 1), ("block_number", "0x1235")):
+            wrong = copy.deepcopy(result)
+            wrong["active_instance"]["vnets"][0]["fork_config"][path] = value
+            with self.assertRaises(ProbeError):
+                environment_parts(wrong, record)
+        wrong = copy.deepcopy(result)
+        wrong["active_instance"]["vnets"][0]["virtual_network_config"]["chain_config"]["chain_id"] = 143
+        with self.assertRaises(ProbeError):
+            environment_parts(wrong, record)
+        for endpoint in ("https://rpc.monad.xyz", "https://virtual.monad.rpc.tenderly.co.evil.test/key", "http://virtual.monad.rpc.tenderly.co/key"):
+            wrong = copy.deepcopy(result)
+            wrong["active_instance"]["vnets"][0]["rpcs"][0]["url"] = endpoint
+            with self.assertRaises(ProbeError):
+                environment_parts(wrong, record)
+
+    def test_admin_mutations_reject_mainnet_before_submission(self):
+        with patch("tenderly_environment.rpc", return_value=hex(143)), patch("tenderly_environment.request_json") as send:
+            with self.assertRaises(ProbeError):
+                admin_rpc("https://rpc.invalid", "eth_sendTransaction", [])
+            send.assert_not_called()
+
+
+if __name__ == "__main__":
+    unittest.main()

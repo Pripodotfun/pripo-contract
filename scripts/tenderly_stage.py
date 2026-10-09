@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import re
 import subprocess
+from urllib.parse import quote
 
 from monad_preflight import ROOT, ProbeError, load_env, request_json, rpc
 
@@ -15,6 +16,50 @@ EVENTS = {
     "DeficitChanged": ("MarginVault", "vault"),
     "ForcedSettlement": ("Market", "market"),
 }
+
+
+def project_api(env, path, public=False, data=None):
+    account, project = env.get("TENDERLY_ACCOUNT_SLUG"), env.get("TENDERLY_PROJECT_SLUG")
+    key = env.get("TENDERLY_ACCESS_KEY")
+    if not key or not account or not project:
+        raise ProbeError("Set the Tenderly access key and account/project slugs")
+    prefix = "https://api.tenderly.co/api/" + ("public/" if public else "") + "v1"
+    base = prefix + "/account/" + quote(account, safe="") + "/project/" + quote(project, safe="")
+    return request_json(base + path, data, {"X-Access-Key": key, "Content-Type": "application/json"})
+
+
+def project_status(env):
+    account, project = env.get("TENDERLY_ACCOUNT_SLUG"), env.get("TENDERLY_PROJECT_SLUG")
+    if not account or not project or not env.get("TENDERLY_ACCESS_KEY"):
+        raise ProbeError("Set the Tenderly access key and account/project slugs")
+    # Virtual-environment access is independent of project-metadata permission.
+    metadata = {}
+    metadata_error = None
+    try:
+        metadata = project_api(env, "").get("project", {})
+    except ProbeError as exc:
+        metadata_error = str(exc)
+    try:
+        environments = project_api(env, "/environments", public=True)
+    except ProbeError as exc:
+        raise ProbeError(f"Tenderly environment list: {exc}") from None
+    if not isinstance(environments, list):
+        raise ProbeError("Unexpected environment-list response")
+    # Environment responses include Admin RPC URLs. Retain only non-credential metadata.
+    summaries = []
+    for item in environments:
+        instance = item.get("active_instance") or {}
+        summaries.append({"id": item.get("id"), "slug": item.get("slug"),
+                          "displayName": item.get("display_name"), "createdAt": item.get("created_at"),
+                          "instanceId": instance.get("id"), "networks": [
+                              {"id": n.get("id"), "networkId": n.get("network_id"),
+                               "blockNumber": n.get("block_number"),
+                               "chainConfigOverrides": n.get("chain_config_overrides")}
+                              for n in item.get("networks", [])]})
+    return {"checkedAt": datetime.now(timezone.utc).isoformat(), "account": account, "project": project,
+            "projectId": metadata.get("id"), "permissions": metadata.get("permissions"),
+            "projectMetadataError": metadata_error, "environmentAccess": True,
+            "environments": summaries}
 
 
 def monad_support(rows):
@@ -100,7 +145,7 @@ def check_fork(env):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("support", "check-fork", "alerts"))
+    parser.add_argument("command", choices=("support", "project", "check-fork", "alerts"))
     parser.add_argument("--manifest", help="Actual deployment manifest; omit to prepare unbound event definitions")
     parser.add_argument("--market", action="append", default=[], help="Deployed clone, once per market")
     parser.add_argument("--network-id", help="Tenderly's verified alert target network ID")
@@ -112,6 +157,8 @@ def main():
         result = {"checkedAt": datetime.now(timezone.utc).isoformat(), "source": REGISTRY,
                   "network": monad_support(request_json(REGISTRY))}
         name = "network-support.json"
+    elif args.command == "project":
+        result, name = project_status(env), "project-status.json"
     elif args.command == "check-fork":
         result, name = check_fork(env), "fork-check.json"
     else:
@@ -127,6 +174,8 @@ def main():
     print(f"Saved reports/tenderly/{name}")
     if args.command == "support":
         print("Confirmed Monad mainnet 143: Virtual TestNets, monitoring, simulator and explorer")
+    elif args.command == "project":
+        print(json.dumps(result, indent=2))
     elif args.command == "alerts":
         print("Prepared four event categories. No alert has been created or notification sent.")
     else:

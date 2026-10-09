@@ -16,7 +16,7 @@ Tenderly's [live network registry](https://api.tenderly.co/api/v1/supported-netw
 
 The virtual chain ID is **999143**, keeping rehearsal signatures separate from production while retaining mainnet contract addresses. Saturday replays the same scripts and reviewed deployment sequence with production roles, chain ID, nonces and fresh signatures. It does not reuse signed rehearsal transactions.
 
-**Current hosted status:** access is granted and the access key has been added; account/project slugs, Admin RPC and alert destination are still pending. No hosted fork, fork Safe deployment or live alert has been verified from this workspace. The local deployment rehearsal below remains evidence for local execution only.
+**Connected project:** account `monad-b15b6908b0`, project `project`. The authenticated Virtual Environments API is accessible and initially lists zero environments. The separate project-metadata endpoint returns HTTP 403; environment access is checked independently. No hosted fork, fork Safe deployment or live alert has been verified at this preparation stage.
 
 ## Existing local rehearsal evidence
 
@@ -41,6 +41,15 @@ The runner checks chain ID and pinned block hashes, runs `DeployPripo`, then the
 Supply `TENDERLY_ACCESS_KEY`, `TENDERLY_ACCOUNT_SLUG` and `TENDERLY_PROJECT_SLUG` in ignored `.env` to connect the granted account/project. An access key is created in [Tenderly's API token settings](https://docs.tenderly.co/platform/account/projects/api-tokens); keep it out of chat and Git. If an environment already exists, also provide its Admin RPC as `TENDERLY_RPC`; otherwise obtain that endpoint when creating the fresh environment. Set the existing on-call destination as `TENDERLY_DELIVERY_CHANNEL_ID` before binding alerts. The mainnet RPC and Pyth key already exist. Never publish the Admin RPC; it can mutate the environment.
 
 With account/project access configured, inspect the project and existing environments first, then use the [Virtual Environments API](https://docs.tenderly.co/api-reference/virtual-environments/create-environment) or dashboard to create the fresh rehearsal. Inspect returned environment/instance metadata and confirm the chain-ID override before funding balances or deploying Safes.
+
+```sh
+python3 scripts/tenderly_stage.py project       # sanitized environment inventory
+python3 scripts/tenderly_environment.py         # fresh block and creation plan only
+python3 scripts/tenderly_environment.py --create
+python3 scripts/tenderly_environment.py --verify-only
+```
+
+Creation writes an attempt journal before its API request. An existing journal or matching environment slug prevents another creation; reconcile an interrupted request using `--verify-only`. The runner checks parent 143, exact source block and virtual chain 999143, compares USDC/Pyth/Safe code against pinned mainnet, and checks six-decimal USDC. It saves only the Admin RPC to ignored `.env`, with no RPC URLs in public reports. The synthetic rehearsal sender receives 1,000 virtual MON in the creation request. Public explorer and bridges are disabled. This establishes fork/dependency provenance; signed Pyth verification and deployment are subsequent steps.
 
 Create the environment on the day of testing with parent network **143**, virtual chain **999143**, and a newly observed mainnet block. Save the parent block number, hash, timestamp, environment ID and instance ID. Refork from mainnet before the final rehearsal; cloning Tuesday's already-mutated environment is not a fresh mainnet fork. Freeze state synchronization for deterministic fault/time scenarios and record any balance, block, time or storage changes separately from the production deployment manifest.
 
