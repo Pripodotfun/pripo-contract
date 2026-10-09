@@ -32,6 +32,27 @@ library CurveMath {
         return _quote(a, size, false);
     }
 
+    /// @notice Largest signed base size whose rounded entry cost does not exceed the quote budget.
+    /// @dev Inverts ceil(k / B), including the short-side plateau. The returned fill may leave quote dust unused.
+    function sizeForNotional(T.AmmState memory a, bool isLong, uint256 notional) internal pure returns (int256) {
+        validate(a);
+        if (notional == 0) revert E.ZeroAmount();
+        uint256 base;
+        uint256 size;
+        if (isLong) {
+            if (notional > type(uint256).max - a.quoteReserve) revert E.MathOverflow();
+            base = Math.ceilDiv(a.k, a.quoteReserve + notional);
+            size = a.baseReserve - base;
+        } else {
+            // A quote target of one or zero has no finite largest short size.
+            if (notional >= a.quoteReserve - 1) revert E.ReserveExhausted();
+            base = (a.k - 1) / (a.quoteReserve - notional - 1);
+            size = base - a.baseReserve;
+        }
+        if (size == 0) revert E.ZeroQuote();
+        return isLong ? F.toInt(size) : -F.toInt(size);
+    }
+
     /// @notice Closing dust may have zero quote value; it must still be possible to clear the position.
     function quoteExit(T.AmmState memory a, int256 sizeToClose) internal pure returns (T.Fill memory) {
         if (sizeToClose == type(int256).min) revert E.MathOverflow();

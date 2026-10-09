@@ -869,6 +869,19 @@
   },
   {
     "type": "function",
+    "name": "marginEntryVersion",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "markPrice",
     "inputs": [],
     "outputs": [
@@ -1010,6 +1023,119 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "openWithMargin",
+    "inputs": [
+      {
+        "name": "isLong",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "margin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "leverage",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "limitPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "update",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.MarginOpenResult",
+        "components": [
+          {
+            "name": "quote",
+            "type": "tuple",
+            "internalType": "struct PripoTypes.MarginOpenQuote",
+            "components": [
+              {
+                "name": "size",
+                "type": "int256",
+                "internalType": "int256"
+              },
+              {
+                "name": "notional",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "avgFill",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "fee",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "minimumMargin",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "newMark",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "positionMargin",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "positionEntry",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "healthWad",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "liquidatable",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "liquidationPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "referenceKind",
+            "type": "uint8",
+            "internalType": "enum PripoTypes.LiquidationReference"
+          },
+          {
+            "name": "reason",
+            "type": "uint8",
+            "internalType": "enum PripoTypes.LiquidationPriceReason"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -1369,6 +1495,82 @@
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "quoteOpenWithMargin",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "isLong",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "margin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "leverage",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.MarginOpenQuote",
+        "components": [
+          {
+            "name": "size",
+            "type": "int256",
+            "internalType": "int256"
+          },
+          {
+            "name": "notional",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "avgFill",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "fee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minimumMargin",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "newMark",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "positionMargin",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "positionEntry",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
       }
     ],
     "stateMutability": "view"

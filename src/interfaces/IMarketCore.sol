@@ -78,6 +78,20 @@ interface IMarketCore is IPripoErrors {
     event CreatorTransferred(address indexed previousCreator, address indexed newCreator);
 
     function open(int256 size, uint256 limitPrice, bytes calldata oracleUpdate) external payable;
+    function marginEntryVersion() external pure returns (uint8);
+    /// @notice Owner-only atomic margin entry. Leverage targets this fill's notional / added margin, excluding fees.
+    /// @dev Existing same-side positions blend with the new fill. Rounding may leave a small amount of notional unused.
+    function openWithMargin(
+        bool isLong,
+        uint256 margin,
+        uint16 leverage,
+        uint256 limitPrice,
+        bytes calldata oracleUpdate
+    ) external payable returns (T.MarginOpenResult memory);
+    function quoteOpenWithMargin(address user, bool isLong, uint256 margin, uint16 leverage)
+        external
+        view
+        returns (T.MarginOpenQuote memory);
     function openFor(address user, int256 size, uint256 limitPrice, bytes calldata oracleUpdate) external payable;
     function openFor(
         address user,

@@ -130,6 +130,28 @@ library PripoTypes {
         bool active;
     }
 
+    /// @notice Owner-selected additional margin; fees are paid separately from free collateral. All amounts are WAD.
+    struct MarginOpenQuote {
+        int256 size;
+        uint256 notional;
+        uint256 avgFill;
+        uint256 fee;
+        uint256 minimumMargin;
+        uint256 newMark;
+        uint256 positionMargin;
+        uint256 positionEntry;
+    }
+
+    /// @notice Return data from the actual open path, usable through eth_call without persisting the trade.
+    struct MarginOpenResult {
+        MarginOpenQuote quote;
+        int256 healthWad;
+        bool liquidatable;
+        uint256 liquidationPrice;
+        LiquidationReference referenceKind;
+        LiquidationPriceReason reason;
+    }
+
     struct OperatorPolicy {
         uint64 expiry;
         uint128 maxNotionalPerTx;

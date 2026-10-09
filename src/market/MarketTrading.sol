@@ -24,6 +24,30 @@ library MarketTrading {
         bytes32[] memory proof,
         uint256 value
     ) public {
+        _beforeOpen(s, user, update, value);
+        S.OpenQuote memory q = Lens.quoteOpen(s, user, size);
+        _applyOpen(s, user, size, limitPrice, proof, q);
+    }
+
+    /// @notice Owner-only entry; additional collateral and the curve fill settle in one atomic transition.
+    function openWithMargin(
+        S.Data storage s,
+        bool isLong,
+        uint256 margin,
+        uint16 leverage,
+        uint256 limitPrice,
+        bytes memory update,
+        uint256 value
+    ) public returns (T.MarginOpenResult memory result) {
+        _beforeOpen(s, msg.sender, update, value);
+        S.OpenQuote memory q;
+        (result.quote, q) = Lens.quoteMarginOpen(s, msg.sender, isLong, margin, leverage);
+        _applyOpen(s, msg.sender, result.quote.size, limitPrice, new bytes32[](0), q);
+        (result.healthWad, result.liquidatable) = Lens.health(s, msg.sender);
+        (result.liquidationPrice, result.referenceKind, result.reason) = Lens.liquidationPriceInfo(s, msg.sender);
+    }
+
+    function _beforeOpen(S.Data storage s, address user, bytes memory update, uint256 value) private {
         // Enum discrimination, not a timestamp or cash-balance equality.
         // slither-disable-next-line incorrect-equality
         bool wasActive = s._config.status == T.Status.Active;
@@ -36,7 +60,16 @@ library MarketTrading {
         // Settlement effects are required; only close events need the returned debit.
         // slither-disable-next-line unused-return
         Engine.settleFunding(s, user);
-        S.OpenQuote memory q = Lens.quoteOpen(s, user, size);
+    }
+
+    function _applyOpen(
+        S.Data storage s,
+        address user,
+        int256 size,
+        uint256 limitPrice,
+        bytes32[] memory proof,
+        S.OpenQuote memory q
+    ) private {
         Engine.checkLimit(size, q.fill.avgPrice, limitPrice);
         s.vault.checkAndConsume(user, msg.sender, q.fill.quoteAmount, false, proof);
         s.vault.lock(user, q.margin);

@@ -6,7 +6,6 @@ import {IMarketCore} from "./interfaces/IMarketCore.sol";
 import {CurveMath as Curve} from "./libraries/CurveMath.sol";
 import {FixedPointMath as F} from "./libraries/FixedPointMath.sol";
 import {FundingMath as Funding} from "./libraries/FundingMath.sol";
-import {MarkTwap} from "./libraries/MarkTwap.sol";
 import {PripoTypes as T} from "./types/PripoTypes.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -26,7 +25,6 @@ import {PositionBook as Book} from "./market/PositionBook.sol";
 
 /// @notice Immutable clone entry points with shared, fixed linked modules.
 contract Market is IMarketCore, Initializable, ReentrancyGuard {
-    using MarkTwap for MarkTwap.State;
     uint256 public constant USER_NOTIONAL_CAP = 2_000e18;
     uint256 public constant MARKET_NOTIONAL_CAP = 25_000e18;
     uint256 public constant MAX_POSITIONS = Book.MAX_POSITIONS;
@@ -124,29 +122,32 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         uint256 initialPrice,
         uint256 depth
     ) external nonReentrant initializer {
-        S.Data storage s = S.load();
-        if (address(vault_).code.length == 0 || vault_.registrarOf(address(this)) != msg.sender) revert Unauthorized();
-        if (cfg.creator != vault_.creatorOf(address(this))) revert InvalidConfiguration();
-        s.vault = vault_;
-        s.feedId = feedId_;
-        s.externalIndex = externalIndex_;
-        Engine.validateConfig(s, cfg);
-        s._config = cfg;
-        s._config.status = T.Status.Active;
-        s._config.statusSince = Engine.currentBlock();
-        if (s.externalIndex) {
-            Engine.refreshPrice(s, "", 0);
-            initialPrice = s._index;
-        }
-        s._amm = Curve.seed(initialPrice, depth);
-        Engine.validateDepth(s, depth);
-        s._funding.lastBlock = Engine.currentBlock();
-        s._twap.initialize(Curve.mark(s._amm), Engine.currentBlock());
-        s.vault.admitMarket(MARKET_NOTIONAL_CAP, cfg.fundingCapPerBlock);
+        Maintenance.initialize(S.load(), vault_, feedId_, externalIndex_, cfg, initialPrice, depth, MARKET_NOTIONAL_CAP);
     }
 
     function open(int256 size, uint256 limitPrice, bytes calldata update) external payable nonReentrant {
         Trading.open(S.load(), msg.sender, size, limitPrice, update, new bytes32[](0), msg.value);
+    }
+
+    function marginEntryVersion() external pure returns (uint8) {
+        return 1;
+    }
+
+    function openWithMargin(bool isLong, uint256 margin, uint16 leverage, uint256 limitPrice, bytes calldata update)
+        external
+        payable
+        nonReentrant
+        returns (T.MarginOpenResult memory)
+    {
+        return Trading.openWithMargin(S.load(), isLong, margin, leverage, limitPrice, update, msg.value);
+    }
+
+    function quoteOpenWithMargin(address user, bool isLong, uint256 margin, uint16 leverage)
+        external
+        view
+        returns (T.MarginOpenQuote memory result)
+    {
+        (result,) = Lens.quoteMarginOpen(S.load(), user, isLong, margin, leverage);
     }
 
     function openFor(address user, int256 size, uint256 limitPrice, bytes calldata update)

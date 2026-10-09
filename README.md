@@ -8,6 +8,16 @@ Pending ADL is integrated with actual vault reservations, fixed entry/value sche
 
 ## Development
 
+Owner trading also supports `openWithMargin(direction, margin, leverage, limitPrice, update)`.
+It locks the exact additional WAD margin and fills the largest base quantity whose
+entry notional fits `margin × leverage`; trading fees debit free collateral separately.
+Same-side additions blend with the existing position. `quoteOpenWithMargin` checks
+impact margin, caps and balance, while simulating `openWithMargin` returns the
+post-trade health and tagged liquidation estimate from the execution path.
+`marginEntryVersion() == 1` identifies this capability. Existing immutable clones
+retain their original base-size entry and require a new implementation/factory
+deployment to make this entry path available in newly created markets.
+
 Requirements: Foundry, Python 3, and Git. Solidity **0.8.30** is pinned in `foundry.toml`; the local build uses the IR pipeline and targets **Cancun**. `MarketTrading`, `MarketLiquidation`, `MarketMargin`, `MarketAdl`, `MarketSettlement`, `MarketLens`, `MarketAccounting`, `MarketFundingCapacity`, `MarketMaintenance`, `FundingMath` and `MarkTwap` are linked libraries. Network-specific deployment settings will be verified with the Monad fork tests before deployment.
 
 ```sh

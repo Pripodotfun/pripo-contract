@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {IMarginVault} from "../interfaces/IMarginVault.sol";
 import {IMarketCore} from "../interfaces/IMarketCore.sol";
 import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
 import {CurveMath as Curve} from "../libraries/CurveMath.sol";
@@ -12,6 +13,37 @@ import {MarketState as S} from "./MarketState.sol";
 /// @notice Administrative and oracle maintenance transitions under the market entry-point guard.
 library MarketMaintenance {
     using MarkTwap for MarkTwap.State;
+
+    /// @notice Called only under Market's initializer and reentrancy guard; registrar checks remain atomic.
+    function initialize(
+        S.Data storage s,
+        IMarginVault vault_,
+        bytes32 feedId_,
+        bool externalIndex_,
+        T.MarketConfig calldata cfg,
+        uint256 initialPrice,
+        uint256 depth,
+        uint256 marketNotionalCap
+    ) public {
+        if (address(vault_).code.length == 0 || vault_.registrarOf(address(this)) != msg.sender) revert E.Unauthorized();
+        if (cfg.creator != vault_.creatorOf(address(this))) revert E.InvalidConfiguration();
+        s.vault = vault_;
+        s.feedId = feedId_;
+        s.externalIndex = externalIndex_;
+        Engine.validateConfig(s, cfg);
+        s._config = cfg;
+        s._config.status = T.Status.Active;
+        s._config.statusSince = Engine.currentBlock();
+        if (s.externalIndex) {
+            Engine.refreshPrice(s, "", 0);
+            initialPrice = s._index;
+        }
+        s._amm = Curve.seed(initialPrice, depth);
+        Engine.validateDepth(s, depth);
+        s._funding.lastBlock = Engine.currentBlock();
+        s._twap.initialize(Curve.mark(s._amm), Engine.currentBlock());
+        s.vault.admitMarket(marketNotionalCap, cfg.fundingCapPerBlock);
+    }
 
     function poke(S.Data storage s) public {
         Engine.touch(s);

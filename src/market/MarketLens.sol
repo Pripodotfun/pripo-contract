@@ -104,6 +104,40 @@ library MarketLens {
         q.fee = Fees.takerFee(q.fill.quoteAmount, s._config.takerFeeBps, skewBefore, reducesSkew);
     }
 
+    function quoteMarginOpen(S.Data storage s, address user, bool isLong, uint256 margin, uint16 leverage)
+        public
+        view
+        returns (T.MarginOpenQuote memory result, S.OpenQuote memory q)
+    {
+        if (margin == 0) revert E.ZeroAmount();
+        if (leverage == 0 || leverage > s._config.maxLeverageX) revert E.InvalidLeverage(leverage);
+        if (s._config.status != T.Status.Active || s.guardianPaused || s.pendingAdlCount != 0) {
+            revert E.MarketNotActive();
+        }
+        if (s._positions[user].size == 0 && s._positionCount >= s._config.maxPositionsPerMarket) {
+            revert E.PositionLimit(s._config.maxPositionsPerMarket);
+        }
+        s.vault.requireOpenAllowed(address(this));
+        if (margin > type(uint256).max / leverage) revert E.MathOverflow();
+        int256 size = Curve.sizeForNotional(s._amm, isLong, margin * leverage);
+        q = quoteOpen(s, user, size);
+        if (margin < q.margin) revert E.InsufficientMargin(margin, q.margin);
+        uint256 free = s.vault.freeBalance(user);
+        if (margin > free || q.fee > free - margin) revert E.InsufficientMargin(free, margin + q.fee);
+        int256 collateral = s.vault.locked(user, address(this)) - Engine.fundingOwed(s, s._positions[user]);
+        result = T.MarginOpenQuote(
+            size,
+            q.fill.quoteAmount,
+            q.fill.avgPrice,
+            q.fee,
+            q.margin,
+            q.fill.newMark,
+            F.toUint(collateral + F.toInt(margin)),
+            q.newEntry
+        );
+        q.margin = margin;
+    }
+
     function quoteClose(S.Data storage s, address user, uint256 fraction) public view returns (S.CloseQuote memory q) {
         if (s._pendingAdl[user].active) revert E.AdlAlreadyPending();
         T.Position memory p = s._positions[user];
