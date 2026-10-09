@@ -35,6 +35,39 @@ python3 scripts/create_demo_market.py --verify-only # receipts and creation-bloc
 
 The runner validates exact calldata before submission and retains `market.json`, `market-receipts.json` and `market-broadcast.json` beside the mock manifest. It verifies the factory event, deterministic clone implementation, complete launch configuration, virtual reserves, zero initial positions/OI, seed custody and insurance, exhausted approval, unchanged protocol reserve and opens gate. Gas fees are reconciled against historical sender balances. A saved market journal blocks another broadcast; reconcile interrupted transactions before any retry.
 
+### Margin-entry implementation upgrade
+
+`scripts/margin_upgrade.py` upgrades the existing mock factory's implementation
+for **future markets**. It deploys the new Market and its fixed linked modules,
+then schedules the factory's on-chain **24-hour implementation delay**. Existing
+clones and positions keep their implementation. The vault, collateral and factory
+addresses stay the same.
+
+```sh
+python3 scripts/margin_upgrade.py rehearse             # pinned testnet fork; no broadcast
+python3 scripts/margin_upgrade.py deploy               # exact deployment simulation
+python3 scripts/margin_upgrade.py deploy --broadcast
+python3 scripts/margin_upgrade.py schedule --broadcast
+python3 scripts/margin_upgrade.py status               # UTC activation deadline
+# After the recorded deadline:
+python3 scripts/margin_upgrade.py activate --broadcast
+python3 scripts/margin_upgrade.py create --broadcast
+```
+
+The new oracle-less market is `PRIPO:DEMO-V2`, seeded with **2,000 mUSDC**,
+initial price **100 mUSDC** and virtual depth **200,000 mUSDC**. Its `marginEntryVersion()`
+returns 1, enabling the web app's margin/leverage form automatically. Creation
+does not deposit trading collateral or open a public-chain position.
+
+Every write stage simulates first, validates its exact sender/targets/calldata,
+checks the gas balance and creates an incomplete journal before broadcasting.
+`reports/deployment/margin-upgrade/` contains the pinned rehearsal, manifests,
+redacted logs, broadcast plans and receipt/fee verification. The runner requires
+committed deployment sources, and deployment requires a matching rehearsal source
+digest. A stage journal prevents duplicate submission; use `<stage> --verify-only`
+to reconcile a completed/interrupted stage without signing. Do not delete journals
+or re-run an incomplete broadcast without checking its saved transaction hashes.
+
 ### First demo position
 
 `OpenDemoPosition` deposits **100 mUSDC** from the configured deployer and opens **one long base unit** on `PRIPO:DEMO`, with an absolute maximum average fill of **101 mUSDC**. The market computes required margin and fees; the unused deposit stays in the trader's free balance. The script checks the quote against both the price limit and the deposit budget before the first broadcast call, and requires that the trader has no existing position.
