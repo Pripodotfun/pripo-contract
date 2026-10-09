@@ -26,7 +26,7 @@ def create_payload(header):
             "network_configs": [{"network_id": "143", "block_number": header["number"],
                                   "chain_config_overrides": {"chain_id": str(CHAIN_ID)},
                                   "accounts": [{"address": SENDER, "balance": hex(1000 * 10**18)}],
-                                  "explorer_config": {"enabled": False, "verification_visibility": "abi"}}],
+                                  "explorer_config": {"enabled": False, "contract_verification_visibility": "abi"}}],
             "bridge_config": {"enabled": False, "relay_mode": "autoRelay", "delay_seconds": 0}}
 
 

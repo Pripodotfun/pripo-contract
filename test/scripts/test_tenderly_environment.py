@@ -42,6 +42,8 @@ class TenderlyEnvironmentTest(unittest.TestCase):
     def test_fork_metadata_must_match_isolated_chain_and_exact_parent(self):
         payload = create_payload({"number": "0x1234"})
         self.assertEqual(payload["network_configs"][0]["network_id"], "143")
+        self.assertEqual(payload["network_configs"][0]["explorer_config"],
+                         {"enabled": False, "contract_verification_visibility": "abi"})
         self.assertEqual(payload["network_configs"][0]["chain_config_overrides"]["chain_id"], str(CHAIN_ID))
         record = {"request": payload, "parent": {"block": 0x1234}}
         vnet = {"fork_config": {"network_id": 143, "block_number": "0x1234"},
