@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rehearse committed deployment scripts on the recorded isolated Tenderly fork."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import io
 import hashlib
@@ -13,7 +14,7 @@ import time
 from deploy_testnet import created_address, keccak, receipt_cost
 from dry_run_deployment import creation_summary
 from mock_testnet import calldata
-from monad_preflight import ROOT, ProbeError, load_env, rpc
+from monad_preflight import ROOT, ProbeError, load_env, request_json, rpc
 from run_monad_fork import redact_output
 from tenderly_environment import CHAIN_ID, JOURNAL, SENDER, admin_rpc, environment_parts
 from tenderly_stage import project_api
@@ -86,8 +87,7 @@ def prepare_source():
 
 
 def verified_receipts(endpoint, items):
-    costs = []
-    for item in items:
+    def verify_item(item):
         tx_hash = item.get("hash")
         if not tx_hash:
             raise ProbeError("Missing submitted hash; inspect Foundry broadcast before retrying")
@@ -105,28 +105,34 @@ def verified_receipts(endpoint, items):
         cost = receipt_cost(tx, receipt)
         if item.get("transactionType") in ("CREATE", "CREATE2"):
             cost["createdAddress"] = created_address(item, tx, receipt)
-        costs.append(cost)
-    return costs
+        return cost
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        return list(pool.map(verify_item, items))
 
 
 def state(endpoint):
     cfg = read("config.json")
-    safes = {}
-    for role, count, threshold in (("governor", 5, 3), ("guardian", 3, 2), ("treasury", 5, 3), ("council", 5, 3)):
+    def safe_state(spec):
+        role, count, threshold = spec
         address = cfg[role]
         raw = call(endpoint, address, "getOwners()")[2:]
         owners = ["0x" + raw[i + 24:i + 64] for i in range(128, len(raw), 64)]
         actual = uint(endpoint, address, "getThreshold()")
         if len(owners) != count or len(set(owners)) != count or actual != threshold:
             raise ProbeError("Invalid rehearsal Safe owners/threshold: " + role)
-        safes[role] = {"address": address, "owners": owners, "threshold": actual,
-                       "nonce": uint(endpoint, address, "nonce()")}
+        return role, {"address": address, "owners": owners, "threshold": actual,
+                      "nonce": uint(endpoint, address, "nonce()")}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        safes = dict(pool.map(safe_state, (("governor", 5, 3), ("guardian", 3, 2), ("treasury", 5, 3), ("council", 5, 3))))
     result = {"safes": safes}
     if (FOLDER / "manifest.json").exists():
         m = read("manifest.json")
-        for address, expected in zip(m["contracts"], m["runtimeCodeHashes"]):
+        def check_code(pair):
+            address, expected = pair
             if keccak(rpc(endpoint, "eth_getCode", [address, "latest"])).lower() != expected.lower():
                 raise ProbeError("Runtime differs from deployment manifest")
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            list(pool.map(check_code, zip(m["contracts"], m["runtimeCodeHashes"])))
         result.update(vault=m["vault"], factory=m["factory"],
                       backstop="0x" + format(uint(endpoint, m["vault"], "backstopController()"), "040x"),
                       factoryRegistered=bool(uint(endpoint, m["vault"], "registrars(address)", m["factory"])),
@@ -179,6 +185,22 @@ def verify_stage(endpoint, stage, record):
 
 
 def forge(stage, env, execute):
+    if stage == "configure" and not execute:
+        manifest = read("manifest.json")
+        zero = "0x" + "00" * 20
+        data = calldata("execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+                        manifest["governanceTargets"][0], 0, manifest["governanceCalldata"][0],
+                        0, 0, 0, 0, zero, zero, "0x")
+        header = rpc(env["TENDERLY_RPC"], "eth_getBlockByNumber", ["latest", False])
+        result = request_json(env["TENDERLY_RPC"], {"jsonrpc": "2.0", "id": 1, "method": "eth_call",
+                              "params": [{"from": SENDER, "to": manifest["governor"], "data": data}, header["number"]]},
+                              {"Content-Type": "application/json"})
+        error = json.dumps(result.get("error", {}))
+        if "GS020" not in error and calldata("Error(string)", "GS020")[2:] not in error:
+            raise ProbeError("Governor did not return the expected insufficient-signatures rejection")
+        save(FOLDER / "governor-rejection.json", {"block": int(header["number"], 16), "hash": header["hash"],
+             "governor": manifest["governor"], "signatures": 0, "required": 3, "revertReason": "GS020",
+             "submitted": False})
     filename, contract, count = STAGES[stage]
     command = ["forge", "script", f"script/{filename}:{contract}", "--rpc-url", "tenderly", "--sender", SENDER,
                "--slow", "-vv"]
