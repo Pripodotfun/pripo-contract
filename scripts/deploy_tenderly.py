@@ -60,28 +60,30 @@ def uint(endpoint, address, signature, *args):
     return int(call(endpoint, address, signature, *args), 16)
 
 
-def prepare_source():
-    path = FOLDER / "source.json"
+def prepare_source(folder=FOLDER):
+    folder.mkdir(parents=True, exist_ok=True)
+    source = folder / "source"
+    path = folder / "source.json"
     if path.exists():
-        return read("source.json")
-    if SOURCE.exists():
+        return json.loads(path.read_text())
+    if source.exists():
         raise ProbeError("Incomplete source extraction; inspect before retrying")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     archive = subprocess.check_output(["git", "archive", commit, "src", "script", "config", "foundry.toml",
                                        "remappings.txt"], cwd=ROOT)
-    SOURCE.mkdir()
+    source.mkdir()
     with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
-        bundle.extractall(SOURCE, filter="data")
+        bundle.extractall(source, filter="data")
     deps = {}
     for name in ("forge-std", "openzeppelin-contracts"):
-        dep = SOURCE / "lib" / name
+        dep = source / "lib" / name
         shutil.copytree(ROOT / "lib" / name, dep, ignore=shutil.ignore_patterns(".git"))
         digest = hashlib.sha256()
         for file in sorted(p for p in dep.rglob("*") if p.is_file()):
             digest.update(str(file.relative_to(dep)).encode() + b"\0")
             digest.update(hashlib.sha256(file.read_bytes()).digest())
         deps[name] = {"treeSha256": digest.hexdigest()}
-    (SOURCE / "reports/deployment").mkdir(parents=True)
+    (source / "reports/deployment").mkdir(parents=True)
     record = {"commit": commit, "dependencies": deps, "workingTreeEditsIncluded": False}
     save(path, record)
     return record
