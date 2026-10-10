@@ -1,0 +1,582 @@
+{
+  "network": "Tenderly Monad mainnet fork",
+  "rpcChainId": 999143,
+  "evmChainId": 1,
+  "status": "blocked-chain-domain-mismatch",
+  "productionReady": false,
+  "rehearsalOnly": true,
+  "recordedAt": "2026-10-10T01:11:18.588377+00:00",
+  "projectUrl": "https://dashboard.tenderly.co/monad-b15b6908b0/project/home",
+  "environment": {
+    "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+    "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+    "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+    "parent": {
+      "chainId": 143,
+      "block": 111799132,
+      "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+      "timestamp": 1791519597
+    },
+    "syncState": {
+      "enabled": false
+    }
+  },
+  "contractBuildCommit": "bfdcba876f3eabb16273b534506846fb0305174b",
+  "safeBuildCommit": "196d5b0be14dfbb0ae2f121747d9c8a52dbb64fb",
+  "dependencySnapshots": {
+    "forge-std": {
+      "treeSha256": "dad0bdf701d1fc6902778cff96993132fa4f573aa3c3432004a971aa5f41eadb"
+    },
+    "openzeppelin-contracts": {
+      "treeSha256": "0c022ad5af0a9c54462770bd80b14dbc1c1ef5a695f732b3fbe4c033a0fcc8cf"
+    }
+  },
+  "manifest": {
+    "backstop": "0xaf1c4d1964a102869e455BbfF57deD89DDF2B0B2",
+    "blockNumber": 111799138,
+    "blockTimeMillis": 300,
+    "chainId": 999143,
+    "contracts": [
+      "0x1e0971684da0C0925F2AD73605D61700eD1F1362",
+      "0x5Dc37D38ECE3D0aA7313D6ac29C6545a870A04dC",
+      "0xd740B8DB0f9eB73CD9D22f7b78D36439B9b701d1",
+      "0x1149058B0e105250B6794f2fd7Cb04530Af52122",
+      "0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea",
+      "0xaf1c4d1964a102869e455BbfF57deD89DDF2B0B2",
+      "0x2e72352951A7c2633BE9D9D489e7dED39cCDe1Ee",
+      "0x9ab54a9CEC5829103CbAC3D2E5725d5B4CDCde49",
+      "0x3C0866aC1095d413981E9edF2746cbf3Ba68E32D",
+      "0xAB646c0F89938fbfE5807eEE4B02375cFf6fF67a",
+      "0xFaFE7b9AA3B445C6B3a4929b2477568420d89203",
+      "0x1CB887B4c1756099b6b5da092Fb71318980E4dee",
+      "0x8966a4F63aa1538BB85197756e1fdbEE90aa474F",
+      "0xB181c7A1DA0E1e7B68240de2e7CdEce0b0c2f6C5",
+      "0x988652B7D9E0CEDF62D60933341D393469065278",
+      "0xEBe0Dc05B48B860a1D6C739988d2A41024911Af7",
+      "0xE425e4cd389EA7E8dCACc4616960256DfEb437d1",
+      "0x90Af0F19337cdE918538FffBd8E88B0df67A5a4b",
+      "0x31BD236112F0af7140ec895ffB463Ae522181873"
+    ],
+    "deployer": "0x00000000000000000000000000000000000A11cE",
+    "factory": "0x9ab54a9CEC5829103CbAC3D2E5725d5B4CDCde49",
+    "governanceCalldata": [
+      "0xe6eaa933000000000000000000000000af1c4d1964a102869e455bbff57ded89ddf2b0b2",
+      "0xc1bf1dcf0000000000000000000000009ab54a9cec5829103cbac3d2e5725d5b4cdcde490000000000000000000000000000000000000000000000000000000000000001",
+      "0xe8bde35c000000000000000000000000069f18e8c27a01e6a70d46ee1c8f4657e20f09ea"
+    ],
+    "governanceTargets": [
+      "0x5Dc37D38ECE3D0aA7313D6ac29C6545a870A04dC",
+      "0x5Dc37D38ECE3D0aA7313D6ac29C6545a870A04dC",
+      "0x9ab54a9CEC5829103CbAC3D2E5725d5B4CDCde49"
+    ],
+    "governanceValues": [
+      0,
+      0,
+      0
+    ],
+    "governor": "0xfEaE61d10D2A68C4AC7282d795724119559e7Ae3",
+    "guardian": "0x6261E00559F57f10d0b04567c9d8cD4425037383",
+    "marketImplementation": "0xd740B8DB0f9eB73CD9D22f7b78D36439B9b701d1",
+    "maxUpdateAgeSeconds": 3,
+    "nullAdapter": "0x1149058B0e105250B6794f2fd7Cb04530Af52122",
+    "pythAdapter": "0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea",
+    "pythCore": "0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d",
+    "rehearsalOnly": true,
+    "runtimeCodeHashes": [
+      "0x2d306cca1506b871604496e4ecd2148a1746a1e2f62e9f5a49d56c0a336bdcc7",
+      "0xa7022e521c634305b0b86f45a8c10af47878d58952877dac7af4a6cbbb165d34",
+      "0xc2f4d2bdfb79142a6680206a97348bbb5e4814d0b1d748bbe6176e36f9a6da76",
+      "0xa79db494b7777b4864154ef7406cc86fad1633e51030147f28fe6e62ecc9eabd",
+      "0x55091ea16e823e3403df929bd039784dc61136330df5b845c5cae5d7dccbc7bb",
+      "0x441d68643daca0c9efe74505f6585d4e952ee5c6f3f57266b34861323beda242",
+      "0x58052ac4d12352d56d1abf8e02d73d0dc3dda91c5079b4c77d01685315cc7f57",
+      "0x8ec85af701eea55e24fec48a816bfd7e2598837b76d7b9995bea9dadeb469b07",
+      "0x6e363b4248e58ec138f56321419a1f247cb49ef2bfcd82f4ff13b26b23acd871",
+      "0xb512c04609a5e9c1c620ae150c3ff4f6f999c6f9c3dc7b2b90ffac422fcc0314",
+      "0x99fce43f5f83763233fa0014b790fc187b37a2f7e4ebbc3de417e581309b0c5c",
+      "0x7e22b0569ac8fcfced45e6a08732765fea39411c6b18c39a885e59d13fd93f34",
+      "0x13788217fcae4c619db1f89a18a1699779372cfbc829095a353e7f5bc20f9ea3",
+      "0xaa962f033b38205db8573e9551ac16d0a41bc82811b46d2fb5f4a07b3a7be4ee",
+      "0xe6f73106932eb8e3fe4fe396969f01cbd4018e032168e8f75325ec08342937cd",
+      "0x0548e46bed9cfb7c0cae3a8620acbbc48d0e7b0689d489e8c481a011b11a8634",
+      "0x205b3a207f6ec7d6884887e468ec10f89366b537226ce571787c8a48d3c153e6",
+      "0xf20f458a89249dc65b210472c93d49a7874145ac7361f07ed2becbd11c1d086e",
+      "0xa9c9e8591c2c7e7eb861c739f15b80f99a09a77a4453cddf41ad9dedc6ccab20"
+    ],
+    "slashToReserve": true,
+    "sweeper": "0x2e72352951A7c2633BE9D9D489e7dED39cCDe1Ee",
+    "testnetOnly": false,
+    "treasury": "0xba8D35864EbBD2B01f1bA902eB293dDd9716B752",
+    "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+    "vault": "0x5Dc37D38ECE3D0aA7313D6ac29C6545a870A04dC",
+    "vaultImplementation": "0x1e0971684da0C0925F2AD73605D61700eD1F1362"
+  },
+  "safes": {
+    "governor": {
+      "address": "0xfEaE61d10D2A68C4AC7282d795724119559e7Ae3",
+      "owners": [
+        "0xce7e1210e3dd6ec1fab395b23e95e2949bd1238e",
+        "0xb7dd87c1be55494b566d7653fab52170f292f0cd",
+        "0x17060f209c7ba2bfb905ff3cfbe23dfcc63e6349",
+        "0x9a6071937f00e7b25a7fc58bff2c9c899c0dc561",
+        "0x5de0dd137ea99c55a3fd285b5cd5ab608a21da4f"
+      ],
+      "threshold": 3,
+      "nonce": 0
+    },
+    "guardian": {
+      "address": "0x6261E00559F57f10d0b04567c9d8cD4425037383",
+      "owners": [
+        "0xcbf5e4eaf616de11306620c26aa8c50e608df31b",
+        "0xfac197e0936065d2d1fc00a1403197c7cd7f149f",
+        "0xd05f8ca022f1270a571a93d602733b1a9c9b82fb"
+      ],
+      "threshold": 2,
+      "nonce": 0
+    },
+    "treasury": {
+      "address": "0xba8D35864EbBD2B01f1bA902eB293dDd9716B752",
+      "owners": [
+        "0xd169f462767e4b46496f07b4624a7dee4b510934",
+        "0x63124063254cefcb0f6359aaf488224524666822",
+        "0x6fa28d0c4f7f7dce17236c138af73da3dd5b12c0",
+        "0x6b634915c11fcf8a478d6d556e92b7144f0c31c7",
+        "0xaab597635986beafe245b6d67f9608ddeade7473"
+      ],
+      "threshold": 3,
+      "nonce": 0
+    },
+    "council": {
+      "address": "0xcA4EE0cf1eB7d956dAF7cc8f8476C42682aB8AB9",
+      "owners": [
+        "0xde8de64c0a5ffa72544e4b34b7ddb60eb482b40a",
+        "0x1876e79141836287d3f121bad0029c769f0788ab",
+        "0xc9279a1000f91f771fd3462ab1b34c8d4b97e8f6",
+        "0x53a5733c53ed500c77211a4d367d460c774dfba3",
+        "0x056fec885c9d9635a8441ea39f7917d51baffda4"
+      ],
+      "threshold": 3,
+      "nonce": 0
+    }
+  },
+  "dependencyProvenance": {
+    "usdc": {
+      "address": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+      "runtimeCodeHash": "0xbb3557cf62a26950fb58073e6ce8e130af371e5aa13e5584856a1ce2ca47dc89"
+    },
+    "pythCore": {
+      "address": "0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d",
+      "runtimeCodeHash": "0x7e693eea60500e1d5c5984a4cc54ec0b371d9ad29e8bb09c543cb7be447963df"
+    },
+    "safeSingleton": {
+      "address": "0x41675C099F32341bf84BFc5382aF534df5C7461a",
+      "runtimeCodeHash": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4"
+    },
+    "safeFactory": {
+      "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+      "runtimeCodeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+    }
+  },
+  "completed": {
+    "contractsCreated": 19,
+    "runtimeHashesVerified": true,
+    "safesCreated": 4,
+    "unsignedGovernorRejection": "GS020",
+    "syntheticSenderMon": 1000,
+    "syntheticSenderUsdc": 100000
+  },
+  "incomplete": {
+    "governanceWiring": true,
+    "reserveContribution": true,
+    "adapterActivation": true,
+    "marketsCreated": 0,
+    "alerts": true,
+    "recoveryScenarios": true,
+    "freshPythAdapterIntegration": true
+  },
+  "postDeploymentState": {
+    "safes": {
+      "governor": {
+        "address": "0xfEaE61d10D2A68C4AC7282d795724119559e7Ae3",
+        "owners": [
+          "0xce7e1210e3dd6ec1fab395b23e95e2949bd1238e",
+          "0xb7dd87c1be55494b566d7653fab52170f292f0cd",
+          "0x17060f209c7ba2bfb905ff3cfbe23dfcc63e6349",
+          "0x9a6071937f00e7b25a7fc58bff2c9c899c0dc561",
+          "0x5de0dd137ea99c55a3fd285b5cd5ab608a21da4f"
+        ],
+        "threshold": 3,
+        "nonce": 0
+      },
+      "guardian": {
+        "address": "0x6261E00559F57f10d0b04567c9d8cD4425037383",
+        "owners": [
+          "0xcbf5e4eaf616de11306620c26aa8c50e608df31b",
+          "0xfac197e0936065d2d1fc00a1403197c7cd7f149f",
+          "0xd05f8ca022f1270a571a93d602733b1a9c9b82fb"
+        ],
+        "threshold": 2,
+        "nonce": 0
+      },
+      "treasury": {
+        "address": "0xba8D35864EbBD2B01f1bA902eB293dDd9716B752",
+        "owners": [
+          "0xd169f462767e4b46496f07b4624a7dee4b510934",
+          "0x63124063254cefcb0f6359aaf488224524666822",
+          "0x6fa28d0c4f7f7dce17236c138af73da3dd5b12c0",
+          "0x6b634915c11fcf8a478d6d556e92b7144f0c31c7",
+          "0xaab597635986beafe245b6d67f9608ddeade7473"
+        ],
+        "threshold": 3,
+        "nonce": 0
+      },
+      "council": {
+        "address": "0xcA4EE0cf1eB7d956dAF7cc8f8476C42682aB8AB9",
+        "owners": [
+          "0xde8de64c0a5ffa72544e4b34b7ddb60eb482b40a",
+          "0x1876e79141836287d3f121bad0029c769f0788ab",
+          "0xc9279a1000f91f771fd3462ab1b34c8d4b97e8f6",
+          "0x53a5733c53ed500c77211a4d367d460c774dfba3",
+          "0x056fec885c9d9635a8441ea39f7917d51baffda4"
+        ],
+        "threshold": 3,
+        "nonce": 0
+      }
+    },
+    "vault": "0x5Dc37D38ECE3D0aA7313D6ac29C6545a870A04dC",
+    "factory": "0x9ab54a9CEC5829103CbAC3D2E5725d5B4CDCde49",
+    "backstop": "0x0000000000000000000000000000000000000000",
+    "factoryRegistered": false,
+    "adapterReadyAt": 0,
+    "reserveWad": "0",
+    "vaultUsdc": "0"
+  },
+  "fundingOverrides": [
+    {
+      "method": "tenderly_setBalance",
+      "params": [
+        "0x00000000000000000000000000000000000A11cE",
+        "0x3635c9adc5dea00000"
+      ],
+      "result": "0xe0e3a6097e5d1afac99dd4f5b0c5555c8f554d85fe812786ced6b97c1c933fdb"
+    },
+    {
+      "method": "tenderly_setErc20Balance",
+      "params": [
+        "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+        "0x00000000000000000000000000000000000A11cE",
+        "0x174876e800"
+      ],
+      "result": "0x0a803688fe524fcad223a0971e550ecb97ebf221088dd14920d940919ab45b64"
+    }
+  ],
+  "transactions": {
+    "safes": [
+      {
+        "hash": "0xd23dc22c9d8141fa6630b67c6f677f4f42ab18e9109c91a7c2f03eebf429f8e6",
+        "block": 111799135,
+        "gasLimit": 483691,
+        "receiptGasUsed": 330729,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 33734358000000000,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0x130c8ad4c1925bfd23b1095c7c2058d1f24de6bfb62a5afc654be3f7278bd987",
+        "block": 111799136,
+        "gasLimit": 391965,
+        "receiptGasUsed": 283776,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 28945152000000000,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0x3f0ea89fe3bb5d26e0cc4dc5d72663ee2224b156fd854b9314e75d240020428d",
+        "block": 111799137,
+        "gasLimit": 483691,
+        "receiptGasUsed": 330729,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 33734358000000000,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0xa1eda3d9b023ce49aa8fc2c34a786d2c4291c952db959bf5cebb239ade5c4e83",
+        "block": 111799138,
+        "gasLimit": 483691,
+        "receiptGasUsed": 330729,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 33734358000000000,
+        "valueWei": 0,
+        "contractAddress": null
+      }
+    ],
+    "deploy": [
+      {
+        "hash": "0xf4de4f7f9c0858ac76a2ff4ba9c89399480c030e03fc4f15797e6bd7afd1e83a",
+        "block": 111799139,
+        "gasLimit": 602552,
+        "receiptGasUsed": 436238,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 44496276000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0x3c0866ac1095d413981e9edf2746cbf3ba68e32d"
+      },
+      {
+        "hash": "0xee6ed6f878f967005ec5129f12e2cc24e0d9cf2b08dc56948274a8f44bcceddf",
+        "block": 111799140,
+        "gasLimit": 594883,
+        "receiptGasUsed": 430686,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 43929972000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0xab646c0f89938fbfe5807eee4b02375cff6ff67a"
+      },
+      {
+        "hash": "0x0b92a7ec177bb7df11f4f660936de039ada7c314f313bdbf73211b1151b759c8",
+        "block": 111799141,
+        "gasLimit": 1695088,
+        "receiptGasUsed": 1227214,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 125175828000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0xfafe7b9aa3b445c6b3a4929b2477568420d89203"
+      },
+      {
+        "hash": "0x42c49062e8560d0d25ad79ba7d9e0ae5d7ec1f69b19994d0de356008e76a25c3",
+        "block": 111799142,
+        "gasLimit": 2934514,
+        "receiptGasUsed": 2124536,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 216702672000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0x1cb887b4c1756099b6b5da092fb71318980e4dee"
+      },
+      {
+        "hash": "0xe3402749f50d1698c0007ef451d0ffd6426ce8900e5898a72eb5ada1361761fd",
+        "block": 111799143,
+        "gasLimit": 2761400,
+        "receiptGasUsed": 1888137,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 192589974000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0xb181c7a1da0e1e7b68240de2e7cdece0b0c2f6c5"
+      },
+      {
+        "hash": "0x8d984cca4335b950da0ef90070f25e07f095e02280b33a6d7d81405a4c41ff33",
+        "block": 111799144,
+        "gasLimit": 2267320,
+        "receiptGasUsed": 1641500,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 167433000000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0x31bd236112f0af7140ec895ffb463ae522181873"
+      },
+      {
+        "hash": "0x480d9179b4aed49c244aa8dcf51579cc095e033643a194283e7518cd31cec93b",
+        "block": 111799145,
+        "gasLimit": 4743394,
+        "receiptGasUsed": 3243347,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 330821394000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0x8966a4f63aa1538bb85197756e1fdbee90aa474f"
+      },
+      {
+        "hash": "0xa9b922b818b74aa651f7d2a888ad2b20733354722e9c51f045f7754b1ffe571f",
+        "block": 111799146,
+        "gasLimit": 2829192,
+        "receiptGasUsed": 1934491,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 197318082000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0xebe0dc05b48b860a1d6c739988d2a41024911af7"
+      },
+      {
+        "hash": "0x0dc1e89f6945730ce38cb17808936b992f50f22734bf33bd929fd7c90da446aa",
+        "block": 111799147,
+        "gasLimit": 6040964,
+        "receiptGasUsed": 4373550,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 446102100000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0x988652b7d9e0cedf62d60933341d393469065278"
+      },
+      {
+        "hash": "0xdccea22a90d51dac595d9d44481996d6c2cfe4d9fcda9f385fe51889d4a88690",
+        "block": 111799148,
+        "gasLimit": 1047360,
+        "receiptGasUsed": 758271,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 77343642000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0x90af0f19337cde918538fffbd8e88b0df67a5a4b"
+      },
+      {
+        "hash": "0xf163e7606a399f2c664f1048b0fdc82d024f07fba5ac3adf8b5c52c52d56ba7e",
+        "block": 111799149,
+        "gasLimit": 2302797,
+        "receiptGasUsed": 1574563,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 160605426000000000,
+        "valueWei": 0,
+        "contractAddress": null,
+        "createdAddress": "0xe425e4cd389ea7e8dcacc4616960256dfeb437d1"
+      },
+      {
+        "hash": "0xdc7c23cf6101434af35d5f48308f53a907bb33e03bd3b3394afbf27dadcbb6f8",
+        "block": 111799150,
+        "gasLimit": 5758361,
+        "receiptGasUsed": 4429509,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 451809918000000000,
+        "valueWei": 0,
+        "contractAddress": "0x1e0971684da0c0925f2ad73605d61700ed1f1362",
+        "createdAddress": "0x1e0971684da0c0925f2ad73605d61700ed1f1362"
+      },
+      {
+        "hash": "0x4078082b4fef95ff6af90e3a4ab27651ad93a1274c1f77335d4d8dbf13f3c509",
+        "block": 111799151,
+        "gasLimit": 366685,
+        "receiptGasUsed": 282066,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 28770732000000000,
+        "valueWei": 0,
+        "contractAddress": "0x5dc37d38ece3d0aa7313d6ac29c6545a870a04dc",
+        "createdAddress": "0x5dc37d38ece3d0aa7313d6ac29c6545a870a04dc"
+      },
+      {
+        "hash": "0x3e0a2411965ea7ae7bd23b17a4b03e44742a33d5646d439304245a2f469ddac6",
+        "block": 111799152,
+        "gasLimit": 5799166,
+        "receiptGasUsed": 4460897,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 455011494000000000,
+        "valueWei": 0,
+        "contractAddress": "0xd740b8db0f9eb73cd9d22f7b78d36439b9b701d1",
+        "createdAddress": "0xd740b8db0f9eb73cd9d22f7b78d36439b9b701d1"
+      },
+      {
+        "hash": "0xe16b0b73f075924f5cf6b720b43f103008c5099338a768a1cd68d5aaf2d4eac0",
+        "block": 111799153,
+        "gasLimit": 155858,
+        "receiptGasUsed": 119891,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 12228882000000000,
+        "valueWei": 0,
+        "contractAddress": "0x1149058b0e105250b6794f2fd7cb04530af52122",
+        "createdAddress": "0x1149058b0e105250b6794f2fd7cb04530af52122"
+      },
+      {
+        "hash": "0x0b4b403d2fa33a87a1d4d8f450202df268ea96e3ff00e73bed9e71aede9a2c0b",
+        "block": 111799154,
+        "gasLimit": 918915,
+        "receiptGasUsed": 706858,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 72099516000000000,
+        "valueWei": 0,
+        "contractAddress": "0x069f18e8c27a01e6a70d46ee1c8f4657e20f09ea",
+        "createdAddress": "0x069f18e8c27a01e6a70d46ee1c8f4657e20f09ea"
+      },
+      {
+        "hash": "0x51ddb85a3f169ae09f63f9da2039ccc83daf81ecda16928140661200ef50b7e0",
+        "block": 111799155,
+        "gasLimit": 887981,
+        "receiptGasUsed": 683063,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 69672426000000000,
+        "valueWei": 0,
+        "contractAddress": "0xaf1c4d1964a102869e455bbff57ded89ddf2b0b2",
+        "createdAddress": "0xaf1c4d1964a102869e455bbff57ded89ddf2b0b2"
+      },
+      {
+        "hash": "0xfcd6d17b0adf55ab80c3f285e0f07da891e87a1cf8db92a51b091e25c02d4ce5",
+        "block": 111799156,
+        "gasLimit": 683841,
+        "receiptGasUsed": 526032,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 53655264000000000,
+        "valueWei": 0,
+        "contractAddress": "0x2e72352951a7c2633be9d9d489e7ded39ccde1ee",
+        "createdAddress": "0x2e72352951a7c2633be9d9d489e7ded39ccde1ee"
+      },
+      {
+        "hash": "0xad1d49dd6772e1391a1a0c24cebbd206cfd090dc5b82a32e09632f9eb6d44c62",
+        "block": 111799157,
+        "gasLimit": 3841238,
+        "receiptGasUsed": 2954799,
+        "effectiveGasPriceWei": 102000000000,
+        "receiptFeeWei": 301389498000000000,
+        "valueWei": 0,
+        "contractAddress": "0x9ab54a9cec5829103cbac3d2e5725d5b4cdcde49",
+        "createdAddress": "0x9ab54a9cec5829103cbac3d2e5725d5b4cdcde49"
+      }
+    ]
+  },
+  "governanceFailure": {
+    "transactionHash": "0xfa2e1e79322061e1b4ddaf530943353d5cd56bc55ac35df9ece93b51c88e384a",
+    "block": 111799158,
+    "status": 0,
+    "gasLimit": 174506,
+    "receiptGasUsed": 64603,
+    "governorNonceAfter": 0,
+    "backstopAfter": "0x0000000000000000000000000000000000000000",
+    "diagnosis": {
+      "rpcChainId": 999143,
+      "safeChainId": 1,
+      "safeNonce": 0,
+      "executionHash": "0xa4f4e570defe5edc1ac86d79cd364ed80bde47c115587319dcd0a3a5d105265b",
+      "rpcSafeHash": "0xa4f4e570defe5edc1ac86d79cd364ed80bde47c115587319dcd0a3a5d105265b",
+      "recoveredSigner": "0x000000000000000000000000ed4af8def4a2cd4892025ee14a784afdc8b23f3f"
+    },
+    "explicitChainIdProbes": [
+      {
+        "explicitChainId": null,
+        "evmChainId": 1,
+        "errorCode": null
+      },
+      {
+        "explicitChainId": "0xf3ee7",
+        "evmChainId": 1,
+        "errorCode": null
+      },
+      {
+        "explicitChainId": 999143,
+        "evmChainId": 1,
+        "errorCode": null
+      }
+    ]
+  },
+  "pythCheck": {
+    "providerAccepted": true,
+    "feedId": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+    "block": 111799138,
+    "hash": "0xa914c419e4865eea90cf373e003135d242af57bf06cf8a1674a8f94cb2bdc3c6",
+    "freshness": {
+      "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43": {
+        "publishTime": 1791548356,
+        "ageSeconds": -8875,
+        "confidenceBpsCeil": 6,
+        "withinThreeSecondAndOnePercentGate": false
+      }
+    },
+    "providerGasEstimate": 150000000,
+    "oracleFeeWei": 0,
+    "submittedGasLimit": null,
+    "chargedFeeWei": null
+  },
+  "gasScope": "Tenderly simulation only. Receipt fees and gas limits do not establish Monad charged-gas behavior.",
+  "nextStep": "Resolve RPC/EVM chain ID mismatch with Tenderly, refork from fresh Monad state, and repeat the guarded rehearsal."
+}

@@ -1,10 +1,12 @@
 # Deployment and staging
 
-## Current decision — October 9
+## Current status — October 10
 
-Tenderly access has been granted. Resume the **fresh Monad-mainnet fork rehearsal** below once project credentials are configured. A live registry check on October 9 confirms Monad mainnet **143** supports Virtual TestNets, monitoring, simulator and explorer. Use isolated virtual chain **999143** for the hosted rehearsal.
+Tenderly is connected. Four rehearsal Safes and all **19 protocol contracts** were created on a hosted Monad mainnet fork. Runtime hashes and Safe ownership/thresholds were verified. Protocol source is commit `bfdcba8`, including margin-and-leverage entry. [Addresses and receipts](../deployments/tenderly-rehearsal.json) are saved separately from the public testnet deployment.
 
-The existing public-testnet demo uses **Pripo Mock USDC (`mUSDC`)**, a funded reserve, the `PRIPO:DEMO` market and a recorded one-unit long. [Current demo addresses and transaction evidence](../deployments/monad-testnet.json) remain the public demo reference until a hosted deployment is verified. Follow [the testnet runbook](testnet-staging.md) for this environment. Production still requires real USDC and final Safe roles.
+**Governance is blocked by a chain-domain mismatch.** The RPC and environment metadata report `999143`, but the actual Safe `getChainId()` returns `1`. The first Governor transaction reverted during signature verification; Safe nonce remains zero and no governance calls completed. Reserve contribution, adapter activation and market creation remain pending on this fork. See the [Tenderly reproduction and recovery report](tenderly-chain-domain-issue.md). The runner now rejects RPC/EVM domain disagreement before mutations.
+
+The existing public-testnet demo uses **Pripo Mock USDC (`mUSDC`)**, a funded reserve, the `PRIPO:DEMO` market and a recorded one-unit long. [Current demo addresses and transaction evidence](../deployments/monad-testnet.json) remain the working public demo reference. Follow [the testnet runbook](testnet-staging.md) for this environment. Production still requires real USDC and final Safe roles.
 
 Public testnet supplies real Monad execution, timing and charged-fee measurements, including Mera P-256 if selected. The hosted fork supplies shared deployment/Safe rehearsal, mainnet USDC/Pyth integration, block/time manipulation, recovery scenarios and debugger evidence. Resolver and stale wind-down are still implementation gates; gaining Tenderly access does not satisfy them or establish mainnet readiness.
 
@@ -16,7 +18,9 @@ Tenderly's [live network registry](https://api.tenderly.co/api/v1/supported-netw
 
 The virtual chain ID is **999143**, keeping rehearsal signatures separate from production while retaining mainnet contract addresses. Saturday replays the same scripts and reviewed deployment sequence with production roles, chain ID, nonces and fresh signatures. It does not reuse signed rehearsal transactions.
 
-**Connected project:** account `monad-b15b6908b0`, project `project`. The authenticated Virtual Environments API is accessible and initially lists zero environments. The separate project-metadata endpoint returns HTTP 403; environment access is checked independently. No hosted fork, fork Safe deployment or live alert has been verified at this preparation stage.
+**Connected project:** account `monad-b15b6908b0`, project `project`. The environment is `b1348816-5fd8-46c6-9c73-97d2e30bba56`, forked October 9 from block `111799132`; state sync is off. Its sender has fork-only balances from explicit Admin RPC overrides. The separate project-metadata endpoint returned HTTP 403; environment access works independently. Alerts await a delivery channel and verification that this virtual network supports the selected alert targets.
+
+The signed BTC payload was accepted by Pyth Core in `eth_call`, but its publish time was ahead of the fork clock, so the adapter freshness gate is **not verified**. Resolve the chain-domain issue and refork from fresh mainnet state before repeating the full rehearsal and live-Pyth checks. Tenderly receipt fees remain simulation evidence; Monad charged-gas measurements still require public testnet.
 
 ## Existing local rehearsal evidence
 
@@ -49,7 +53,9 @@ python3 scripts/tenderly_environment.py --create
 python3 scripts/tenderly_environment.py --verify-only
 ```
 
-Creation writes an attempt journal before its API request. An existing journal or matching environment slug prevents another creation; reconcile an interrupted request using `--verify-only`. The runner checks parent 143, exact source block and virtual chain 999143, compares USDC/Pyth/Safe code against pinned mainnet, and checks six-decimal USDC. It saves only the Admin RPC to ignored `.env`, with no RPC URLs in public reports. The creation request asks for 1,000 virtual MON for the synthetic sender; the live API returned a zero balance, so verify and fund it explicitly with the Admin RPC before deployment. Public explorer and bridges are disabled. This establishes fork/dependency provenance; signed Pyth verification and deployment are subsequent steps.
+Creation writes an attempt journal before its API request. An existing journal or matching environment slug prevents another creation; reconcile an interrupted request using `--verify-only`. The runner checks parent 143, exact source block, RPC chain 999143 **and EVM CHAINID 999143**, compares USDC/Pyth/Safe code against pinned mainnet, and checks six-decimal USDC. It saves only the Admin RPC to ignored `.env`, with no RPC URLs in public reports. The creation request asks for 1,000 virtual MON for the synthetic sender; the live API returned a zero balance, so verify and fund it explicitly with the Admin RPC before deployment. Public explorer and bridges are disabled. This establishes fork/dependency provenance; signed Pyth verification and deployment are subsequent steps.
+
+`scripts/deploy_tenderly.py` runs the stages `fund`, `safes`, `deploy`, `configure`, and `reserve`. It defaults to planning/simulation; `--execute` submits only to the verified isolated fork. `--verify-only` inspects an existing stage without resubmission. Source is extracted from a committed revision into ignored `reports/deployment/tenderly/source`, with copied dependency snapshots and recorded hashes. Every stage has a submission journal; a failed or interrupted stage requires reconciliation. The current `configure` journal records a reverted transaction and must not be blindly retried. Preserve prior environment records when preparing the fresh rehearsal.
 
 Explicit HTTP validation/authentication rejections are recorded as `rejected`. After correcting the request or access, `--retry-rejected` preserves the rejected attempt, checks for an existing matching environment, and pins a fresh source block before resubmission. Timeouts or ambiguous server failures cannot use this path. The live API requires `explorer_config.contract_verification_visibility` even with the public explorer disabled; the request supplies `abi` explicitly. The published create-environment schema used `verification_visibility`, which the live endpoint rejected.
 
