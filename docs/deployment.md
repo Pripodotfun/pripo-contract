@@ -2,21 +2,22 @@
 
 ## Current status — October 10
 
-The active Tenderly deployment uses **single-account governance**, as requested. `PRIPO:DEMO` is created and its opening gate passes. The vault holds **12,000 fork-USDC**: a 10,000-USDC protocol reserve and 2,000-USDC market insurance. The market starts at 100, with virtual depth 200,000 and a 2× leverage cap, and uses the oracle-free curve. [Current Tenderly addresses and receipts](../deployments/tenderly-demo.json) include the deployed margin-and-leverage entry implementation.
+The active Tenderly deployment uses **single-account governance**, as requested, with two markets. `PRIPO:DEMO` uses the oracle-free curve, starting at 100 with virtual depth 200,000 and a 2× leverage cap. **`BTC:USD` uses the real Pyth BTC/USD feed**, with virtual depth 2,000,000 and a 5× leverage cap. The vault holds **17,000 fork-USDC**: a 10,000-USDC protocol reserve, 2,000-USDC demo insurance and 5,000-USDC BTC insurance. Another 500 USDC is escrowed in the factory as the feed listing bond. [Deployment addresses](../deployments/tenderly-demo.json) and [BTC market receipts](../deployments/tenderly-pyth-market.json) record both markets.
 
-The demo Governor, Guardian and Treasury are the rehearsal account `0x00000000000000000000000000000000000A11cE`. Four separate custody/factory contracts reuse the already verified implementations and libraries. Deployment, direct governance, reserve funding and market creation completed in ten successful transactions. No Safe execution or typed signatures are used by this workflow.
+The demo Governor, Guardian and Treasury are the rehearsal account `0x00000000000000000000000000000000000A11cE`. Four separate custody/factory contracts reuse the already verified implementations and libraries. Deployment, direct governance, reserve funding and initial market creation completed in ten successful transactions; Pyth approval, listing and BTC market creation added five. No Safe execution or typed signatures are used by this workflow.
 
 The RPC still reports `999143` while EVM `CHAINID` reads `1`. The dedicated demo runner verifies the authenticated environment/instance, disabled state sync and both observed chain IDs; it records this limitation explicitly. The [earlier Safe deployment](../deployments/tenderly-rehearsal.json) and [signature-domain reproduction](tenderly-chain-domain-issue.md) remain historical evidence. The strict Safe runner continues to reject that mismatch. Safe setup is no longer a dependency of the active demo.
 
 The existing public-testnet demo uses **Pripo Mock USDC (`mUSDC`)**, a funded reserve, the `PRIPO:DEMO` market and a recorded one-unit long. [Current demo addresses and transaction evidence](../deployments/monad-testnet.json) remain the working public demo reference. Follow [the testnet runbook](testnet-staging.md) for this environment. Production still requires real USDC and reviewed production roles.
 
-Public testnet supplies real Monad execution, timing and charged-fee measurements, including Mera P-256 if selected. The hosted fork supplies deployment, mainnet USDC integration, block/time manipulation, recovery scenarios and debugger evidence. Pyth-fed markets, Resolver and stale wind-down remain separate integration/implementation gates.
+Public testnet supplies real Monad execution, timing and charged-fee measurements, including Mera P-256 if selected. The hosted fork supplies deployment, mainnet USDC integration, block/time manipulation, recovery scenarios and debugger evidence. Signed Pyth market creation now passes on the hosted fork. Hosted trading lifecycle, Resolver and stale wind-down remain further integration/implementation work.
 
 ## Active single-account demo
 
 | Component | Address |
 | --- | --- |
 | `PRIPO:DEMO` | `0xa4cB74124704886a950ca3240c730f9C103aE337` |
+| `BTC:USD` — Pyth | `0x97417f231081ba7e4cc4681b4fd2ed4c530e48c8` |
 | Vault | `0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd` |
 | Factory | `0x8AEe7622d63609c68a94d1C16398a45446da6332` |
 | USDC on the fork | `0x754704Bc059F8C67012fEd69BC8A327a5aafb603` |
@@ -32,6 +33,26 @@ python3 scripts/tenderly_demo.py market --verify-only
 
 On an explicitly prepared new demo, the same stages default to simulation; `--execute` submits them. The runner requires the recorded hosted instance, RPC chain `999143`, the dedicated rehearsal account, and the recorded execution domain. Public mainnet/testnet RPCs are rejected. The Safe deployment records are retained under `reports/deployment/tenderly`; the active demo uses `reports/deployment/tenderly-demo`.
 
+### Real Pyth BTC market
+
+`scripts/tenderly_pyth_market.py` uses that same authenticated instance and single-account governor. It checks deployed bytecode and dependency bindings, schedules and activates the adapter, approves exactly 5,500 USDC, lists BTC for 500 USDC, and creates the market with 5,000 USDC insurance plus the exact Pyth update fee. Its submission journals prevent blind retries after ambiguous responses.
+
+The creation transaction is `0xd552eca7a17edfe46b79f2b5d7e4908d5e1ac700e752e683020809f156034f46`, block **111799177**. Pyth Core verified a signed Hermes update with publish time **1791600402**. The creation block timestamp was **1791600403**: age **1 second**, rounded confidence **9 bps**, initial index **82,547.45 USD**. The market's stored observation matches the signed payload, its clone targets the recorded implementation, and its vault opening gate passed. The updated cash balances reconcile, including the original market's insurance. Both books were empty.
+
+Feed ID: `0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43`. Adapter: `0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea`. Real forked Pyth Core: `0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d`.
+
+The rehearsal explicitly manipulated the virtual clock. Early activation reverted; activation then succeeded 86,402 virtual seconds after scheduling. The clock returned to wall time, and creation simulation/submission aligned it with the signed price timestamp. This creates non-monotonic timestamps in the fork history. The runner requires empty books before doing this; no Pyth storage, signed publish time, adapter freshness setting or contract bytecode was overridden. [Tenderly's timestamp controls](https://docs.tenderly.co/virtual-environments/admin-rpc#evm_setnextblocktimestamp) describe these fork operations. All four clock operations and five receipts are recorded in the BTC deployment artifact. This is oracle integration evidence under controlled fork time, not a production timing measurement.
+
+Pyth is a pull oracle. Opens require fresh data and can carry a signed update and its native fee; explicit refreshes can do the same. No background keeper is installed, and closes do not refresh the oracle. The recorded initial price is a historical observation, not a continuously updating quote.
+
+```sh
+# Completed stages: prepare --execute, then create --execute.
+# Read-only verification of the recorded creation block:
+python3 scripts/tenderly_pyth_market.py verify
+```
+
+Tooling tests cover wrong-feed/stale/future/low-confidence rejection, blocked replay of an ambiguous submission, and rejection of clock rehearsal against a nonempty book. The runner and deployment evidence are committed separately from the user-edited spec.
+
 ## Tenderly rehearsal plan
 
 The hosted staging target is a **fresh Tenderly Virtual TestNet fork of Monad mainnet**, using mainnet USDC, mainnet Pyth and production state. Use fork-only balances against the actual USDC contract for the reserve, bonds and trader deposits. The mock-token public demo remains separate evidence.
@@ -42,7 +63,7 @@ The RPC chain ID is **999143**. The observed EVM-domain mismatch means this envi
 
 **Connected project:** account `monad-b15b6908b0`, project `project`. The environment is `b1348816-5fd8-46c6-9c73-97d2e30bba56`, forked October 9 from block `111799132`; state sync is off. Its sender has fork-only balances from explicit Admin RPC overrides. The separate project-metadata endpoint returned HTTP 403; environment access works independently. Alerts await a delivery channel and verification that this virtual network supports the selected alert targets.
 
-The signed BTC payload was accepted by Pyth Core in `eth_call`, but its publish time was ahead of the fork clock, so the adapter freshness gate is **not verified**. Resolve the chain-domain issue and refork from fresh mainnet state before repeating the full rehearsal and live-Pyth checks. Tenderly receipt fees remain simulation evidence; Monad charged-gas measurements still require public testnet.
+The earlier read-only BTC probe encountered a payload ahead of the fork clock. The October 10 BTC market creation above now verifies the actual signed update, adapter freshness and factory initialization in a mined fork transaction. Refork from fresh mainnet state before the final full rehearsal. The chain-domain mismatch remains relevant to typed signatures. Tenderly receipt fees remain simulation evidence; Monad charged-gas measurements still require public testnet.
 
 ## Existing local rehearsal evidence
 

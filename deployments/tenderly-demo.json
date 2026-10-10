@@ -1,6 +1,6 @@
 {
   "network": "Tenderly Monad mainnet fork",
-  "status": "active-demo-market",
+  "status": "active-demo-markets",
   "demoOnly": true,
   "productionReady": false,
   "governanceMode": "single-account",
@@ -143,11 +143,11 @@
     "guardian": "0x00000000000000000000000000000000000a11ce",
     "treasury": "0x00000000000000000000000000000000000a11ce",
     "reserveWad": 10000000000000000000000,
-    "vaultUsdc": 12000000000,
-    "senderUsdc": 88000000000,
+    "vaultUsdc": 17000000000,
+    "senderUsdc": 82500000000,
     "registrar": 1,
     "backstop": "0x2db1c5f69012f72024585cea9204f795e5927dac",
-    "marketCount": 1,
+    "marketCount": 2,
     "market": "0xa4cB74124704886a950ca3240c730f9C103aE337",
     "symbol": "PRIPO:DEMO",
     "opensAllowed": true,
@@ -157,7 +157,9 @@
     "positionCount": 0,
     "maxLeverageX": 2,
     "externalIndex": false,
-    "depthWad": 200000000000000000000000
+    "depthWad": 200000000000000000000000,
+    "block": 111799177,
+    "factoryListingBondsUsdc": 500000000
   },
   "creationBlock": 111799168,
   "creationTransaction": "0x6dc49cec1948b5f535441b1519c8432f5082365e4dc6056c06d6c364fe359126",
@@ -271,6 +273,63 @@
         "valueWei": 0,
         "contractAddress": null
       }
+    ],
+    "pythMarket": [
+      {
+        "hash": "0xc9d6e7e54a139fe0b0fef5d689f9c468dc21bd31b5c572d232bce44ba25548c7",
+        "block": 111799169,
+        "gasLimit": 8000000,
+        "receiptGasUsed": 63580,
+        "effectiveGasPriceWei": 0,
+        "receiptFeeWei": 0,
+        "valueWei": 0,
+        "contractAddress": null,
+        "timestamp": 1791600366
+      },
+      {
+        "hash": "0x9808f72f53f3d990d49b50839373331199f83eca15e9a3b19f5eb52904665f95",
+        "block": 111799171,
+        "gasLimit": 8000000,
+        "receiptGasUsed": 48617,
+        "effectiveGasPriceWei": 0,
+        "receiptFeeWei": 0,
+        "valueWei": 0,
+        "contractAddress": null,
+        "timestamp": 1791686768
+      },
+      {
+        "hash": "0x7e1a2f43d34e81b3e35c865a75201a98044e6ca0e98c011cabed5c642d55b1bd",
+        "block": 111799173,
+        "gasLimit": 8000000,
+        "receiptGasUsed": 55449,
+        "effectiveGasPriceWei": 0,
+        "receiptFeeWei": 0,
+        "valueWei": 0,
+        "contractAddress": null,
+        "timestamp": 1791600376
+      },
+      {
+        "hash": "0xef5720ced0251571b904ff870523bb4d1a71e5dff748de39b39676c71fa3ba6f",
+        "block": 111799174,
+        "gasLimit": 8000000,
+        "receiptGasUsed": 188295,
+        "effectiveGasPriceWei": 0,
+        "receiptFeeWei": 0,
+        "valueWei": 0,
+        "contractAddress": null,
+        "timestamp": 1791600379
+      },
+      {
+        "hash": "0xd552eca7a17edfe46b79f2b5d7e4908d5e1ac700e752e683020809f156034f46",
+        "block": 111799177,
+        "gasLimit": 8000000,
+        "receiptGasUsed": 1058842,
+        "effectiveGasPriceWei": 0,
+        "receiptFeeWei": 0,
+        "valueWei": 0,
+        "contractAddress": null,
+        "timestamp": 1791600403
+      }
     ]
   },
   "verification": {
@@ -283,6 +342,19 @@
     "marginEntryVersion": 1
   },
   "collateral": "Mainnet USDC contract with fork-only balances; no mock token deployed.",
-  "oracle": "NullAdapter: oracle-free demo with an initial price of 100. Pyth is not used by this market.",
-  "gasScope": "Tenderly simulation receipts; these do not establish Monad charged-gas behavior."
+  "oracle": "PRIPO:DEMO uses NullAdapter. BTC:USD uses the real Pyth BTC/USD feed; its signed update and freshness were verified at creation under controlled fork time.",
+  "gasScope": "Tenderly simulation receipts; these do not establish Monad charged-gas behavior.",
+  "updatedAt": "2026-10-10T02:48:58.539130+00:00",
+  "additionalMarkets": [
+    {
+      "symbol": "BTC:USD",
+      "market": "0x97417f231081ba7e4cc4681b4fd2ed4c530e48c8",
+      "externalIndex": true,
+      "record": "tenderly-pyth-market.json",
+      "priceSource": "0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea",
+      "feedId": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+      "seedBondUnits": 5000000000,
+      "maxLeverageX": 5
+    }
+  ]
 }

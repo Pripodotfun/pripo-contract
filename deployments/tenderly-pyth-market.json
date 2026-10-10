@@ -1,0 +1,244 @@
+{
+  "network": "Tenderly Monad mainnet fork",
+  "demoOnly": true,
+  "productionReady": false,
+  "environment": {
+    "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+    "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+    "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+    "parent": {
+      "chainId": 143,
+      "block": 111799132,
+      "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+      "timestamp": 1791519597
+    },
+    "domain": {
+      "rpcChainId": 999143,
+      "evmChainId": 1,
+      "matches": false
+    },
+    "governanceMode": "single-account",
+    "typedSignatures": false,
+    "productionReady": false
+  },
+  "deployment": "tenderly-demo.json",
+  "market": "0x97417f231081ba7e4cc4681b4fd2ed4c530e48c8",
+  "symbol": "BTC:USD",
+  "feed": "Crypto.BTC/USD",
+  "feedId": "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+  "externalIndex": true,
+  "pythCore": "0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d",
+  "priceSource": "0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea",
+  "factory": "0x8AEe7622d63609c68a94d1C16398a45446da6332",
+  "vault": "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+  "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+  "creation": {
+    "hash": "0xd552eca7a17edfe46b79f2b5d7e4908d5e1ac700e752e683020809f156034f46",
+    "block": 111799177,
+    "gasLimit": 8000000,
+    "receiptGasUsed": 1058842,
+    "effectiveGasPriceWei": 0,
+    "receiptFeeWei": 0,
+    "valueWei": 0,
+    "contractAddress": null,
+    "timestamp": 1791600403
+  },
+  "observation": {
+    "price": 8254745000000,
+    "conf": 6922000000,
+    "expo": -8,
+    "publish_time": 1791600402
+  },
+  "ageSecondsAtCreation": 1,
+  "initialPriceWad": 82547450000000000000000,
+  "initialMarkWad": 82547450000000000002436,
+  "depthWad": 2000000000000000000000000,
+  "confidenceBpsCeil": 9,
+  "seedUsdc": 5000,
+  "listingBondUsdc": 500,
+  "reserveUsdc": 10000,
+  "vaultUsdc": 17000,
+  "maxLeverageX": 5,
+  "openingGatePassedAtCreation": true,
+  "signedUpdateVerifiedByPyth": true,
+  "oracleFeeWei": 0,
+  "clockRehearsal": [
+    {
+      "environment": {
+        "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+        "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+        "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+        "parent": {
+          "chainId": 143,
+          "block": 111799132,
+          "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+          "timestamp": 1791519597
+        },
+        "domain": {
+          "rpcChainId": 999143,
+          "evmChainId": 1,
+          "matches": false
+        },
+        "governanceMode": "single-account",
+        "typedSignatures": false,
+        "productionReady": false
+      },
+      "beforeBlock": 111799169,
+      "beforeTimestamp": 1791600366,
+      "requestedTimestamp": 1791686766,
+      "wallClockTimestamp": 1791600369,
+      "status": "verified",
+      "block": 111799170,
+      "operation": "governance-delay-clock"
+    },
+    {
+      "environment": {
+        "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+        "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+        "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+        "parent": {
+          "chainId": 143,
+          "block": 111799132,
+          "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+          "timestamp": 1791519597
+        },
+        "domain": {
+          "rpcChainId": 999143,
+          "evmChainId": 1,
+          "matches": false
+        },
+        "governanceMode": "single-account",
+        "typedSignatures": false,
+        "productionReady": false
+      },
+      "beforeBlock": 111799171,
+      "beforeTimestamp": 1791686768,
+      "requestedTimestamp": 1791600373,
+      "wallClockTimestamp": 1791600373,
+      "status": "verified",
+      "block": 111799172,
+      "operation": "restore-wall-clock-clock"
+    },
+    {
+      "environment": {
+        "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+        "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+        "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+        "parent": {
+          "chainId": 143,
+          "block": 111799132,
+          "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+          "timestamp": 1791519597
+        },
+        "domain": {
+          "rpcChainId": 999143,
+          "evmChainId": 1,
+          "matches": false
+        },
+        "governanceMode": "single-account",
+        "typedSignatures": false,
+        "productionReady": false
+      },
+      "beforeBlock": 111799174,
+      "beforeTimestamp": 1791600379,
+      "requestedTimestamp": 1791600402,
+      "wallClockTimestamp": 1791600403,
+      "status": "verified",
+      "block": 111799175,
+      "operation": "price-simulation-clock"
+    },
+    {
+      "environment": {
+        "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+        "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+        "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+        "parent": {
+          "chainId": 143,
+          "block": 111799132,
+          "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+          "timestamp": 1791519597
+        },
+        "domain": {
+          "rpcChainId": 999143,
+          "evmChainId": 1,
+          "matches": false
+        },
+        "governanceMode": "single-account",
+        "typedSignatures": false,
+        "productionReady": false
+      },
+      "beforeBlock": 111799175,
+      "beforeTimestamp": 1791600402,
+      "requestedTimestamp": 1791600402,
+      "wallClockTimestamp": 1791600406,
+      "status": "verified",
+      "block": 111799176,
+      "operation": "price-submission-clock"
+    }
+  ],
+  "transactions": {
+    "schedule": {
+      "hash": "0xc9d6e7e54a139fe0b0fef5d689f9c468dc21bd31b5c572d232bce44ba25548c7",
+      "block": 111799169,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 63580,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791600366
+    },
+    "activate": {
+      "hash": "0x9808f72f53f3d990d49b50839373331199f83eca15e9a3b19f5eb52904665f95",
+      "block": 111799171,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 48617,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791686768
+    },
+    "approve": {
+      "hash": "0x7e1a2f43d34e81b3e35c865a75201a98044e6ca0e98c011cabed5c642d55b1bd",
+      "block": 111799173,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 55449,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791600376
+    },
+    "list": {
+      "hash": "0xef5720ced0251571b904ff870523bb4d1a71e5dff748de39b39676c71fa3ba6f",
+      "block": 111799174,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 188295,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791600379
+    },
+    "create": {
+      "hash": "0xd552eca7a17edfe46b79f2b5d7e4908d5e1ac700e752e683020809f156034f46",
+      "block": 111799177,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 1058842,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791600403
+    }
+  },
+  "priceUpdates": "Opens require a fresh price. Opens and explicit refreshes accept signed Pyth pull updates; no background keeper is installed.",
+  "gasScope": "Tenderly receipt gas is not a Monad charged-gas measurement.",
+  "submissionRunnerCommit": "9eec81d",
+  "recordedAt": "2026-10-10T02:48:58.539130+00:00",
+  "earlyActivationRejected": {
+    "rejected": true,
+    "readyAt": 1791686766
+  }
+}

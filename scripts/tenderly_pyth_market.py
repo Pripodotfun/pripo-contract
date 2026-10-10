@@ -189,6 +189,10 @@ class Demo:
         if creation["status"] != "verified" or creation["environment"] != self.proof:
             raise ProbeError("Market submission has not been verified")
         m, cost = self.m, creation["receipt"]
+        actual = rpc(self.url, "eth_getTransactionByHash", [creation["hash"]])
+        receipt = rpc(self.url, "eth_getTransactionReceipt", [creation["hash"]])
+        if receipt_cost(actual, receipt) != {k: v for k, v in cost.items() if k != "timestamp"}:
+            raise ProbeError("Creation receipt differs from recorded evidence")
         block = hex(cost["block"])
         def w(target, signature, *args):
             return self.w(target, signature, *args, block=block)
@@ -210,6 +214,8 @@ class Demo:
                   (m["factory"], "allowedFeeds(address,bytes32)", [m["pythAdapter"], FEED], [1]),
                   (m["vault"], "protocolReserve()", [], [10_000 * 10**18]),
                   (m["vault"], "ledger(address)", [address], [0, 0, SEED * 10**12, 0, 0, 0]),
+                  (m["vault"], "ledger(address)", [self.record["market"]["market"]],
+                   [0, 0, 2_000 * 10**18, 0, 0, 0]),
                   (m["vault"], "requireOpenAllowed(address)", [address], []),
                   (m["usdc"], "balanceOf(address)", [m["vault"]], [17_000 * 10**6]),
                   (m["usdc"], "balanceOf(address)", [m["factory"]], [BOND]),
@@ -238,13 +244,15 @@ class Demo:
                   "pythCore": m["pythCore"], "priceSource": m["pythAdapter"], "factory": m["factory"],
                   "vault": m["vault"], "usdc": m["usdc"], "creation": cost, "observation": observed,
                   "ageSecondsAtCreation": age, "initialPriceWad": wad, "initialMarkWad": mark, "depthWad": DEPTH,
+                  "confidenceBpsCeil": (observed["conf"] * 10000 + observed["price"] - 1) // observed["price"],
                   "seedUsdc": 5000, "listingBondUsdc": 500, "reserveUsdc": 10000,
                   "vaultUsdc": 17000, "maxLeverageX": 5, "openingGatePassedAtCreation": True,
                   "signedUpdateVerifiedByPyth": True, "oracleFeeWei": payload["feeWei"],
-                  "clockRehearsal": [json.loads(p.read_text()) for p in sorted(FOLDER.glob("*-clock.json"))],
+                  "clockRehearsal": sorted([dict(json.loads(p.read_text()), operation=p.stem)
+                                             for p in FOLDER.glob("*-clock.json")], key=lambda r: r["block"]),
                   "transactions": {name: json.loads((FOLDER / (name + ".json")).read_text())["receipt"]
                                    for name in ("schedule", "activate", "approve", "list", "create")},
-                  "priceUpdates": "Pyth pull updates must accompany trades; no background keeper is installed.",
+                  "priceUpdates": "Opens require a fresh price. Opens and explicit refreshes accept signed Pyth pull updates; no background keeper is installed.",
                   "gasScope": "Tenderly receipt gas is not a Monad charged-gas measurement."}
         save(FOLDER / "verified.json", result)
         print(json.dumps({"market": address, "priceWad": wad, "ageSeconds": age, "verified": True}), flush=True)
