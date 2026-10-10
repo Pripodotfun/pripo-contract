@@ -65,6 +65,18 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     mapping(address => uint256) public adlReservedTotal;
     mapping(address => uint256) public adlReservationCount;
 
+    // Append-only operator and economic activity accounting. Daily loss means gross
+    // realized debits (PnL, funding, fees, penalties, ADL), across this owner's markets.
+    // Positive credits never replenish the day's budget; replacing a key cannot reset it.
+    mapping(address => mapping(address => T.OperatorLimits)) public operatorLimits;
+    mapping(address => uint256) public lossDay;
+    mapping(address => uint256) public dailyRealizedLoss;
+    mapping(address => bool) private _lossTracking;
+
+    mapping(address => uint256) public insuranceCap;
+    event InsuranceOverflow(address indexed market, uint256 amount);
+    event InsuranceCapSet(address indexed market, uint256 amount);
+
     event RegistrarSet(address indexed registrar, bool allowed);
     event UpgradeScheduled(address indexed implementation, bytes32 dataHash, uint256 readyAt);
     event UpgradeCancelled(address indexed implementation);
@@ -218,6 +230,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
             if (collateral < 0) {
                 uncovered += F.abs(collateral);
                 locked[debtors[i]][msg.sender] = 0;
+                _activity(debtors[i], 5, -collateral);
             }
         }
         T.Ledger storage l = _ledgers[msg.sender];
@@ -229,7 +242,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         if (clearing >= 0) {
             uint256 available = F.toUint(clearing);
             if (available > uncovered) {
-                l.insurance += available - uncovered;
+                _creditInsurance(msg.sender, available - uncovered);
                 uncovered = 0;
             } else {
                 uncovered -= available;
@@ -290,11 +303,38 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         emit Withdrawn(msg.sender, usdc);
     }
 
+    /// @notice Immutable per-market cap, set by trusted market code during initialization.
+    function setInsuranceCap(uint256 amount) external onlyMarket {
+        if (amount == 0 || insuranceCap[msg.sender] != 0 || marketAdmitted[msg.sender]) revert InvalidConfiguration();
+        insuranceCap[msg.sender] = amount;
+        _creditInsurance(msg.sender, 0);
+        emit InsuranceCapSet(msg.sender, amount);
+    }
+
+    /// @notice Direct capital contribution, independent of user deposit limits.
+    function donateInsurance(address market, uint256 usdc) external nonReentrant {
+        if (registrarOf[market] == address(0) || usdc == 0) revert InvalidConfiguration();
+        _receiveCapital(usdc);
+        _creditInsurance(market, F.usdcToWad(usdc));
+        emit InsuranceFunded(market, msg.sender, F.usdcToWad(usdc));
+    }
+
+    function _creditInsurance(address market, uint256 amount) private {
+        uint256 next = _ledgers[market].insurance + amount;
+        uint256 cap = insuranceCap[market];
+        if (cap != 0 && next > cap) {
+            backstopBalance += next - cap;
+            emit InsuranceOverflow(market, next - cap);
+            next = cap;
+        }
+        _ledgers[market].insurance = next;
+    }
+
     function fundInsurance(address market, uint256 amount) external {
         if (registrarOf[market] == address(0)) revert Unauthorized();
         if (amount == 0) revert ZeroAmount();
         _debitFree(msg.sender, amount);
-        _ledgers[market].insurance += amount;
+        _creditInsurance(market, amount);
         emit InsuranceFunded(market, msg.sender, amount);
     }
 
@@ -313,11 +353,13 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
     function settlePnl(address user, int256 pnl) external onlyMarket {
         locked[user][msg.sender] += pnl;
         _ledgers[msg.sender].clearing -= pnl;
+        _activity(user, 0, pnl);
     }
 
     function settleFunding(address user, int256 owed) external onlyMarket {
         locked[user][msg.sender] -= owed;
         _ledgers[msg.sender].fundingPool += owed;
+        _activity(user, 1, -owed);
     }
 
     function chargeFee(address user, T.FeeBreakdown calldata fee, bool fromLocked) external onlyMarket {
@@ -329,13 +371,14 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         T.Ledger storage l = _ledgers[msg.sender];
         l.protocolOwed += fee.protocol;
         l.creatorOwed += fee.creator;
-        l.insurance += fee.insurance;
+        _creditInsurance(msg.sender, fee.insurance);
         if (fee.referral != 0) referralOwed[referrer] += fee.referral;
+        _activity(user, 2, -F.toInt(fee.total));
     }
 
     function sweepFunding(uint256 amount) external onlyMarket {
         _ledgers[msg.sender].fundingPool -= F.toInt(amount);
-        _ledgers[msg.sender].insurance += amount;
+        _creditInsurance(msg.sender, amount);
     }
 
     /// @notice Legacy insurance-only primitive. Current market code uses coverBadDebt for capped backstop coverage.
@@ -347,6 +390,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         if (l.insurance < amount) revert InsufficientInsurance(l.insurance, amount);
         l.insurance -= amount;
         locked[user][msg.sender] = 0;
+        _activity(user, 5, F.toInt(amount));
     }
 
     /// @notice Bind the backstop controller once; replacing it requires the delayed vault upgrade path.
@@ -449,6 +493,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         r.consumedCoverage += amount;
         adlReservedTotal[msg.sender] -= amount;
         locked[user][msg.sender] += F.toInt(amount);
+        _activity(user, 5, F.toInt(amount));
         emit AdlCoverageConsumed(msg.sender, user, amount);
     }
 
@@ -461,6 +506,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         r.lossCoverage += amount;
         adlReservedTotal[msg.sender] += amount;
         locked[user][msg.sender] -= F.toInt(amount);
+        _activity(user, 5, -F.toInt(amount));
         emit AdlCoverageRestored(msg.sender, user, amount);
     }
 
@@ -471,7 +517,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         if (amount > r.lossCoverage) revert AccountingInvariant();
         r.lossCoverage -= amount;
         adlReservedTotal[msg.sender] -= amount;
-        _ledgers[msg.sender].insurance += amount;
+        _creditInsurance(msg.sender, amount);
         emit AdlCoverageReturned(msg.sender, user, amount);
     }
 
@@ -485,6 +531,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         else return false;
         --adlReservedTotal[msg.sender];
         ++freeBalance[winner];
+        _activity(winner, 6, 1);
         emit AdlRoundingPaid(msg.sender, user, winner);
         return true;
     }
@@ -498,7 +545,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         delete _adlReservations[msg.sender][user];
         --adlReservationCount[msg.sender];
         adlReservedTotal[msg.sender] -= returned;
-        _ledgers[msg.sender].insurance += insurance;
+        _creditInsurance(msg.sender, insurance);
         _addReserve(r.allowanceFromReserve, 4);
         emit AdlReservationReleased(msg.sender, user, insurance, r.allowanceFromReserve);
     }
@@ -533,6 +580,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
             remaining -= backstop;
         }
         locked[user][msg.sender] += F.toInt(insurance + backstop);
+        _activity(user, 5, F.toInt(insurance + backstop));
         emit DebtCovered(msg.sender, user, insurance, backstop);
     }
 
@@ -549,7 +597,9 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         uint256 reward = Math.mulDiv(amount, 4000, F.BPS);
         locked[user][msg.sender] = collateral - F.toInt(amount);
         freeBalance[liquidator] += reward;
-        _ledgers[msg.sender].insurance += amount - reward;
+        _creditInsurance(msg.sender, amount - reward);
+        _activity(user, 3, -F.toInt(amount));
+        _activity(liquidator, 6, F.toInt(reward));
         emit LiquidationPenaltyPaid(msg.sender, user, liquidator, amount, reward);
     }
 
@@ -562,6 +612,8 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         if (donorMargin < debit || debtorMargin >= 0 || amount > F.abs(debtorMargin)) revert AccountingInvariant();
         locked[donor][msg.sender] = donorMargin - debit;
         locked[debtor][msg.sender] = debtorMargin + debit;
+        _activity(donor, 4, -debit);
+        _activity(debtor, 4, debit);
         emit AdlProfitTransferred(msg.sender, donor, debtor, amount);
     }
 
@@ -586,7 +638,62 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         emit ProtocolFeesClaimed(market, amount);
     }
 
+    function _activity(address user, uint8 kind, int256 amount) private {
+        if (amount == 0) return;
+        if (kind <= 4 && amount < 0 && _lossTracking[user]) {
+            uint256 day = block.timestamp / 1 days;
+            if (lossDay[user] != day) {
+                lossDay[user] = day;
+                dailyRealizedLoss[user] = 0;
+            }
+            dailyRealizedLoss[user] += F.abs(amount);
+        }
+        emit AccountActivity(msg.sender, user, kind, amount);
+    }
+
+    /// @notice Zero-risk configuration is reserved for the legacy policy entry point.
+    function setOperatorWithLimits(
+        address op,
+        T.OperatorPolicy calldata policy,
+        T.OperatorLimits calldata limits,
+        string calldata name
+    ) external {
+        if (
+            limits.maxPositionNotional == 0 || limits.dailyLoss == 0 || limits.maxLeverage == 0
+                || limits.maxLeverage > 20 || bytes(name).length == 0 || bytes(name).length > 32
+        ) revert InvalidConfiguration();
+        _setOperator(op, policy);
+        operatorLimits[msg.sender][op] = limits;
+        // Track from the first limited-key issuance onwards, including revoked keys.
+        // Owners without limited keys need only the economic event, not policy storage.
+        _lossTracking[msg.sender] = true;
+        emit OperatorLimitsSet(msg.sender, op, name, limits.maxPositionNotional, limits.dailyLoss, limits.maxLeverage);
+    }
+
+    function operatorRequiredMargin(address user, address op, uint256 entry) external view returns (uint256) {
+        uint16 leverage = operatorLimits[user][op].maxLeverage;
+        return user == op || leverage == 0 ? 0 : Math.ceilDiv(entry, leverage);
+    }
+
+    /// @notice Only risk-increasing entries are blocked. Owners can always manage their own positions.
+    function checkOperatorPosition(address user, address op, uint256 entry, uint256 markNotional) external view onlyMarket {
+        if (user == op) return;
+        T.OperatorLimits memory limits = operatorLimits[user][op];
+        if (limits.maxPositionNotional == 0) return;
+        if (markNotional > limits.maxPositionNotional) revert PolicyViolation(6);
+        int256 margin = locked[user][msg.sender];
+        if (margin < F.toInt(Math.ceilDiv(entry, limits.maxLeverage))) revert PolicyViolation(7);
+        if (lossDay[user] == block.timestamp / 1 days && dailyRealizedLoss[user] >= limits.dailyLoss) {
+            revert PolicyViolation(8);
+        }
+    }
+
     function setOperator(address op, T.OperatorPolicy calldata policy) external {
+        _setOperator(op, policy);
+        delete operatorLimits[msg.sender][op];
+    }
+
+    function _setOperator(address op, T.OperatorPolicy calldata policy) private {
         if (op == address(0) || op == msg.sender) revert InvalidAddress();
         if (policy.expiry <= block.number || policy.maxNotionalPerTx == 0 || policy.maxTotalNotional == 0) {
             revert PolicyViolation(1);
@@ -598,6 +705,7 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
 
     function revokeOperator(address op) external {
         delete operators[msg.sender][op];
+        delete operatorLimits[msg.sender][op];
         emit OperatorRevoked(msg.sender, op);
     }
 
@@ -615,6 +723,13 @@ contract MarginVault is IMarginVault, Initializable, UUPSUpgradeable, Reentrancy
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender))));
         if (policy.marketsRoot != bytes32(0) && !MerkleProof.verifyCalldata(marketProof, policy.marketsRoot, leaf)) {
             revert PolicyViolation(3);
+        }
+        if (operatorLimits[user][op].maxPositionNotional != 0) {
+            // New limits must never be used on an older immutable implementation
+            // that cannot run the post-fill position/leverage check.
+            (bool ok, bytes memory data) = msg.sender.staticcall(abi.encodeWithSignature("operatorLimitsVersion()"));
+            if (!ok || data.length != 32 || abi.decode(data, (uint256)) != 1) revert PolicyViolation(9);
+            if (isClose) return;
         }
         if (notional > policy.maxNotionalPerTx) revert PolicyViolation(4);
         uint256 used = uint256(policy.usedNotional) + notional;

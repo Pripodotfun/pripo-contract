@@ -42,6 +42,7 @@ library MarketMaintenance {
         Engine.validateDepth(s, depth);
         s._funding.lastBlock = Engine.currentBlock();
         s._twap.initialize(Curve.mark(s._amm), Engine.currentBlock());
+        if (s.handoffEconomics) s.vault.setInsuranceCap(s.seedBond * 10);
         s.vault.admitMarket(marketNotionalCap, cfg.fundingCapPerBlock);
     }
 
@@ -63,6 +64,7 @@ library MarketMaintenance {
     function remark(S.Data storage s, bytes memory update, uint256 value) public {
         Engine.touch(s);
         Engine.refreshPrice(s, update, value);
+        s.lastTradeTimestamp = uint64(block.timestamp);
         if (!s.guardianPaused && s.pendingAdlCount == 0) Engine.setStatus(s, T.Status.Active);
     }
 

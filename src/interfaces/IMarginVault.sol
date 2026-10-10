@@ -39,6 +39,27 @@ interface IMarginVault is IPripoErrors {
     event AdlRoundingPaid(address indexed market, address indexed user, address indexed winner);
     event AdlReservationReleased(address indexed market, address indexed user, uint256 insurance, uint256 reserve);
 
+    /// @notice Signed economic account movement in WAD: 0 PnL, 1 funding, 2 fee,
+    /// 3 liquidation penalty, 4 ADL redistribution, 5 coverage, 6 keeper/rounding reward.
+    event AccountActivity(address indexed market, address indexed user, uint8 indexed kind, int256 amount);
+    event OperatorLimitsSet(
+        address indexed user,
+        address indexed operator,
+        string name,
+        uint128 maxPositionNotional,
+        uint128 dailyLoss,
+        uint16 maxLeverage
+    );
+    function setOperatorWithLimits(
+        address op,
+        T.OperatorPolicy calldata policy,
+        T.OperatorLimits calldata limits,
+        string calldata name
+    ) external;
+    function operatorRequiredMargin(address user, address op, uint256 entry) external view returns (uint256);
+    function checkOperatorPosition(address user, address op, uint256 entry, uint256 markNotional) external view;
+    function setInsuranceCap(uint256 amount) external;
+    function donateInsurance(address market, uint256 usdc) external;
     function deposit(uint256 usdc) external;
     function withdraw(uint256 usdc) external;
     function freeBalance(address user) external view returns (uint256);

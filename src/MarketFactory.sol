@@ -12,6 +12,7 @@ import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 interface IFactoryVault is IMarginVault {
@@ -45,6 +46,41 @@ contract MarketFactory is IMarketFactory, ReentrancyGuard {
     address[] public markets;
     uint256 public refundableBonds;
     uint256 public slashedBonds;
+
+    address public resolver;
+    mapping(address => string) public profileName;
+    event ProfileNamed(address indexed user, string name);
+
+    /// @notice A self-selected public label; identity and transaction authority remain the wallet address.
+    function setProfileName(string calldata name) external {
+        bytes memory raw = bytes(name);
+        if (raw.length < 2 || raw.length > 24) revert InvalidConfiguration();
+        for (uint256 i; i < raw.length; ++i) {
+            bytes1 c = raw[i];
+            if (!((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || (c >= 0x30 && c <= 0x39) || c == 0x5f || c == 0x2d)) revert InvalidConfiguration();
+        }
+        profileName[msg.sender] = name;
+        emit ProfileNamed(msg.sender, name);
+    }
+
+
+    struct Metadata {
+        string company;
+        bool preIpo;
+    }
+    mapping(address => Metadata) public marketMetadata;
+
+    struct FeedMetadata {
+        address adapter;
+        bytes32 feedId;
+        string symbol;
+        string name;
+    }
+    FeedMetadata[] public feedDirectory;
+    mapping(bytes32 => bool) private _listedMetadata;
+    event MarketMetadataSet(address indexed market, string company, bool preIpo);
+    event FeedMetadataSet(address indexed adapter, bytes32 indexed feedId, string symbol, string name);
+    event ResolverSet(address indexed resolver);
 
     struct FeedListing {
         address lister;
@@ -97,7 +133,7 @@ contract MarketFactory is IMarketFactory, ReentrancyGuard {
     }
 
     function createMarket(T.CreateParams calldata p) external nonReentrant returns (address) {
-        return _create(p, "", 0);
+        return _create(p, "", 0, false);
     }
 
     /// @notice Optional pull update before initialization, forwarding the caller's exact native oracle fee.
@@ -107,13 +143,99 @@ contract MarketFactory is IMarketFactory, ReentrancyGuard {
         nonReentrant
         returns (address)
     {
-        return _create(p, update, msg.value);
+        return _create(p, update, msg.value, false);
+    }
+
+    /// @notice Bind once; existing clone resolvers can never be replaced through the factory.
+    function setResolver(address resolver_) external nonReentrant onlyGovernor {
+        if (resolver != address(0) || resolver_.code.length == 0) revert InvalidAddress();
+        resolver = resolver_;
+        emit ResolverSet(resolver_);
+    }
+
+    function feedDirectoryCount() external view returns (uint256) {
+        return feedDirectory.length;
+    }
+
+    function publishFeed(address adapter, bytes32 feedId, string calldata symbol, string calldata name)
+        external
+        nonReentrant
+        onlyGovernor
+    {
+        bytes32 key = keccak256(abi.encode(adapter, feedId));
+        if (
+            !allowedFeeds[adapter][feedId] || _listedMetadata[key] || bytes(symbol).length == 0
+                || bytes(symbol).length > 32 || bytes(name).length == 0 || bytes(name).length > 80
+        ) revert InvalidConfiguration();
+        _listedMetadata[key] = true;
+        feedDirectory.push(FeedMetadata(adapter, feedId, symbol, name));
+        emit FeedMetadataSet(adapter, feedId, symbol, name);
+    }
+
+    /// @notice Starting OI cap 50x bond; insurance cap 10x. Curve reserve targets
+    /// 15x bond of buys before a +1% mark move, with conservative integer rounding.
+    function creationEconomics(uint256 seedBond)
+        public
+        pure
+        returns (uint256 insuranceCap, uint256 oiCap, uint256 depth)
+    {
+        if (seedBond < 1_000e6 || seedBond > 100_000e6) revert InvalidConfiguration();
+        uint256 bond = F.usdcToWad(seedBond);
+        return (bond * 10, bond * 50, Math.mulDiv(bond * 15, F.WAD, Math.sqrt(101e34) - F.WAD, Math.Rounding.Ceil));
+    }
+
+    function handoffLaunchConfig(address creator, address source) public view returns (T.MarketConfig memory c) {
+        c = launchConfig(creator, source);
+        c.creatorShareBps = 2000;
+    }
+
+    function createMarketWithMetadata(T.CreateParams calldata p, string calldata company, bytes calldata update)
+        external
+        payable
+        nonReentrant
+        returns (address market)
+    {
+        if (resolver == address(0) || bytes(company).length == 0 || bytes(company).length > 80) {
+            revert InvalidConfiguration();
+        }
+        if (p.priceSource == nullAdapter) {
+            bytes memory symbol = bytes(p.symbol);
+            if (symbol.length < 8 || symbol.length > 16 || bytes6(symbol) != bytes6("PRIPO:")) {
+                revert InvalidConfiguration();
+            }
+            for (uint256 i = 6; i < symbol.length; ++i) {
+                if (!((symbol[i] >= 0x41 && symbol[i] <= 0x5a) || (symbol[i] >= 0x30 && symbol[i] <= 0x39))) {
+                    revert InvalidConfiguration();
+                }
+            }
+        } else {
+            bool canonical;
+            for (uint256 i; i < feedDirectory.length; ++i) {
+                FeedMetadata storage f = feedDirectory[i];
+                if (
+                    f.adapter == p.priceSource && f.feedId == p.feedId
+                        && keccak256(bytes(f.symbol)) == keccak256(bytes(p.symbol))
+                ) {
+                    canonical = true;
+                    break;
+                }
+            }
+            if (!canonical) revert InvalidConfiguration();
+        }
+        (,, uint256 depth) = creationEconomics(p.seedBond);
+        if (p.depth != depth) revert InvalidReserves();
+        market = _create(p, update, msg.value, true);
+        marketMetadata[market] = Metadata(company, p.priceSource == nullAdapter);
+        emit MarketMetadataSet(market, company, p.priceSource == nullAdapter);
     }
 
     // Both entry points hold nonReentrant through approved-adapter, token and vault callbacks. All mutating
     // factory entry points share the guard; registry views cannot authorize a second creation. Callback tested.
     // slither-disable-next-line reentrancy-eth,reentrancy-benign
-    function _create(T.CreateParams calldata p, bytes memory update, uint256 value) private returns (address market) {
+    function _create(T.CreateParams calldata p, bytes memory update, uint256 value, bool handoff)
+        private
+        returns (address market)
+    {
         bytes memory symbol = bytes(p.symbol);
         if (symbol.length == 0 || symbol.length > MAX_SYMBOL_BYTES) revert InvalidConfiguration();
         bytes32 salt = keccak256(symbol);
@@ -134,7 +256,7 @@ contract MarketFactory is IMarketFactory, ReentrancyGuard {
             if (value != 0) revert UnexpectedValue();
             if (p.initialPrice == 0 || p.initialPrice > 1e28) revert InvalidOracle();
         }
-        uint256 minimum = externalIndex ? 5_000e6 : 2_000e6;
+        uint256 minimum = handoff ? 1_000e6 : (externalIndex ? 5_000e6 : 2_000e6);
         if (p.seedBond < minimum) revert InsufficientInsurance(F.usdcToWad(p.seedBond), F.usdcToWad(minimum));
         market = Clones.cloneDeterministic(marketImplementation, salt);
         marketForSymbol[salt] = market;
@@ -147,10 +269,23 @@ contract MarketFactory is IMarketFactory, ReentrancyGuard {
         token.forceApprove(address(vault), p.seedBond);
         vault.deposit(p.seedBond);
         vault.fundInsurance(market, F.usdcToWad(p.seedBond));
-        Market(market)
-            .initialize(
-                vault, p.feedId, externalIndex, launchConfig(msg.sender, p.priceSource), p.initialPrice, p.depth
-            );
+        if (handoff) {
+            Market(market)
+                .initializeHandoff(
+                    vault,
+                    p.feedId,
+                    externalIndex,
+                    handoffLaunchConfig(msg.sender, p.priceSource),
+                    p.initialPrice,
+                    p.depth,
+                    resolver
+                );
+        } else {
+            Market(market)
+                .initialize(
+                    vault, p.feedId, externalIndex, launchConfig(msg.sender, p.priceSource), p.initialPrice, p.depth
+                );
+        }
         emit MarketCreated(market, msg.sender, p.symbol, externalIndex, p.depth, p.seedBond);
     }
 

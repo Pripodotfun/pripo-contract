@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IMarketCore} from "../interfaces/IMarketCore.sol";
 import {IPripoErrors as E} from "../interfaces/IPripoErrors.sol";
 import {FixedPointMath as F} from "../libraries/FixedPointMath.sol";
@@ -72,8 +73,12 @@ library MarketTrading {
     ) private {
         Engine.checkLimit(size, q.fill.avgPrice, limitPrice);
         s.vault.checkAndConsume(user, msg.sender, q.fill.quoteAmount, false, proof);
+        uint256 required = s.vault.operatorRequiredMargin(user, msg.sender, q.newEntry);
+        int256 collateral = s.vault.locked(user, address(this));
+        if (F.toInt(required) > collateral + F.toInt(q.margin)) q.margin = F.toUint(F.toInt(required) - collateral);
         s.vault.lock(user, q.margin);
         Engine.chargeFee(s, user, q.fee, false);
+        s.vault.checkOperatorPosition(user, msg.sender, q.newEntry, Math.mulDiv(F.abs(q.newSize), q.fill.newMark, F.WAD, Math.Rounding.Ceil));
         T.Position storage p = s._positions[user];
         int256 oldSize = p.size;
         if (oldSize == 0) Book.add(s, user);
@@ -84,6 +89,7 @@ library MarketTrading {
         s._amm.entryCostNet += size > 0 ? F.toInt(q.fill.quoteAmount) : -F.toInt(q.fill.quoteAmount);
         Engine.applyFill(s, q.fill);
         Capacity.refresh(s, user);
+        s.lastTradeTimestamp = uint64(block.timestamp);
         emit IMarketCore.PositionOpened(address(this), user, msg.sender, size, q.fill.avgPrice, q.margin, q.fee);
     }
 
@@ -113,6 +119,7 @@ library MarketTrading {
         }
         Capacity.refresh(s, user);
         // Partial closes retain collateral. The owner can remove the excess subject to the initial-margin checks.
+        s.lastTradeTimestamp = uint64(block.timestamp);
         emit IMarketCore.PositionClosed(
             address(this), user, msg.sender, q.closedSize, q.fill.avgPrice, q.pnl, fundingOwed, q.fee
         );

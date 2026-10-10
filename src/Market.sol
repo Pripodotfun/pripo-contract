@@ -70,6 +70,30 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         return Settlement.quote(S.load());
     }
 
+    function beginResolution() external nonReentrant returns (uint256) {
+        return Settlement.beginResolution(S.load());
+    }
+
+    function finalizeResolution(uint256 price) external nonReentrant {
+        Settlement.finalizeResolution(S.load(), price);
+    }
+
+    function resolutionQuote(uint256 price) external view returns (T.SettlementQuote memory) {
+        return Settlement.resolutionQuote(S.load(), price);
+    }
+
+    function resolutionAccountQuote(address user, uint256 price) external view returns (int256, int256, uint256, uint256) {
+        return Settlement.accountQuote(S.load(), user, price);
+    }
+
+    function claimSettlement() external nonReentrant returns (uint256) {
+        return Settlement.claim(S.load(), msg.sender);
+    }
+
+    function settlementClaim(address user) external view returns (uint256) {
+        return S.load().settlementClaims[user];
+    }
+
     function settlementInfo() external view returns (uint256 price, uint256 haircut, uint256 profits) {
         S.Data storage s = S.load();
         return (s.settlementPrice, s.settlementHaircut, s.settlementProfits);
@@ -123,6 +147,40 @@ contract Market is IMarketCore, Initializable, ReentrancyGuard {
         uint256 depth
     ) external nonReentrant initializer {
         Maintenance.initialize(S.load(), vault_, feedId_, externalIndex_, cfg, initialPrice, depth, MARKET_NOTIONAL_CAP);
+    }
+
+    /// @notice Versioned creation keeps legacy configuration and markets unchanged.
+    function initializeHandoff(
+        IMarginVault vault_,
+        bytes32 feedId_,
+        bool externalIndex_,
+        T.MarketConfig calldata cfg,
+        uint256 initialPrice,
+        uint256 depth,
+        address resolver_
+    ) external nonReentrant initializer {
+        S.Data storage s = S.load();
+        if (resolver_.code.length == 0) revert InvalidAddress();
+        s.handoffEconomics = true;
+        s.seedBond = vault_.ledger(address(this)).insurance;
+        s.resolver = resolver_;
+        s.lastTradeTimestamp = uint64(block.timestamp);
+        // Maintenance checks registrar authorization before any state can commit.
+        Maintenance.initialize(s, vault_, feedId_, externalIndex_, cfg, initialPrice, depth, s.seedBond * 50);
+    }
+
+    function operatorLimitsVersion() external pure returns (uint8) { return 1; }
+
+    function lifecycleVersion() external view returns (uint8) {
+        return S.load().handoffEconomics ? 1 : 0;
+    }
+
+    function resolver() external view returns (address) {
+        return S.load().resolver;
+    }
+
+    function lastTradeTimestamp() external view returns (uint64) {
+        return S.load().lastTradeTimestamp;
     }
 
     function open(int256 size, uint256 limitPrice, bytes calldata update) external payable nonReentrant {

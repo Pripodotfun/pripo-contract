@@ -18,7 +18,8 @@ CONTRACTS = {
     "IMarginVault": "marginVaultInterfaceAbi",
     "InsuranceBackstop": "insuranceBackstopAbi",
     "IInsuranceBackstop": "insuranceBackstopInterfaceAbi",
-    "IResolver": "resolverAbi",
+    "Resolver": "resolverAbi",
+    "IResolver": "resolverInterfaceAbi",
     "IPriceSource": "priceSourceAbi",
     "IPripoErrors": "pripoErrorsAbi",
 }

@@ -267,6 +267,34 @@
   },
   {
     "type": "function",
+    "name": "checkOperatorPosition",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "op",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "entry",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "markNotional",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claimCreatorFees",
     "inputs": [],
     "outputs": [
@@ -464,6 +492,24 @@
     "type": "function",
     "name": "deposit",
     "inputs": [
+      {
+        "name": "usdc",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "donateInsurance",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "internalType": "address"
+      },
       {
         "name": "usdc",
         "type": "uint256",
@@ -715,6 +761,35 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "operatorRequiredMargin",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "op",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "entry",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -970,6 +1045,19 @@
   },
   {
     "type": "function",
+    "name": "setInsuranceCap",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setOperator",
     "inputs": [
       {
@@ -1013,6 +1101,83 @@
             "internalType": "bool"
           }
         ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setOperatorWithLimits",
+    "inputs": [
+      {
+        "name": "op",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "policy",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.OperatorPolicy",
+        "components": [
+          {
+            "name": "expiry",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "maxNotionalPerTx",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxTotalNotional",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "usedNotional",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "marketsRoot",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "canClose",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "limits",
+        "type": "tuple",
+        "internalType": "struct PripoTypes.OperatorLimits",
+        "components": [
+          {
+            "name": "maxPositionNotional",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "dailyLoss",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "maxLeverage",
+            "type": "uint16",
+            "internalType": "uint16"
+          }
+        ]
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -1141,6 +1306,37 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "AccountActivity",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "kind",
+        "type": "uint8",
+        "indexed": true,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
+        "type": "int256",
+        "indexed": false,
+        "internalType": "int256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -1550,6 +1746,49 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OperatorLimitsSet",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "operator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "maxPositionNotional",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "dailyLoss",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      },
+      {
+        "name": "maxLeverage",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
       }
     ],
     "anonymous": false

@@ -95,8 +95,8 @@ library MarketAccounting {
         // slither-disable-next-line incorrect-equality
         if (p.size == 0) return 0;
         (s._funding, owed, p.lastFundingIndex) = Funding.settle(s._funding, p.size, p.lastFundingIndex);
-        Capacity.checkDebit(s, user, owed);
-        s.vault.settleFunding(user, owed);
+        if (owed > 0) Capacity.checkDebit(s, user, owed);
+        if (owed != 0) s.vault.settleFunding(user, owed);
     }
 
     function fundingOwed(S.Data storage s, T.Position memory p) internal view returns (int256 owed) {
@@ -117,6 +117,7 @@ library MarketAccounting {
     }
 
     function applyFill(S.Data storage s, T.Fill memory fill) internal {
+        s.lastTradeTimestamp = uint64(block.timestamp);
         s._amm.baseReserve = fill.baseReserve;
         s._amm.quoteReserve = fill.quoteReserve;
         s._twap.write(fill.newMark, currentBlock());
@@ -223,15 +224,17 @@ library MarketAccounting {
     }
 
     function oiCap(S.Data storage s) internal view returns (uint256) {
-        return Math.min(s.vault.ledger(address(this)).insurance * (s.externalIndex ? 20 : 10), 25_000e18);
+        uint256 insurance = s.vault.ledger(address(this)).insurance;
+        if (s.handoffEconomics) return Math.min(insurance, s.seedBond) * 50;
+        return Math.min(insurance * (s.externalIndex ? 20 : 10), 25_000e18);
     }
 
     function validateDepth(S.Data storage s, uint256 depth) public view {
         uint256 insurance = s.vault.ledger(address(this)).insurance;
-        if (insurance < (s.externalIndex ? 5_000e18 : 2_000e18)) {
-            revert E.InsufficientInsurance(insurance, s.externalIndex ? 5_000e18 : 2_000e18);
-        }
-        uint16 multiplier = s.externalIndex ? 20 : 10;
+        uint256 minimumBond = s.handoffEconomics ? 1_000e18 : (s.externalIndex ? 5_000e18 : 2_000e18);
+        if (insurance < minimumBond) revert E.InsufficientInsurance(insurance, minimumBond);
+        if (s.handoffEconomics) insurance = Math.min(insurance, s.seedBond);
+        uint16 multiplier = s.handoffEconomics ? 50 : (s.externalIndex ? 20 : 10);
         uint256 minimum = Risk.minimumDepth(insurance, multiplier, s._config.sideCapBps);
         if (depth < minimum || depth > 1e28 || s._amm.baseAtSeed > 1e28) revert E.InvalidReserves();
         uint256 coverage = Math.mulDiv(Risk.sideCap(s._amm.baseAtSeed, s._config.sideCapBps), Curve.mark(s._amm), F.WAD);
@@ -243,9 +246,10 @@ library MarketAccounting {
         if (
             c.creator == address(0) || c.maxLeverageX < 2 || c.maxLeverageX > maximum || c.sideCapBps == 0
                 || c.sideCapBps > Risk.sideCapBps(c.maxLeverageX) || c.mmrBps != (s.externalIndex ? 250 : 1500)
-                || c.impactMarginBps != F.BPS || c.skewCoeff != 0 || c.takerFeeBps != 8 || c.creatorShareBps != 3000
-                || c.insuranceShareBps != 3000 || c.referralShareBps != 1000 || c.receiveCapX != 10
-                || c.liqPenaltyBps != 150 || c.maxOracleAgeBlocks == 0 || c.degradeAfterBlocks <= c.maxOracleAgeBlocks
+                || c.impactMarginBps != F.BPS || c.skewCoeff != 0 || c.takerFeeBps != 8
+                || c.creatorShareBps != (s.handoffEconomics ? 2000 : 3000) || c.insuranceShareBps != 3000
+                || c.referralShareBps != 1000 || c.receiveCapX != 10 || c.liqPenaltyBps != 150
+                || c.maxOracleAgeBlocks == 0 || c.degradeAfterBlocks <= c.maxOracleAgeBlocks
                 || c.degradedTwapBlocks != 600 || c.adlPendingWindow == 0 || c.maxPositionsPerMarket < 2
                 || c.maxPositionsPerMarket > Book.MAX_POSITIONS
                 || c.fundingCapPerBlock > (s.externalIndex ? uint256(0.001e18) / 12_000 : uint256(0.005e18) / 12_000)

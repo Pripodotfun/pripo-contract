@@ -152,6 +152,13 @@ library PripoTypes {
         LiquidationPriceReason reason;
     }
 
+    /// @notice Additional limits for new operator policies. Existing policy ABI/storage remains unchanged.
+    struct OperatorLimits {
+        uint128 maxPositionNotional;
+        uint128 dailyLoss;
+        uint16 maxLeverage;
+    }
+
     struct OperatorPolicy {
         uint64 expiry;
         uint128 maxNotionalPerTx;

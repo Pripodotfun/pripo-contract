@@ -36,6 +36,11 @@ library MarketState {
         FundingCapacityHeap.State longFundingCaps;
         FundingCapacityHeap.State shortFundingCaps;
         address fundingBinding;
+        bool handoffEconomics;
+        uint256 seedBond;
+        address resolver;
+        uint64 lastTradeTimestamp;
+        mapping(address => uint256) settlementClaims;
     }
 
     struct OpenQuote {

@@ -36,11 +36,16 @@ library MarketSettlement {
     // slither-disable-next-line calls-loop
     function plan(S.Data storage s) internal view returns (Plan memory p) {
         if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
+        return planAt(s, s._twap.consult(300, Engine.currentBlock()));
+    }
+
+    function planAt(S.Data storage s, uint256 price) internal view returns (Plan memory p) {
+        if (s._config.status == T.Status.Settled || price == 0 || price > 1e28) revert E.MarketNotActive();
         p.users = Book.live(s);
         p.pnls = new int256[](p.users.length);
         p.profits = new uint256[](p.users.length);
         T.SettlementQuote memory q = p.quote;
-        q.price = s._twap.consult(300, Engine.currentBlock());
+        q.price = price;
         q.positions = p.users.length;
         T.Ledger memory ledger = s.vault.ledger(address(this));
         q.clearing = ledger.clearing;
@@ -88,6 +93,55 @@ library MarketSettlement {
     // At most 128 accounts; all loop calls target the fixed vault. Full-book gas is regression tested.
     // slither-disable-next-line reentrancy-events,reentrancy-no-eth,calls-loop
     function execute(S.Data storage s, address) public {
+        if (s._config.status >= T.Status.Settling) revert E.MarketNotActive();
+        _execute(s, s._twap.consult(300, Engine.currentBlock()), false);
+    }
+
+
+    function beginResolution(S.Data storage s) public returns (uint256 frozenTwap) {
+        if (msg.sender != s.resolver || s.externalIndex || s.pendingAdlCount != 0) revert E.Unauthorized();
+        Engine.touch(s);
+        frozenTwap = s._twap.consult(300, Engine.currentBlock());
+        Engine.setStatus(s, T.Status.Settling);
+        emit IMarketCore.SettlementFrozen(frozenTwap);
+    }
+
+    function finalizeResolution(S.Data storage s, uint256 price) public {
+        if (msg.sender != s.resolver || s._config.status != T.Status.Settling) revert E.Unauthorized();
+        _execute(s, price, true);
+    }
+
+    function claim(S.Data storage s, address user) public returns (uint256 amount) {
+        if (s._config.status != T.Status.Settled) revert E.MarketNotActive();
+        amount = s.settlementClaims[user];
+        if (amount == 0) revert E.ZeroAmount();
+        delete s.settlementClaims[user];
+        s.vault.release(user, amount);
+        emit IMarketCore.SettlementClaimed(user, amount);
+    }
+
+    function resolutionQuote(S.Data storage s, uint256 price) public view returns (T.SettlementQuote memory) {
+        return planAt(s, price).quote;
+    }
+
+    /// @notice Exact prefix-rounded payout for a proposed price, using the same book ordering as finalization.
+    function accountQuote(S.Data storage s, address user, uint256 price) public view returns (int256 pnl, int256 funding, uint256 haircut, uint256 payout) {
+        Plan memory p = planAt(s, price);
+        uint256 cumulative;
+        for (uint256 i; i < p.users.length; ++i) {
+            uint256 previous = p.quote.profits == 0 ? 0 : Math.mulDiv(p.quote.haircut, cumulative, p.quote.profits);
+            cumulative += p.profits[i];
+            if (p.users[i] != user) continue;
+            pnl = p.pnls[i];
+            funding = Engine.fundingOwed(s, s._positions[user]);
+            haircut = (p.quote.profits == 0 ? 0 : Math.mulDiv(p.quote.haircut, cumulative, p.quote.profits)) - previous;
+            int256 equity = s.vault.locked(user, address(this)) + pnl - funding - F.toInt(haircut);
+            payout = equity > 0 ? F.toUint(equity) : 0;
+            return (pnl, funding, haircut, payout);
+        }
+    }
+
+    function _execute(S.Data storage s, uint256 price, bool claims) private {
         // Release every pending commitment before terminal valuation. Other markets' reservations remain isolated.
         // Funding was touched while frozen by the caller, so clearing the count cannot accrue the frozen interval.
         for (uint256 i; i < s._accounts.length; ++i) {
@@ -100,25 +154,31 @@ library MarketSettlement {
             }
         }
         s.pendingAdlCount = 0;
-        Plan memory p = plan(s);
+        Plan memory p = planAt(s, price);
         T.SettlementQuote memory q = p.quote;
         uint8 fundedThrough = _fundedThrough(s, q);
         Engine.setStatus(s, T.Status.Settling);
-        emit IMarketCore.ForcedSettlement(address(this), q.price, q.capitalRequired + q.haircut, fundedThrough);
+        if (!claims) {
+            emit IMarketCore.ForcedSettlement(address(this), q.price, q.capitalRequired + q.haircut, fundedThrough);
+        }
         uint256 allocated = 0;
         uint256 cumulative = 0;
         for (uint256 i; i < p.users.length; ++i) {
             address user = p.users[i];
             // Checkpoint all positions before removing their funding weights. No funding accrues during this loop.
             // slither-disable-next-line unused-return
-            Engine.settleFunding(s, user);
-            s.vault.settlePnl(user, p.pnls[i]);
+            int256 collateral = claims ? s.vault.locked(user, address(this)) : int256(0);
+            int256 funding = Engine.settleFunding(s, user);
             // Prefix rounding allocates exactly the haircut, independent of caller-supplied account order.
             cumulative += p.profits[i];
             uint256 next = q.profits == 0 ? 0 : Math.mulDiv(q.haircut, cumulative, q.profits);
             uint256 haircut = next - allocated;
             allocated = next;
-            if (haircut != 0) s.vault.settlePnl(user, -F.toInt(haircut));
+            s.vault.settlePnl(user, p.pnls[i] - F.toInt(haircut));
+            if (claims) {
+                int256 equity = collateral + p.pnls[i] - funding - F.toInt(haircut);
+                emit IMarketCore.PositionSettled(user, s._positions[user].size, s._positions[user].entryCost, collateral, p.pnls[i], funding, haircut, equity > 0 ? F.toUint(equity) : 0);
+            }
             Engine.resize(s, s._positions[user].size, 0);
             delete s._positions[user];
             delete s._accountIndex[user];
@@ -145,7 +205,12 @@ library MarketSettlement {
         s.vault.finalizeSettlement(p.users);
         for (uint256 i; i < p.users.length; ++i) {
             uint256 amount = F.toUint(s.vault.locked(p.users[i], address(this)));
-            if (amount != 0) s.vault.release(p.users[i], amount);
+            if (claims) {
+                s.settlementClaims[p.users[i]] = amount;
+                emit IMarketCore.SettlementClaimReady(p.users[i], amount);
+            } else if (amount != 0) {
+                s.vault.release(p.users[i], amount);
+            }
         }
         emit IMarginVault.TerminalCoverage(address(this), 1, q.losingCollateral);
         emit IMarginVault.TerminalCoverage(address(this), 2, q.haircut);
