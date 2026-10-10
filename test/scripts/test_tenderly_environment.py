@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from monad_preflight import ProbeError
-from tenderly_environment import CHAIN_ID, admin_rpc, create_payload, environment_parts
+from tenderly_environment import CHAIN_ID, admin_rpc, create_payload, environment_parts, require_chain_domain
 from tenderly_stage import ProjectAPIError, project_api, project_status
 
 
@@ -71,6 +71,20 @@ class TenderlyEnvironmentTest(unittest.TestCase):
             with self.assertRaises(ProbeError):
                 admin_rpc("https://rpc.invalid", "eth_sendTransaction", [])
             send.assert_not_called()
+
+    def test_evm_domain_mismatch_rejects_mutation_even_with_correct_rpc_id(self):
+        with patch("tenderly_environment.rpc", side_effect=[hex(CHAIN_ID), hex(CHAIN_ID), hex(1)]), \
+                patch("tenderly_environment.request_json") as send:
+            with self.assertRaises(ProbeError):
+                admin_rpc("https://rpc.invalid", "eth_sendTransaction", [])
+            send.assert_not_called()
+
+    def test_matching_evm_and_rpc_domains_are_required(self):
+        with patch("tenderly_environment.rpc", side_effect=[hex(CHAIN_ID), hex(CHAIN_ID)]):
+            require_chain_domain("https://rpc.invalid")
+        with patch("tenderly_environment.rpc", side_effect=[hex(CHAIN_ID), hex(143)]):
+            with self.assertRaises(ProbeError):
+                require_chain_domain("https://rpc.invalid")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ from dry_run_deployment import creation_summary
 from mock_testnet import calldata
 from monad_preflight import ROOT, ProbeError, load_env, request_json, rpc
 from run_monad_fork import redact_output
-from tenderly_environment import CHAIN_ID, JOURNAL, SENDER, admin_rpc, environment_parts
+from tenderly_environment import CHAIN_ID, JOURNAL, SENDER, admin_rpc, environment_parts, require_chain_domain
 from tenderly_stage import project_api
 
 FOLDER = ROOT / "reports/deployment/tenderly"
@@ -47,6 +47,7 @@ def context():
             or endpoint != env.get("TENDERLY_RPC") or vnet.get("sync_state_config", {}).get("enabled") is not False
             or int(rpc(endpoint, "eth_chainId", []), 16) != CHAIN_ID):
         raise ProbeError("Rehearsal instance, RPC, chain or disabled-sync check failed")
+    require_chain_domain(endpoint)
     FOLDER.mkdir(parents=True, exist_ok=True)
     return env, endpoint, record
 

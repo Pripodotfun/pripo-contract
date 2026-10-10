@@ -15,6 +15,19 @@ FOLDER = ROOT / "reports/tenderly"
 JOURNAL = FOLDER / "environment.json"
 SENDER = "0x00000000000000000000000000000000000A11cE"
 CHAIN_ID = 999143
+SAFE_SINGLETON = "0x41675C099F32341bf84BFc5382aF534df5C7461a"
+
+
+def chain_domain(endpoint):
+    rpc_id = int(rpc(endpoint, "eth_chainId", []), 16)
+    # Safe 1.4.1 exposes the CHAINID opcode directly; RPC metadata alone is insufficient.
+    evm_id = int(rpc(endpoint, "eth_call", [{"to": SAFE_SINGLETON, "data": "0x3408e470"}, "latest"]), 16)
+    return {"rpcChainId": rpc_id, "evmChainId": evm_id, "matches": rpc_id == evm_id == CHAIN_ID}
+
+
+def require_chain_domain(endpoint):
+    if not chain_domain(endpoint)["matches"]:
+        raise ProbeError("Tenderly RPC and EVM CHAINID must both equal isolated rehearsal chain 999143")
 
 
 def number(value):
@@ -22,7 +35,8 @@ def number(value):
 
 
 def create_payload(header):
-    return {"display_name": "Pripo Monad mainnet rehearsal", "slug": "pripo-rehearsal-20261009",
+    return {"display_name": "Pripo Monad mainnet rehearsal",
+            "slug": "pripo-rehearsal-" + datetime.now(timezone.utc).strftime("%Y%m%d"),
             "network_configs": [{"network_id": "143", "block_number": header["number"],
                                   "chain_config_overrides": {"chain_id": str(CHAIN_ID)},
                                   "accounts": [{"address": SENDER, "balance": hex(1000 * 10**18)}],
@@ -67,6 +81,7 @@ def save_rpc(endpoint):
 def admin_rpc(endpoint, method, params):
     if int(rpc(endpoint, "eth_chainId", []), 16) != CHAIN_ID:
         raise ProbeError("Admin RPC requires isolated rehearsal chain 999143")
+    require_chain_domain(endpoint)
     if method not in ("tenderly_stopSync", "tenderly_getSyncStatus", "tenderly_setBalance",
                       "tenderly_setErc20Balance", "eth_sendTransaction", "evm_snapshot", "evm_revert",
                       "evm_increaseTime", "evm_increaseBlocks", "evm_setNextBlockTimestamp"):
@@ -101,7 +116,7 @@ def verify(env, record):
     cfg = json.loads((ROOT / "config/monad-mainnet.json").read_text())
     dependencies = {}
     for label, address in (("usdc", cfg["usdc"]), ("pythCore", cfg["pythCore"]),
-                           ("safeSingleton", "0x41675C099F32341bf84BFc5382aF534df5C7461a"),
+                           ("safeSingleton", SAFE_SINGLETON),
                            ("safeFactory", "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67")):
         source = rpc(env["ALCHEMY_MONAD_RPC"], "eth_getCode", [address, parent["number"]])
         actual = rpc(endpoint, "eth_getCode", [address, "latest"])
@@ -111,6 +126,12 @@ def verify(env, record):
     decimals = int(rpc(endpoint, "eth_call", [{"to": cfg["usdc"], "data": "0x313ce567"}, "latest"]), 16)
     if decimals != 6:
         raise ProbeError("Fork USDC decimals mismatch")
+    domain = chain_domain(endpoint)
+    record.update(chainDomain=domain, dependencies=dependencies, usdcDecimals=decimals)
+    if not domain["matches"]:
+        record.update(status="chain-domain-mismatch", productionReady=False)
+        JOURNAL.write_text(json.dumps(record, indent=2) + "\n")
+        raise ProbeError("Fork ancestry verified, but EVM CHAINID differs from the isolated RPC chain ID")
     record.update(status="verified", verifiedAt=datetime.now(timezone.utc).isoformat(), chainId=CHAIN_ID,
                   dependencies=dependencies, usdcDecimals=decimals, syncState=vnet.get("sync_state_config"),
                   sender=SENDER, nativeBalanceWei=str(int(rpc(endpoint, "eth_getBalance", [SENDER, "latest"]), 16)),
