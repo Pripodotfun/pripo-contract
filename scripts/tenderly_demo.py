@@ -199,7 +199,7 @@ def verify(endpoint, stage, proof):
         if code.lower() != expected.lower() or state["marketCount"] != 1:
             raise ProbeError("Incorrect demo clone or market count")
         state.update(market=a, symbol=SYMBOL, opensAllowed=True, insuranceWad=SEED * 10**12, markPriceWad=PRICE)
-        save(FOLDER / "market.json", market)
+        save(FOLDER / "market-definition.json", market)
     save(FOLDER / "manifest.json", m)
     record.update(status="verified", transactions=costs, state=state, verifiedAt=datetime.now(timezone.utc).isoformat())
     save(FOLDER / (stage + ".json"), record)
