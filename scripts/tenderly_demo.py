@@ -11,7 +11,7 @@ from deploy_tenderly import prepare_source, save, verified_receipts
 from mock_testnet import calldata
 from monad_preflight import ROOT, ProbeError, load_env, rpc
 from run_monad_fork import redact_output
-from tenderly_environment import CHAIN_ID, JOURNAL, SENDER, chain_domain, environment_parts
+from tenderly_environment import CHAIN_ID, JOURNAL, SENDER, chain_domain, environment_parts, save_rpc
 from tenderly_stage import project_api
 
 FOLDER = ROOT / "reports/deployment/tenderly-demo"
@@ -41,10 +41,14 @@ def context():
     current = project_api(env, "/environments/" + record["environmentId"], public=True)
     instance, vnet, endpoint = environment_parts(current, record)
     if (instance["id"] != record["instanceId"] or vnet["id"] != record["vnetId"]
-            or endpoint != env.get("TENDERLY_RPC") or vnet.get("sync_state_config", {}).get("enabled") is not False):
+            or vnet.get("sync_state_config", {}).get("enabled") is not False):
         raise ProbeError("Demo fork instance, RPC or sync mode changed")
     domain = chain_domain(endpoint)
     validate_domain(domain)
+    # Refresh only from the authenticated API for the exact recorded instance; RPC credentials can rotate.
+    if endpoint != env.get("TENDERLY_RPC"):
+        save_rpc(endpoint)
+        env["TENDERLY_RPC"] = endpoint
     FOLDER.mkdir(parents=True, exist_ok=True)
     proof = {"environmentId": record["environmentId"], "instanceId": record["instanceId"],
              "vnetId": record["vnetId"], "parent": record["parent"], "domain": domain,
