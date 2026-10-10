@@ -2,6 +2,8 @@
 
 Observed October 10, 2026. This report is ready to share with Tenderly; no support message has been sent.
 
+The user subsequently selected single-account governance. A separate [active Tenderly demo](../deployments/tenderly-demo.json) now has a funded reserve and `PRIPO:DEMO`; the signature-domain issue described here remains relevant to the earlier Safe deployment.
+
 ## Environment
 
 - Account/project: `monad-b15b6908b0/project`.
@@ -54,4 +56,4 @@ The private local trace, transactions and probe results are retained under `repo
 
 Confirm the supported configuration that makes the EVM `CHAINID` opcode equal the configured virtual chain ID for a Monad fork, or correct this environment's execution configuration. The documented Admin RPC methods do not expose a chain-ID setter.
 
-Deployment tooling now requires agreement between `eth_chainId` and Safe's `getChainId()` before mutations. Once resolved, create a fresh Monad fork and rerun the guarded deployment, Safe governance, reserve contribution and fresh signed-Pyth checks. Retain this environment as diagnostic evidence. The current reserve is unfunded, no market exists on this fork, and this record does not establish mainnet readiness.
+The Safe deployment tooling requires agreement between `eth_chainId` and Safe's `getChainId()` before mutations. If returning to a Safe rehearsal, resolve the mismatch, create a fresh Monad fork and rerun that workflow. The original Safe-governed vault is unfunded and its factory has no market. The later single-account demo uses separate custody and factory contracts, records both chain IDs, and performs no typed-signature governance. This issue report does not establish mainnet readiness.

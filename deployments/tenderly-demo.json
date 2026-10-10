@@ -1,0 +1,288 @@
+{
+  "network": "Tenderly Monad mainnet fork",
+  "status": "active-demo-market",
+  "demoOnly": true,
+  "productionReady": false,
+  "governanceMode": "single-account",
+  "rpcChainId": 999143,
+  "observedEvmChainId": 1,
+  "typedSignaturesUsed": false,
+  "recordedAt": "2026-10-10T02:11:00.623448+00:00",
+  "projectUrl": "https://dashboard.tenderly.co/monad-b15b6908b0/project/home",
+  "environment": {
+    "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+    "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+    "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+    "parent": {
+      "chainId": 143,
+      "block": 111799132,
+      "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+      "timestamp": 1791519597
+    },
+    "domain": {
+      "rpcChainId": 999143,
+      "evmChainId": 1,
+      "matches": false
+    },
+    "governanceMode": "single-account",
+    "typedSignatures": false,
+    "productionReady": false
+  },
+  "contractBuildCommit": "9f5e0ff8986deb741713a7c11e4cbdfee0179da8",
+  "reusedContractBuildCommit": "bfdcba876f3eabb16273b534506846fb0305174b",
+  "sourceDeployment": "tenderly-rehearsal.json",
+  "dependencySnapshots": {
+    "forge-std": {
+      "treeSha256": "dad0bdf701d1fc6902778cff96993132fa4f573aa3c3432004a971aa5f41eadb"
+    },
+    "openzeppelin-contracts": {
+      "treeSha256": "0c022ad5af0a9c54462770bd80b14dbc1c1ef5a695f732b3fbe4c033a0fcc8cf"
+    }
+  },
+  "manifest": {
+    "backstop": "0x2DB1C5F69012F72024585CeA9204f795e5927daC",
+    "blockNumber": 111799158,
+    "blockTimeMillis": 300,
+    "chainId": 999143,
+    "contracts": [
+      "0x1e0971684da0C0925F2AD73605D61700eD1F1362",
+      "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+      "0xd740B8DB0f9eB73CD9D22f7b78D36439B9b701d1",
+      "0x1149058B0e105250B6794f2fd7Cb04530Af52122",
+      "0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea",
+      "0x2DB1C5F69012F72024585CeA9204f795e5927daC",
+      "0x8A4c6f3b6eBE958a9575647A8a88ad7E03ba7b93",
+      "0x8AEe7622d63609c68a94d1C16398a45446da6332",
+      "0x3C0866aC1095d413981E9edF2746cbf3Ba68E32D",
+      "0xAB646c0F89938fbfE5807eEE4B02375cFf6fF67a",
+      "0xFaFE7b9AA3B445C6B3a4929b2477568420d89203",
+      "0x1CB887B4c1756099b6b5da092Fb71318980E4dee",
+      "0x8966a4F63aa1538BB85197756e1fdbEE90aa474F",
+      "0xB181c7A1DA0E1e7B68240de2e7CdEce0b0c2f6C5",
+      "0x988652B7D9E0CEDF62D60933341D393469065278",
+      "0xEBe0Dc05B48B860a1D6C739988d2A41024911Af7",
+      "0xE425e4cd389EA7E8dCACc4616960256DfEb437d1",
+      "0x90Af0F19337cdE918538FffBd8E88B0df67A5a4b",
+      "0x31BD236112F0af7140ec895ffB463Ae522181873"
+    ],
+    "deployer": "0x00000000000000000000000000000000000A11cE",
+    "factory": "0x8AEe7622d63609c68a94d1C16398a45446da6332",
+    "governanceCalldata": [
+      "0xe6eaa9330000000000000000000000002db1c5f69012f72024585cea9204f795e5927dac",
+      "0xc1bf1dcf0000000000000000000000008aee7622d63609c68a94d1c16398a45446da63320000000000000000000000000000000000000000000000000000000000000001",
+      "0xe8bde35c000000000000000000000000069f18e8c27a01e6a70d46ee1c8f4657e20f09ea"
+    ],
+    "governanceTargets": [
+      "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+      "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+      "0x8AEe7622d63609c68a94d1C16398a45446da6332"
+    ],
+    "governanceValues": [
+      0,
+      0,
+      0
+    ],
+    "governor": "0x00000000000000000000000000000000000A11cE",
+    "guardian": "0x00000000000000000000000000000000000A11cE",
+    "marketImplementation": "0xd740B8DB0f9eB73CD9D22f7b78D36439B9b701d1",
+    "maxUpdateAgeSeconds": 3,
+    "nullAdapter": "0x1149058B0e105250B6794f2fd7Cb04530Af52122",
+    "pythAdapter": "0x069f18E8C27A01E6a70d46Ee1C8F4657E20f09Ea",
+    "pythCore": "0xB754BA51E3861Ac0Cb67f73CD046dE790A36508d",
+    "rehearsalOnly": true,
+    "runtimeCodeHashes": [
+      "0x2d306cca1506b871604496e4ecd2148a1746a1e2f62e9f5a49d56c0a336bdcc7",
+      "0xa7022e521c634305b0b86f45a8c10af47878d58952877dac7af4a6cbbb165d34",
+      "0xc2f4d2bdfb79142a6680206a97348bbb5e4814d0b1d748bbe6176e36f9a6da76",
+      "0xa79db494b7777b4864154ef7406cc86fad1633e51030147f28fe6e62ecc9eabd",
+      "0x55091ea16e823e3403df929bd039784dc61136330df5b845c5cae5d7dccbc7bb",
+      "0xcae87fa960ad6547f2f925cb1edfa310e0e57fa369b38dd474677024edb34b36",
+      "0x0187a218a23eed9e0b520715ebb12b945cab55b118738a2bc4fed9c10b237a65",
+      "0xdbb24621ded305d69a58ad19f336a7ce6a1dfb6c2227af9a0d2edae7675c5e32",
+      "0x6e363b4248e58ec138f56321419a1f247cb49ef2bfcd82f4ff13b26b23acd871",
+      "0xb512c04609a5e9c1c620ae150c3ff4f6f999c6f9c3dc7b2b90ffac422fcc0314",
+      "0x99fce43f5f83763233fa0014b790fc187b37a2f7e4ebbc3de417e581309b0c5c",
+      "0x7e22b0569ac8fcfced45e6a08732765fea39411c6b18c39a885e59d13fd93f34",
+      "0x13788217fcae4c619db1f89a18a1699779372cfbc829095a353e7f5bc20f9ea3",
+      "0xaa962f033b38205db8573e9551ac16d0a41bc82811b46d2fb5f4a07b3a7be4ee",
+      "0xe6f73106932eb8e3fe4fe396969f01cbd4018e032168e8f75325ec08342937cd",
+      "0x0548e46bed9cfb7c0cae3a8620acbbc48d0e7b0689d489e8c481a011b11a8634",
+      "0x205b3a207f6ec7d6884887e468ec10f89366b537226ce571787c8a48d3c153e6",
+      "0xf20f458a89249dc65b210472c93d49a7874145ac7361f07ed2becbd11c1d086e",
+      "0xa9c9e8591c2c7e7eb861c739f15b80f99a09a77a4453cddf41ad9dedc6ccab20"
+    ],
+    "slashToReserve": true,
+    "sweeper": "0x8A4c6f3b6eBE958a9575647A8a88ad7E03ba7b93",
+    "testnetOnly": false,
+    "treasury": "0x00000000000000000000000000000000000A11cE",
+    "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+    "vault": "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+    "vaultImplementation": "0x1e0971684da0C0925F2AD73605D61700eD1F1362"
+  },
+  "createdContracts": [
+    "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+    "0x2DB1C5F69012F72024585CeA9204f795e5927daC",
+    "0x8A4c6f3b6eBE958a9575647A8a88ad7E03ba7b93",
+    "0x8AEe7622d63609c68a94d1C16398a45446da6332"
+  ],
+  "market": {
+    "demoOnly": true,
+    "externalIndex": false,
+    "factory": "0x8AEe7622d63609c68a94d1C16398a45446da6332",
+    "market": "0xa4cB74124704886a950ca3240c730f9C103aE337",
+    "symbol": "PRIPO:DEMO",
+    "usdc": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+    "vault": "0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd",
+    "initialPriceWad": 100000000000000000000,
+    "depthWad": 200000000000000000000000,
+    "seedBondUnits": 2000000000,
+    "maxLeverageX": 2
+  },
+  "onchainStatus": {
+    "governor": "0x00000000000000000000000000000000000a11ce",
+    "guardian": "0x00000000000000000000000000000000000a11ce",
+    "treasury": "0x00000000000000000000000000000000000a11ce",
+    "reserveWad": 10000000000000000000000,
+    "vaultUsdc": 12000000000,
+    "senderUsdc": 88000000000,
+    "registrar": 1,
+    "backstop": "0x2db1c5f69012f72024585cea9204f795e5927dac",
+    "marketCount": 1,
+    "market": "0xa4cB74124704886a950ca3240c730f9C103aE337",
+    "symbol": "PRIPO:DEMO",
+    "opensAllowed": true,
+    "insuranceWad": 2000000000000000000000,
+    "markPriceWad": 100000000000000000000,
+    "status": "Active",
+    "positionCount": 0,
+    "maxLeverageX": 2,
+    "externalIndex": false,
+    "depthWad": 200000000000000000000000
+  },
+  "creationBlock": 111799168,
+  "creationTransaction": "0x6dc49cec1948b5f535441b1519c8432f5082365e4dc6056c06d6c364fe359126",
+  "transactions": {
+    "deploy": [
+      {
+        "hash": "0xb2e8727ed28fc4ff4d7342b4ec5b165ccd94f7b88df84b9af2159da0cbe536f3",
+        "block": 111799159,
+        "gasLimit": 365890,
+        "receiptGasUsed": 281454,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 28145400000281454,
+        "valueWei": 0,
+        "contractAddress": "0xe50d9df4e95669ca2165401f2756c8deea3b9ffd",
+        "createdAddress": "0xe50d9df4e95669ca2165401f2756c8deea3b9ffd"
+      },
+      {
+        "hash": "0x7342798c5c8b330c820ba897564496e2368464c94234996085718c45824d17b0",
+        "block": 111799160,
+        "gasLimit": 887981,
+        "receiptGasUsed": 683063,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 68306300000683063,
+        "valueWei": 0,
+        "contractAddress": "0x2db1c5f69012f72024585cea9204f795e5927dac",
+        "createdAddress": "0x2db1c5f69012f72024585cea9204f795e5927dac"
+      },
+      {
+        "hash": "0xf307ef04fe53a652b64caf3864f890e9e146c4965a0671c50918d3ad8364418c",
+        "block": 111799161,
+        "gasLimit": 683841,
+        "receiptGasUsed": 526032,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 52603200000526032,
+        "valueWei": 0,
+        "contractAddress": "0x8a4c6f3b6ebe958a9575647a8a88ad7e03ba7b93",
+        "createdAddress": "0x8a4c6f3b6ebe958a9575647a8a88ad7e03ba7b93"
+      },
+      {
+        "hash": "0x3273a875b717fe6a18f723e718b93c7b19f0f9e3b3cd698a1f452c343875e248",
+        "block": 111799162,
+        "gasLimit": 3841238,
+        "receiptGasUsed": 2954799,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 295479900002954799,
+        "valueWei": 0,
+        "contractAddress": "0x8aee7622d63609c68a94d1c16398a45446da6332",
+        "createdAddress": "0x8aee7622d63609c68a94d1c16398a45446da6332"
+      }
+    ],
+    "fund": [
+      {
+        "hash": "0xa3940e920e681b6cf213bcfe3daf0f313b0515893806afe1af8024cd1c4bd309",
+        "block": 111799163,
+        "gasLimit": 78660,
+        "receiptGasUsed": 56949,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 5694900000056949,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0x18e7543c926a42b9686f6e127cf13f02c0ce689cbe5d2656af4f9a6bb2a2d7d6",
+        "block": 111799164,
+        "gasLimit": 78742,
+        "receiptGasUsed": 53841,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 5384100000053841,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0x4779d39073c9db1a7cca7fd86fb1f85d7a1cd1b819fc3a2948f3f5237ed433e6",
+        "block": 111799165,
+        "gasLimit": 81094,
+        "receiptGasUsed": 55449,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 5544900000055449,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0x11bea6095ac1c3196f03c67c1c670267a7ef9998ad0f45f516cfe6c4a642ba2e",
+        "block": 111799166,
+        "gasLimit": 188815,
+        "receiptGasUsed": 129105,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 12910500000129105,
+        "valueWei": 0,
+        "contractAddress": null
+      }
+    ],
+    "market": [
+      {
+        "hash": "0x844018d615138642c8e06bd7ef74ef064a2bd76124adb57608b76518d14e43a2",
+        "block": 111799167,
+        "gasLimit": 76571,
+        "receiptGasUsed": 55437,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 5543700000055437,
+        "valueWei": 0,
+        "contractAddress": null
+      },
+      {
+        "hash": "0x6dc49cec1948b5f535441b1519c8432f5082365e4dc6056c06d6c364fe359126",
+        "block": 111799168,
+        "gasLimit": 1165112,
+        "receiptGasUsed": 843520,
+        "effectiveGasPriceWei": 100000000001,
+        "receiptFeeWei": 84352000000843520,
+        "valueWei": 0,
+        "contractAddress": null
+      }
+    ]
+  },
+  "verification": {
+    "allStageReceiptsSucceeded": true,
+    "runtimeHashesVerified": true,
+    "submittedCallsMatchPlans": true,
+    "marketCloneVerified": true,
+    "reserveAndInsuranceCashBacked": true,
+    "openingGatePassed": true,
+    "marginEntryVersion": 1
+  },
+  "collateral": "Mainnet USDC contract with fork-only balances; no mock token deployed.",
+  "oracle": "NullAdapter: oracle-free demo with an initial price of 100. Pyth is not used by this market.",
+  "gasScope": "Tenderly simulation receipts; these do not establish Monad charged-gas behavior."
+}

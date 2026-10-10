@@ -2,13 +2,35 @@
 
 ## Current status — October 10
 
-Tenderly is connected. Four rehearsal Safes and all **19 protocol contracts** were created on a hosted Monad mainnet fork. Runtime hashes and Safe ownership/thresholds were verified. Protocol source is commit `bfdcba8`, including margin-and-leverage entry. [Addresses and receipts](../deployments/tenderly-rehearsal.json) are saved separately from the public testnet deployment.
+The active Tenderly deployment uses **single-account governance**, as requested. `PRIPO:DEMO` is created and its opening gate passes. The vault holds **12,000 fork-USDC**: a 10,000-USDC protocol reserve and 2,000-USDC market insurance. The market starts at 100, with virtual depth 200,000 and a 2× leverage cap, and uses the oracle-free curve. [Current Tenderly addresses and receipts](../deployments/tenderly-demo.json) include the deployed margin-and-leverage entry implementation.
 
-**Governance is blocked by a chain-domain mismatch.** The RPC and environment metadata report `999143`, but the actual Safe `getChainId()` returns `1`. The first Governor transaction reverted during signature verification; Safe nonce remains zero and no governance calls completed. Reserve contribution, adapter activation and market creation remain pending on this fork. See the [Tenderly reproduction and recovery report](tenderly-chain-domain-issue.md). The runner now rejects RPC/EVM domain disagreement before mutations.
+The demo Governor, Guardian and Treasury are the rehearsal account `0x00000000000000000000000000000000000A11cE`. Four separate custody/factory contracts reuse the already verified implementations and libraries. Deployment, direct governance, reserve funding and market creation completed in ten successful transactions. No Safe execution or typed signatures are used by this workflow.
 
-The existing public-testnet demo uses **Pripo Mock USDC (`mUSDC`)**, a funded reserve, the `PRIPO:DEMO` market and a recorded one-unit long. [Current demo addresses and transaction evidence](../deployments/monad-testnet.json) remain the working public demo reference. Follow [the testnet runbook](testnet-staging.md) for this environment. Production still requires real USDC and final Safe roles.
+The RPC still reports `999143` while EVM `CHAINID` reads `1`. The dedicated demo runner verifies the authenticated environment/instance, disabled state sync and both observed chain IDs; it records this limitation explicitly. The [earlier Safe deployment](../deployments/tenderly-rehearsal.json) and [signature-domain reproduction](tenderly-chain-domain-issue.md) remain historical evidence. The strict Safe runner continues to reject that mismatch. Safe setup is no longer a dependency of the active demo.
 
-Public testnet supplies real Monad execution, timing and charged-fee measurements, including Mera P-256 if selected. The hosted fork supplies shared deployment/Safe rehearsal, mainnet USDC/Pyth integration, block/time manipulation, recovery scenarios and debugger evidence. Resolver and stale wind-down are still implementation gates; gaining Tenderly access does not satisfy them or establish mainnet readiness.
+The existing public-testnet demo uses **Pripo Mock USDC (`mUSDC`)**, a funded reserve, the `PRIPO:DEMO` market and a recorded one-unit long. [Current demo addresses and transaction evidence](../deployments/monad-testnet.json) remain the working public demo reference. Follow [the testnet runbook](testnet-staging.md) for this environment. Production still requires real USDC and reviewed production roles.
+
+Public testnet supplies real Monad execution, timing and charged-fee measurements, including Mera P-256 if selected. The hosted fork supplies deployment, mainnet USDC integration, block/time manipulation, recovery scenarios and debugger evidence. Pyth-fed markets, Resolver and stale wind-down remain separate integration/implementation gates.
+
+## Active single-account demo
+
+| Component | Address |
+| --- | --- |
+| `PRIPO:DEMO` | `0xa4cB74124704886a950ca3240c730f9C103aE337` |
+| Vault | `0xE50d9dF4e95669cA2165401f2756c8DEEa3B9ffd` |
+| Factory | `0x8AEe7622d63609c68a94d1C16398a45446da6332` |
+| USDC on the fork | `0x754704Bc059F8C67012fEd69BC8A327a5aafb603` |
+
+`scripts/tenderly_demo.py` drives `script/TenderlyDemo.s.sol` from a committed, isolated source snapshot. Each stage simulates, checks the expected creations or exact calldata, journals submission, then verifies receipts and live state. The recorded instance's Admin RPC is refreshed from the authenticated API if its configured endpoint changes; credentials stay in ignored `.env`. Existing stage journals prevent accidental resubmission.
+
+```sh
+# Already completed on the current demo. Inspect existing receipts with --verify-only.
+python3 scripts/tenderly_demo.py deploy --verify-only
+python3 scripts/tenderly_demo.py fund --verify-only
+python3 scripts/tenderly_demo.py market --verify-only
+```
+
+On an explicitly prepared new demo, the same stages default to simulation; `--execute` submits them. The runner requires the recorded hosted instance, RPC chain `999143`, the dedicated rehearsal account, and the recorded execution domain. Public mainnet/testnet RPCs are rejected. The Safe deployment records are retained under `reports/deployment/tenderly`; the active demo uses `reports/deployment/tenderly-demo`.
 
 ## Tenderly rehearsal plan
 
@@ -16,7 +38,7 @@ The hosted staging target is a **fresh Tenderly Virtual TestNet fork of Monad ma
 
 Tenderly's [live network registry](https://api.tenderly.co/api/v1/supported-networks) was rechecked on **October 9 at 01:54:05 UTC**: Monad, chain **143**, is a mainnet with `virtual_testnet`, `monitoring`, `simulator` and `explorer` all enabled. `make tenderly-support` refreshes and saves the evidence in `reports/tenderly/network-support.json`. Its [Monad support announcement](https://tenderly.co/blog/tenderly-supports-monad-from-day-one/) also explicitly covers Virtual TestNets.
 
-The virtual chain ID is **999143**, keeping rehearsal signatures separate from production while retaining mainnet contract addresses. Saturday replays the same scripts and reviewed deployment sequence with production roles, chain ID, nonces and fresh signatures. It does not reuse signed rehearsal transactions.
+The RPC chain ID is **999143**. The observed EVM-domain mismatch means this environment does not establish typed-signature isolation. The active demo uses unsigned administrative RPC submissions from its rehearsal account. Production replay uses the correct target-chain configuration and actual production roles.
 
 **Connected project:** account `monad-b15b6908b0`, project `project`. The environment is `b1348816-5fd8-46c6-9c73-97d2e30bba56`, forked October 9 from block `111799132`; state sync is off. Its sender has fork-only balances from explicit Admin RPC overrides. The separate project-metadata endpoint returned HTTP 403; environment access works independently. Alerts await a delivery channel and verification that this virtual network supports the selected alert targets.
 
@@ -40,7 +62,7 @@ make deployment-dry-run
 
 The runner checks chain ID and pinned block hashes, runs `DeployPripo`, then the full lifecycle regression. It has no signing or broadcast option. Config, address/code-hash manifest, ordered Governor calldata, redacted logs and the result summary go in ignored `reports/deployment/`. Foundry also writes its unsigned transaction plan to ignored `broadcast/DeployPripo.s.sol/143/dry-run/`. The manifest records simulated addresses; it does not establish a live deployment. A failed rerun leaves the summary marked incomplete.
 
-## Fresh fork and Safe setup
+## Historical Safe rehearsal workflow
 
 Supply `TENDERLY_ACCESS_KEY`, `TENDERLY_ACCOUNT_SLUG` and `TENDERLY_PROJECT_SLUG` in ignored `.env` to connect the granted account/project. An access key is created in [Tenderly's API token settings](https://docs.tenderly.co/platform/account/projects/api-tokens); keep it out of chat and Git. If an environment already exists, also provide its Admin RPC as `TENDERLY_RPC`; otherwise obtain that endpoint when creating the fresh environment. Set the existing on-call destination as `TENDERLY_DELIVERY_CHANNEL_ID` before binding alerts. The mainnet RPC and Pyth key already exist. Never publish the Admin RPC; it can mutate the environment.
 
@@ -122,7 +144,7 @@ Fund the reserve using USDC approval followed by `fundProtocolReserve(1000000000
 
 | Scenario | Required result |
 | --- | --- |
-| Deployment and role wiring | Safe owners/thresholds and proxy roles verified; a below-threshold Governor transaction fails; actual signed Safe execution binds factory and backstop and schedules Pyth |
+| Deployment and role wiring | Single-account Governor/Guardian/Treasury verified; direct account execution binds factory and backstop; reserve and market seed reconcile to USDC custody |
 | Full ADL | Full book, 64 matches per call, continuations and book mutation; reservations isolated; funding frozen; totals/cash reconciled |
 | Forced settlement | Fresh whole-book insufficiency proof, correct capital waterfall, terminal-only deficit and user withdrawal checks |
 | Resolver | Before/at/after dispute deadline; matched bonds, disputed/undisputed outcomes, Council-only resolution and settlement; **pending implementation** |
