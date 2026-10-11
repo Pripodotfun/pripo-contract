@@ -47,13 +47,26 @@ def deploy(env, proof, execute):
         if not broadcast:
             path /= 'dry-run'
         plan = json.loads((path / 'run-latest.json').read_text())
-        if len(plan['transactions']) != 20 or any(t['transactionType'] != 'CREATE' or t['transaction']['from'].lower() != SENDER.lower() for t in plan['transactions']):
-            raise ProbeError('Expected exactly twenty contract creations by the demo sender')
+        if not 9 <= len(plan['transactions']) <= 20 or any(t['transactionType'] not in ('CREATE','CREATE2') or t['transaction']['from'].lower() != SENDER.lower() for t in plan['transactions']):
+            raise ProbeError('Unexpected creation plan or sender')
+        manifest=json.loads((SOURCE/'reports/deployment/manifest.json').read_text())
+        resolver=json.loads((SOURCE/'reports/deployment/resolver.json').read_text())
+        pairs=list(zip(manifest['contracts'],manifest['runtimeCodeHashes']))+[(resolver['resolver'],resolver['runtimeCodeHash'])]
+        created={t['contractAddress'].lower() for t in plan['transactions']}
+        if not created.issubset({a.lower() for a,_ in pairs}):
+            raise ProbeError('Unrecognized creation target')
+        reused=[]
+        for address,expected in pairs:
+            if address.lower() not in created:
+                if keccak(rpc(env['TENDERLY_RPC'],'eth_getCode',[address,'latest'])).lower()!=expected.lower():
+                    raise ProbeError('Reused library runtime mismatch')
+                reused.append(address)
+        plan['verifiedReusedLibraries']=reused
         save(FOLDER / ('deploy-broadcast.json' if broadcast else 'deploy-plan.json'), plan)
         return plan
     planned = run(False)
     if not execute:
-        print('Twenty separate contract creations simulated. Existing deployment unchanged.')
+        print('Separate lifecycle deployment simulated; unchanged deterministic libraries verified.')
         return
     if context()[2] != proof:
         raise ProbeError('Environment changed during simulation')
@@ -74,12 +87,12 @@ def deploy(env, proof, execute):
             raise ProbeError('Deployed runtime does not match compiled manifest')
     with ThreadPoolExecutor(max_workers=4) as pool:
         list(pool.map(check, pairs))
-    if {c['createdAddress'].lower() for c in costs} != {a.lower() for a, _ in pairs}:
+    if {c['createdAddress'].lower() for c in costs} | {a.lower() for a in actual['verifiedReusedLibraries']} != {a.lower() for a, _ in pairs}:
         raise ProbeError('Creation receipts do not cover all twenty contracts')
     save(FOLDER/'manifest.json',manifest)
     save(FOLDER/'resolver.json',resolver)
     save(journal,dict(status='verified',source=source,environment=proof,transactions=costs,verifiedAt=datetime.now(timezone.utc).isoformat()))
-    print(json.dumps({'deployed':20,'factory':manifest['factory'],'vault':manifest['vault'],'resolver':resolver['resolver']}))
+    print(json.dumps({'deployed':len(costs),'reusedLibraries':len(actual['verifiedReusedLibraries']),'factory':manifest['factory'],'vault':manifest['vault'],'resolver':resolver['resolver']}))
 
 
 class Lifecycle(prior.Demo):
@@ -108,7 +121,7 @@ class Lifecycle(prior.Demo):
     def configure(self):
         m=self.m;f=m['factory'];v=m['vault'];a=m['pythAdapter']
         calls=[('backstop',v,'setBackstopController(address)',[m['backstop']]),('registrar',v,'setRegistrar(address,bool)',[f,'true']),
-               ('resolver',f,'setResolver(address)',[self.resolver['resolver']]),('reserve-approve',m['usdc'],'approve(address,uint256)',[v,10_000*10**6]),
+               ('bind-resolver',f,'setResolver(address)',[self.resolver['resolver']]),('reserve-approve',m['usdc'],'approve(address,uint256)',[v,10_000*10**6]),
                ('reserve',v,'fundProtocolReserve(uint256)',[10_000*10**6]),('schedule',f,'scheduleAdapter(address)',[a])]
         for name,target,sig,args in calls:
             self.transaction(name,target,calldata(sig,*args))

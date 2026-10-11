@@ -104,7 +104,9 @@ class Demo:
             if old["status"] == "verified":
                 return old["receipt"]
             raise ProbeError("Unverified submission exists; reconcile before retrying")
-        tx = {"from": SENDER, "to": target, "data": data, "value": hex(value), "gas": hex(8_000_000)}
+        # Tenderly hashes unsigned envelopes without the impersonated sender. A distinct gas
+        # limit keeps identical council calls from separate demo accounts from sharing a hash.
+        tx = {"from": SENDER, "to": target, "data": data, "value": hex(value), "gas": hex(8_000_000 + int(SENDER, 16) % 1000)}
         if simulate:
             rpc(self.url, "eth_call", [tx, "pending"])
         record = {"environment": self.proof, "status": "submitting", "transaction": tx}
@@ -179,7 +181,7 @@ class Demo:
                                            "response": payload, "feeWei": fee})
         self.clock("price-simulation", stamp)
         rpc(self.url, "eth_call", [{"from": SENDER, "to": f, "data": data, "value": hex(fee),
-                                   "gas": hex(8_000_000)}, "latest"])
+                                   "gas": hex(8_000_000 + int(SENDER, 16) % 1000)}, "latest"])
         self.clock("price-submission", stamp)
         self.transaction("create", f, data, fee, simulate=False)
         self.verify()

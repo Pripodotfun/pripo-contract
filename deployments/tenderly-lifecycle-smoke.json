@@ -1,0 +1,307 @@
+{
+  "market": "0x5fe17a59d5a8a1446e07294bd7037c28f3e0dbfe",
+  "symbol": "PRIPO:CHECK",
+  "checks": {
+    "operatorOpenAndClose": true,
+    "revokedOperatorRejected": true,
+    "disputeResolvedByThreeVotes": true,
+    "positionClaimCleared": true,
+    "bondClaimCleared": true
+  },
+  "environment": {
+    "environmentId": "b1348816-5fd8-46c6-9c73-97d2e30bba56",
+    "instanceId": "3e0a2541-d57b-4099-a0ad-4e9ad1b4b789",
+    "vnetId": "e0d1eea6-a5da-4cb4-8e9f-ccfb773f704c",
+    "parent": {
+      "chainId": 143,
+      "block": 111799132,
+      "hash": "0x6a962ed33bce04011cdc3eeda06fdcb673d4e58e9c7ed5e3d41c5f0a176734a3",
+      "timestamp": 1791519597
+    },
+    "domain": {
+      "rpcChainId": 999143,
+      "evmChainId": 1,
+      "matches": false
+    },
+    "governanceMode": "single-account",
+    "typedSignatures": false,
+    "productionReady": false
+  },
+  "transactions": {
+    "smoke-vote-2": {
+      "hash": "0x5f3c8e8b2d981746690e9219d50441af6e25544adc94d69c5235e880829dbe5f",
+      "block": 111799250,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 540324,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680759
+    },
+    "smoke-seed-approve": {
+      "hash": "0x31a4b341e19315566529f1e56284e3dab7358e7d40cb91ada4c3d8caf6d38ea6",
+      "block": 111799227,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 55437,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680505
+    },
+    "smoke-council-gas-2": {
+      "hash": "0x72b77aa1eb3cf6e8eddb1d980b51b94030970514d04eb6b590ac61b1d046a25e",
+      "block": 111799249,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 21000,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 1000000000000000000,
+      "contractAddress": null,
+      "timestamp": 1791680756
+    },
+    "smoke-operator-gas": {
+      "hash": "0x506db6f8d980ee05bcebbb5bb6177c37c83f6e12796539a12e87f9db0cc8804a",
+      "block": 111799233,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 21000,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 1000000000000000000,
+      "contractAddress": null,
+      "timestamp": 1791680576
+    },
+    "smoke-disputer-gas": {
+      "hash": "0x9f4d66e2a364e353d9f591d80107af67eb33086bcb34037e90c47af72fe6b44a",
+      "block": 111799241,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 21000,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 1000000000000000000,
+      "contractAddress": null,
+      "timestamp": 1791680735
+    },
+    "smoke-claim": {
+      "hash": "0xa31a409ddb54eddcab38a2a702d990abea477ae3ade596f0751c394073f375cb",
+      "block": 111799251,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 52993,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680763
+    },
+    "smoke-proposal-approve": {
+      "hash": "0xf14bbec0bf7027366d3fb030b290202447eddffb3c3ce791557454fc58362375",
+      "block": 111799239,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 55437,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680729
+    },
+    "smoke-declare": {
+      "hash": "0x9ca58cce4bed9a8b0f4687e2c9051e281ab50975afab7fca50c0a10111061659",
+      "block": 111799229,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 149777,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680513
+    },
+    "smoke-deposit-approve": {
+      "hash": "0xd40c1452bfa96ed06e8234ace0c3286cd13ca0f41c757388d1aac17f55750c3f",
+      "block": 111799231,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 55437,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680570
+    },
+    "smoke-operator-open": {
+      "hash": "0x4afa3815fabd45c5549d6824e192188e4d658572e49a5b4e61800170dd609e87",
+      "block": 111799236,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 719024,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680719
+    },
+    "smoke-revoke": {
+      "hash": "0xa05f59d3d0bb09e0e4291a36dc8d59776d4a0ff5028464f5cd4423ab6cde341a",
+      "block": 111799238,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 45874,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680725
+    },
+    "smoke-policy": {
+      "hash": "0x5a197a37ef61e1b5bdcf05d6b86356d6d5311a47e4c5a1417878c7fe85200c7b",
+      "block": 111799234,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 172205,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680713
+    },
+    "smoke-disputer-fund": {
+      "hash": "0xfccabd3d8516bd7d2b4f6d221e0a61cb9841efe02a01a54d166e293c41455131",
+      "block": 111799242,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 61943,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680738
+    },
+    "smoke-propose": {
+      "hash": "0xd71bc1fdc961fd83c44be90f1cd493dc27395ad86ab40af64e689cc03b5a31f3",
+      "block": 111799240,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 450430,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680732
+    },
+    "smoke-dispute-approve": {
+      "hash": "0x9a3d50d7d9ba349b670e9bb5f92c2596a143e98f5099a6e558ce7a03c25acf04",
+      "block": 111799243,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 55437,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680741
+    },
+    "smoke-bond-claim": {
+      "hash": "0x4b425a8b8b29c84125b58625343df728e9aa736c789ca987cc682590003781e9",
+      "block": 111799252,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 64151,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680766
+    },
+    "smoke-deposit": {
+      "hash": "0x392dc97010fb7b877eb9fdb0479c06e7e32cebd51dbcd8e39bb10df53c052287",
+      "block": 111799232,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 89057,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680573
+    },
+    "smoke-profile": {
+      "hash": "0xe0aeaf5d14fc6261d69751f0e0215b8a3a259614e03c618b094d2b55f212889b",
+      "block": 111799235,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 51393,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680716
+    },
+    "smoke-vote-0": {
+      "hash": "0x5f3c8e8b2d981746690e9219d50441af6e25544adc94d69c5235e880829dbe5f",
+      "block": 111799246,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 59900,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680748
+    },
+    "smoke-council-gas-0": {
+      "hash": "0xe6d86b550da41221af48a35769521b482cf70f8c852bd1b7180c4abce8983994",
+      "block": 111799245,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 21000,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 1000000000000000000,
+      "contractAddress": null,
+      "timestamp": 1791680746
+    },
+    "smoke-council-gas-1": {
+      "hash": "0x72ab7270a6498fb7da84b6371604af3dfbeae4604df5c0e90dff5757949b0881",
+      "block": 111799247,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 21000,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 1000000000000000000,
+      "contractAddress": null,
+      "timestamp": 1791680751
+    },
+    "smoke-vote-1": {
+      "hash": "0x5f3c8e8b2d981746690e9219d50441af6e25544adc94d69c5235e880829dbe5f",
+      "block": 111799248,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 42896,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680754
+    },
+    "smoke-market": {
+      "hash": "0xb8a9f6867b762167576cfd9f4682dc919d674ec2d3aa08041a4723bda628236e",
+      "block": 111799228,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 985834,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680508
+    },
+    "smoke-operator-close-half": {
+      "hash": "0x72d22075158085d245f80461ed3444c15d4eaccdd08e1f180d95efb98827dba5",
+      "block": 111799237,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 381654,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680722
+    },
+    "smoke-dispute": {
+      "hash": "0xea94b47c00f10be14d6322aa7b71447b43ef210937e1a075764e8509a2acb2ca",
+      "block": 111799244,
+      "gasLimit": 8000000,
+      "receiptGasUsed": 163121,
+      "effectiveGasPriceWei": 0,
+      "receiptFeeWei": 0,
+      "valueWei": 0,
+      "contractAddress": null,
+      "timestamp": 1791680743
+    }
+  }
+}
