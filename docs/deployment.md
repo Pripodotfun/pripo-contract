@@ -212,3 +212,13 @@ If Mera is selected, include real Monad testnet P-256 verification and an end-to
 By Friday the user supplies mainnet Safes/signers, **10,000 USDC reserve**, market/listing bonds and MON for gas. Three distinct Pyth markets additionally need **16,500 USDC** in seed/listing bonds; three oracle-less markets require **6,000 USDC** seed bonds. Trading collateral is separate. Safes, fee destinations and all policy inputs are reviewed in the production config. The mainnet RPC and Pyth key are already available; equity entitlements and feed selection remain market-specific gates.
 
 Markets are immutable clones. The Thursday fallback is a fork demo, not a resolver-less mainnet launch. Preserve the compiler/build settings, commit, linked-library addresses, constructor arguments, role manifests, simulation evidence and actual receipts for the final replay and explorer verification.
+## Live Tenderly clock check
+
+For the lifecycle demo, use `python3 scripts/tenderly_clock.py` to compare actual
+pending EVM `block.timestamp` with wall time. The RPC pending header can look
+current while simulation time retains a rehearsal offset. `--execute` checks the
+authenticated environment and empty books in both factories, corrects positive
+clock lag with a journaled administrative operation, and verifies advancing EVM
+time. It refuses rewinds or an ahead/frozen clock requiring further reconciliation.
+The lifecycle settlement smoke waits through its short declared event delay
+instead of advancing the shared clock. This avoids invalidating fresh Pyth updates.

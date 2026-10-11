@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise delegated trading and disputed settlement on a dedicated fork-only market."""
 import json
+import time
 from pathlib import Path
 from monad_preflight import ROOT, ProbeError, rpc
 from mock_testnet import calldata
@@ -29,9 +30,13 @@ def main():
     market='0x'+format(demo.w(f,'marketForSymbol(bytes32)',__import__('deploy_testnet').keccak('PRIPO:CHECK'))[0],'040x')
     declaration=FOLDER/'smoke-declare.json'
     if not declaration.exists():
-        head=rpc(demo.url,'eth_getBlockByNumber',['latest',False]);expected=int(head['timestamp'],16)+60
+        head=rpc(demo.url,'eth_getBlockByNumber',['latest',False]);expected=max(int(head['timestamp'],16),int(time.time()))+60
         tx('declare',r,'declareSettlement(address,uint8,uint64,string)',market,0,expected,'Fork-only lifecycle verification event')
-        demo.clock('smoke-event',expected)
+        # Keep a live oracle-compatible clock. This short rehearsal waits for its
+        # event instead of leaving a time-travel offset on the shared demo fork.
+        while time.time() <= expected:
+            print('Waiting for the declared demo event time...', flush=True)
+            time.sleep(min(10, max(1, expected - time.time() + 1)))
     tx('deposit-approve',token,'approve(address,uint256)',v,1000*10**6)
     tx('deposit',v,'deposit(uint256)',1000*10**6)
     tx('operator-gas',OPERATOR,'',value=10**18)
@@ -77,6 +82,9 @@ def main():
     checks={'operatorOpenAndClose':True,'revokedOperatorRejected':True,'disputeResolvedByThreeVotes':True,'positionClaimCleared':True,'bondClaimCleared':True}
     result={'market':market,'symbol':'PRIPO:CHECK','checks':checks,'environment':demo.proof,'transactions':{p.stem:json.loads(p.read_text())['receipt'] for p in FOLDER.glob('smoke-*.json') if 'receipt' in json.loads(p.read_text())}}
     save(ROOT/'deployments/tenderly-lifecycle-smoke.json',result)
+    # Check actual pending EVM time after all positions are cleared.
+    from tenderly_clock import restore
+    restore(demo, FOLDER, 'smoke-restore-live-clock')
     print(json.dumps({'market':market,'checks':checks}))
 
 if __name__=='__main__':

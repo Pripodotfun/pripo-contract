@@ -70,7 +70,7 @@ class Demo:
                 raise ProbeError("Unexpected demo role or dependency binding")
 
     def admin(self, method, params):
-        if method not in ("eth_sendTransaction", "evm_setNextBlockTimestamp"):
+        if method not in ("eth_sendTransaction", "evm_setNextBlockTimestamp", "evm_increaseTime"):
             raise ProbeError("Unsupported demo mutation")
         result = request_json(self.url, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
                               {"Content-Type": "application/json"})
